@@ -1,62 +1,33 @@
 {
-  "description": "Lookup table for classifying codes as administrative vs. medical/pharmacy. Codes listed here will be filtered out during event filtering (Step 1b). For falls analysis: Z91.81 (fall history) and CPT 1100F (falls risk screening) are excluded as they represent history/screening rather than actual fall events.",
+  "description": "Lookup table for classifying codes as administrative vs. medical/pharmacy. Codes listed here will be filtered out during event filtering (Step 4b). Codes are identified in Step 3b (0_icd_cpt_check).",
   "version": "1.0",
-  "last_updated": "2026-06-01",
-  "documentation": "Falls target: R29.6, T02.*, S12.*, S22.*, S32.*, S42.*, S52.*, S62.*, S72.*, S82.*, S92.*. Excluded: Z91.81 (personal history of falls — administrative/historical), CPT 1100F (falls risk screening — preventive measure, not an event).",
+  "last_updated": "2024-01-01",
+  "documentation": "See 3_feature_importance/README.md for details on Z code filtering. These 4 Z codes (Z00.00, Z00.01, Z00.121, Z00.129) were identified as administrative based on feature importance analysis showing they represent routine administrative examinations rather than clinical risk factors.",
   "administrative_codes": {
     "icd": [
       "Z00.00",
       "Z00.01",
       "Z00.121",
-      "Z00.129",
-      "Z91.81"
+      "Z00.129"
     ],
     "cpt": [
       "99024",
       "99025",
       "99026",
-      "99027",
-      "1100F"
+      "99027"
     ],
     "drug": [
-      "Unknown"
+      "Narcan",
+      "Unknown",
+      "Fentanyl",
+      "1036F",
+      "T401XA1"
     ]
   },
-  "falls_target_codes": {
-    "icd_include": [
-      "R29.6",
-      "T02",
-      "S12",
-      "S22",
-      "S32",
-      "S42",
-      "S52",
-      "S62",
-      "S72",
-      "S82",
-      "S92"
-    ],
-    "icd_exclude": [
-      "Z91.81"
-    ],
-    "cpt_exclude": [
-      "1100F"
-    ],
-    "notes": {
-      "R29.6": "Tendency to fall, not elsewhere classified",
-      "T02": "Fractures involving multiple body regions",
-      "S12": "Fracture of cervical vertebra",
-      "S22": "Fracture of rib(s), sternum, thoracic spine",
-      "S32": "Fracture of lumbar spine and pelvis",
-      "S42": "Fracture of shoulder and upper arm",
-      "S52": "Fracture of forearm",
-      "S62": "Fracture at wrist and hand level",
-      "S72": "Fracture of femur",
-      "S82": "Fracture of lower leg, including ankle",
-      "S92": "Fracture of foot and toe",
-      "Z91.81": "EXCLUDED — Personal history of falls (administrative/historical, not an event)",
-      "1100F": "EXCLUDED — Falls risk screening performed (preventive measure, not a fall event)"
-    }
+  "notes": {
+    "icd": "ICD codes for administrative/billing purposes (e.g., routine health checks, administrative visits)",
+    "cpt": "CPT codes for administrative procedures (e.g., post-operative follow-up, administrative services)",
+    "drug": "Excluded from drug_name column for model training: Narcan, Unknown, Fentanyl; 1036F (CPT Category II tobacco non-user); T401XA1 (ICD-10-CM poisoning/acetaminophen, not a drug). See README_administrative_codes_lookup.md."
   },
   "research_guidelines": {
     "how_to_identify_administrative_codes": [
