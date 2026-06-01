@@ -483,8 +483,8 @@ def main():
     parser.add_argument(
         "--age-band",
         type=str,
-        default="0-12",
-        help="Age band (e.g., 0-12)",
+        default="65-74",
+        help="Age band (e.g., 65-74)",
     )
     parser.add_argument(
         "--n-splits",

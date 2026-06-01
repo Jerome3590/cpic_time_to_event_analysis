@@ -19,7 +19,6 @@ All results are also uploaded to S3:
 """
 
 import sys
-import os
 from pathlib import Path
 
 # Add project root to path
@@ -31,7 +30,7 @@ from py_helpers.feature_importance_utils import run_cohort_analysis
 
 # Configuration
 COHORT_NAME = "falls"
-AGE_BAND = "13-24"
+AGE_BAND = "75-84"
 TRAIN_YEARS = [2016, 2017, 2018]
 TEST_YEAR = 2019
 N_SPLITS = 25
@@ -55,9 +54,9 @@ MODEL_PARAMS = {
         'subsample': 1.0,
         'colsample_bytree': 1.0,
         'random_seed': 42,
-        'n_jobs': 2,  # Use 2 threads per model (with 28 workers × 2 threads = 56 threads on 32 cores, acceptable with early stopping)
-        'tree_method': 'hist',  # Faster than exact, more accurate than approx
-        'early_stopping_rounds': 10,  # Enable early stopping for faster training
+        'n_jobs': 2,
+        'tree_method': 'hist',
+        'early_stopping_rounds': 10,
     },
     'xgboost_rf': {
         'max_depth': 6,
@@ -66,9 +65,9 @@ MODEL_PARAMS = {
         'subsample': 0.8,
         'max_features': None,
         'random_seed': 42,
-        'n_jobs': 2,  # Use 2 threads per model (with 28 workers × 2 threads = 56 threads on 32 cores, acceptable with early stopping)
-        'tree_method': 'hist',  # Faster than exact, more accurate than approx
-        'early_stopping_rounds': 10,  # Enable early stopping for faster training
+        'n_jobs': 2,
+        'tree_method': 'hist',
+        'early_stopping_rounds': 10,
     },
 }
 
@@ -76,7 +75,6 @@ MODEL_PARAMS = {
 import multiprocessing
 # Optimized for EC2: 32 cores, 1TB RAM
 # Use 28 workers (leave 4 cores for system/OS overhead)
-# With 1TB RAM, we can handle high parallelism without memory concerns
 N_WORKERS = max(1, multiprocessing.cpu_count() - 4)
 
 print(f"Running feature importance analysis:")
@@ -87,7 +85,7 @@ print(f"  Test Year: {TEST_YEAR}")
 print(f"  MC-CV Splits: {N_SPLITS}")
 print(f"  Workers: {N_WORKERS}")
 print(f"  Output Directory: 3_feature_importance/outputs")
-print(f"\nNote: This script is idempotent - models with existing results in S3 will be skipped.")
+print("Note: This script is idempotent - models with existing results in S3 will be skipped.")
 print()
 
 # Run analysis
@@ -107,13 +105,13 @@ result = run_cohort_analysis(
 
 # Check results
 if result.get('status') == 'success':
-    print(f"\n[SUCCESS] Analysis complete!")
+    print("[SUCCESS] Analysis complete!")
     print(f"  Aggregated output: {result.get('output_file', 'N/A')}")
     print(f"  Features analyzed: {result.get('n_features', 'N/A')}")
-    print(f"\n  Individual model results saved to: 3_feature_importance/outputs/")
+    print(f"  Individual model results saved to: 3_feature_importance/outputs/")
     print(f"  All results uploaded to: s3://pgxdatalake/gold/feature_importance/{COHORT_NAME}/{AGE_BAND}/")
 elif result.get('status') == 'skipped':
-    print(f"\n[SKIPPED] Analysis skipped: {result.get('reason', 'Unknown reason')}")
+    print(f"[SKIPPED] Analysis skipped: {result.get('reason', 'Unknown reason')}")
 else:
-    print(f"\n[ERROR] Analysis failed: {result.get('error', 'Unknown error')}")
+    print(f"[ERROR] Analysis failed: {result.get('error', 'Unknown error')}")
     sys.exit(1)

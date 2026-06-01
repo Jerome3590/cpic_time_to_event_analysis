@@ -20,7 +20,7 @@ Usage (example):
 
     python 3a_feature_importance/run_mc_feature_importance.py \
         --cohort falls \
-        --age_band 13-24 \
+        --age_band 65-74 \
         --n_runs 25
 """
 
@@ -87,7 +87,7 @@ def _remove_target_leakage_features(df: pd.DataFrame) -> pd.DataFrame:
         (except those with 'interval' in the name)
       - Datetime helper columns: 'target_time', 'first_time'
       - DTW-derived features (any column with 'dtw' in its name)
-      - Any feature whose name contains 'F1120'
+      - Any feature whose name contains the target column names (fall_injury_any, ed_event)
     """
     cols = list(df.columns)
     leakage: set[str] = set()
@@ -108,14 +108,14 @@ def _remove_target_leakage_features(df: pd.DataFrame) -> pd.DataFrame:
     ]
     leakage.update(time_window_features)
 
-    datetime_features = [c for c in ("target_time", "first_time") if c in cols]
+    datetime_features = [c for c in ("target_time", "first_time", "first_fall_date", "first_ed_date") if c in cols]
     leakage.update(datetime_features)
 
     dtw_features = [c for c in cols if "dtw" in c.lower()]
     leakage.update(dtw_features)
 
-    f1120_features = [c for c in cols if "F1120" in c.upper()]
-    leakage.update(f1120_features)
+    target_col_features = [c for c in cols if "fall_injury" in c.lower() or "ed_event" in c.lower()]
+    leakage.update(target_col_features)
 
     if leakage:
         kept = [c for c in cols if c not in leakage]
@@ -1197,7 +1197,7 @@ def main() -> None:
         "This script is idempotent - it will skip if results already exist unless --force is used."
     )
     parser.add_argument("--cohort", required=True, help="Cohort name, e.g. falls")
-    parser.add_argument("--age_band", required=True, help="Age band, e.g. 13-24")
+    parser.add_argument("--age_band", required=True, help="Age band, e.g. 65-74")
     parser.add_argument(
         "--n_runs",
         type=int,
