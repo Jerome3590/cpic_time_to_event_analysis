@@ -17,5 +17,6 @@ Based on clinical literature:
 - Antidepressants / antipsychotics
 - Anticonvulsants
 - Opioids (overlapping with pgx-analysis cohort)
-- Prior fall history (non-Z91.81 codes)
+- `r29_6_flag` — R29.6 (tendency to fall / repeated falls) — **feature input from Step 1b**
+- `z91_81_flag` — Z91.81 (history of falling) — **feature input from Step 1b**
 - Polypharmacy count (≥5 medications)

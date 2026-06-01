@@ -9,24 +9,41 @@ End-to-end machine learning pipeline predicting **fall-related** and **ED visit*
 ## 🎯 Target Outcomes
 
 ### 1. Fall Events
-**Included ICD-10-CM codes:**
-| Code | Description |
-|------|-------------|
-| R29.6 | Tendency to fall, not elsewhere classified |
-| T02.* | Fractures involving multiple body regions |
-| S12.* | Fracture of cervical vertebra and other parts of neck |
-| S22.* | Fracture of rib(s), sternum and thoracic spine |
-| S32.* | Fracture of lumbar spine and pelvis |
-| S42.* | Fracture of shoulder and upper arm |
-| S52.* | Fracture of forearm |
-| S62.* | Fracture at wrist and hand level |
-| S72.* | Fracture of femur |
-| S82.* | Fracture of lower leg, including ankle |
-| S92.* | Fracture of foot and toe |
 
-**Exclusions:**
-- `Z91.81` — History of falls (administrative code — personal history, not an event)
-- CPT `1100F` — Falls risk screening (administrative preventive measure, not a fall event)
+Outcome label: **`fall_injury_any = 1`** when **both** criteria are present on the same encounter:
+
+#### Criterion 1 — Injury diagnosis (any of the following ICD-10-CM codes):
+| Range | Description |
+|-------|-------------|
+| S00–S99 | Injuries to specific body regions (head, neck, thorax, abdomen, extremities, etc.) |
+| T07 | Unspecified multiple injuries |
+| T14 | Injury of unspecified body region |
+| T20–T32 | Burns and corrosions |
+| T33–T34 | Frostbite |
+| T79 | Certain early complications of trauma (traumatic shock, compartment syndrome) |
+
+#### Criterion 2 — External cause fall code (any of the following ICD-10-CM codes):
+| Range | Description |
+|-------|-------------|
+| W00–W19 | Fall-mechanism external cause codes (fall on ice, same-level fall, fall from bed/stairs/ladder, unspecified fall, etc.) |
+
+> **Implementation rule:** an encounter must satisfy **both** criteria (injury + fall external cause) to be labeled `fall_injury_any = 1`.
+
+#### Optional incident-only filter:
+- Restrict to diagnosis codes with **7th character = `A`** (initial encounter); exclude `D` (subsequent) and `S` (sequela).
+
+**Exclusions (outcome side — treat these as features, not outcomes):**
+- `R29.6` — Tendency to fall / repeated falls (risk feature, not an injury event)
+- `Z91.81` — History of falling (personal history / administrative code, not an acute event)
+- CPT `1100F` — Falls risk screening (process measure, not a fall event)
+- `T80–T88` — Complications of surgical/medical care (iatrogenic, not mechanical fall injury)
+
+#### Auxiliary outcome flags:
+| Flag | Definition |
+|------|------------|
+| `fall_injury_any` | Injury (S00–T79 subset) + W00–W19 on same encounter |
+| `fall_injury_serious` | `fall_injury_any = 1` AND any fracture code: T02.\*, S12.\*, S22.\*, S32.\*, S42.\*, S52.\*, S62.\*, S72.\*, S82.\*, S92.\* |
+| `fall_injury_head` | `fall_injury_any = 1` AND any head injury code S00–S09 |
 
 ### 2. ED Visits
 Same logic as `pgx-analysis` event filter — emergency department claim classification via place of service (POS=23) and revenue codes.
@@ -87,8 +104,9 @@ cpic_time_to_event_analysis/
 
 ### Step 1b: Event Filter
 - [ ] Copy `1b_apcd_event_filter/filter_protocol_events.py` from pgx-analysis
-- [ ] **Update target outcome logic**: replace opioid-ED ICD codes with falls ICD-10 codes (see above)
-- [ ] **Add exclusion filter**: remove events where ICD = `Z91.81` OR CPT = `1100F`
+- [ ] **Update target outcome logic**: implement two-criterion `fall_injury_any` label (injury S00–S99/T07/T14/T20–T34/T79 AND external cause W00–W19 on same encounter)
+- [ ] **Add exclusion filter**: remove events where ICD = `Z91.81` OR CPT = `1100F` OR ICD = `R29.6` (move R29.6 to feature)
+- [ ] **Compute auxiliary flags**: `fall_injury_serious` (+ fracture codes) and `fall_injury_head` (+ S00–S09)
 - [ ] Update `administrative_codes_lookup.json` — add falls-specific admin exclusions
 - [ ] Keep ED visit logic intact (POS=23 + revenue code filter)
 - [ ] Update README with new code classification rationale
@@ -193,9 +211,9 @@ Gold:   s3://<bucket>/gold/cpic_falls/final_model/
 
 | Aspect | pgx-analysis | cpic_time_to_event_analysis |
 |--------|-------------|----------------------------|
-| Target 1 | Opioid-related ED visit | **Falls** (R29.6, T02, S1x–S9x fractures) |
+| Target 1 | Opioid-related ED visit | **Falls** (`fall_injury_any`: injury S00–S99/T07/T14/T20–T34/T79 + external cause W00–W19) |
 | Target 2 | Polypharmacy/geriatric ED visit | **ED visit** (same logic) |
-| Exclusions | Admin codes only | + Z91.81 (fall history) + CPT 1100F |
+| Exclusions | Admin codes only | + Z91.81 (fall history) + CPT 1100F + R29.6 (moved to feature) + T80–T88 (surgical complications) |
 | PGx focus | Opioid metabolism (CYP2D6, CYP3A4) | Fall-risk drugs (CNS, antihypertensives, psychotropics) |
 | Dashboard | Yes (serverless Lambda) | No (analysis only) |
 | Manuscript | CTS submission | TBD |
