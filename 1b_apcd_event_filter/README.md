@@ -77,6 +77,37 @@ Same logic as `pgx-analysis`:
 
 ---
 
+## Clinical Coding Notes
+
+### Code sequencing
+ICD-10-CM coding guidance sequences the injury (S/T code) as the primary diagnosis and the external cause (W00–W19) as a secondary code. For labeling purposes, sequencing order does not matter — only that **both appear on the same encounter**.
+
+### Optional inclusions (research-dependent)
+- **T36–T65** (poisoning, toxic effects): include only if medication-related injuries from falls are in scope. Most fall-injury algorithms treat poisonings separately and exclude them from the injury criterion.
+- **T80–T88** (complications of surgical/medical care): exclude by default; include only if iatrogenic complications following a fall injury are explicitly in scope.
+
+### Feature codes (output from this step for downstream use)
+The following codes are excluded from the outcome but should be passed forward as binary feature flags:
+
+| Code | Feature column | Clinical meaning |
+|------|----------------|-----------------|
+| R29.6 | `r29_6_flag` | Tendency to fall / repeated falls |
+| Z91.81 | `z91_81_flag` | Personal history of falling |
+| CPT 1100F | `cpt_1100f_flag` | Falls risk screening performed |
+
+---
+
+## References
+- ICD-10-CM Chapter 19 (S00–T88): <https://www.aapc.com/codes/icd-10-codes-range/S00-T88/>
+- ICD-10-CM Chapter 20 external cause fall codes (W00–W19): <https://www.aapc.com/codes/icd-10-codes-range/V00-Y99/V00-X58/W00-X58/W00-W19/>
+- CDC injury matrix reference: <https://www.cdc.gov/nchs/injury/injury_matrices.htm>
+- Coding guidance for fall injuries: <https://codingintel.com/diagnosis-coding-for-fall/>
+- ICD-10-CM 7th character usage (initial/subsequent/sequela): <https://basicmedicalkey.com/injury-and-certain-other-consequences-of-external-causes-and-external-causes-of-morbidity-icd-10-cm-chapter-19-codes-s00-t88-and-chapter-20-codes-v00-y99/>
+- W19 unspecified fall: <https://www.aapc.com/codes/icd-10-codes/W19>
+- Z91.81 history of falling: <https://skriber.com/blog/z91-81-icd-10-code-for-history-of-falls>
+
+---
+
 ## TODO
 - [ ] Copy `filter_protocol_events.py` from `pgx-analysis/1b_apcd_event_filter/`
 - [ ] Implement two-criterion `fall_injury_any` label (injury S00–S99/T07/T14/T20–T34/T79 AND W00–W19 on same encounter)
