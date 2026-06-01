@@ -107,14 +107,12 @@ def create_simple_duckdb_connection(logger, tmp_dir: Optional[str] = None, s3_re
             os.makedirs(tmp_dir, exist_ok=True)
             conn.sql(f"SET temp_directory = '{tmp_dir}'")
         
-        # Set threads - configurable via PGX_DUCKDB_THREADS env var (default: 1 for multiprocessing safety)
-        # For single-process runs on large instances, can be increased (e.g., 16-30 threads)
-        # NOTE: Use PRAGMA, not SET (SET threads is invalid syntax)
-        threads = int(os.getenv("PGX_DUCKDB_THREADS", "1"))
+        # Set threads — CPIC_DUCKDB_THREADS takes priority, PGX_DUCKDB_THREADS as fallback
+        threads = int(os.getenv("CPIC_DUCKDB_THREADS") or os.getenv("PGX_DUCKDB_THREADS", "1"))
         conn.sql(f"PRAGMA threads={threads}")
         
-        # Let DuckDB auto-detect memory limit (or set explicitly via PGX_DUCKDB_MEMORY_LIMIT)
-        memory_limit = os.getenv("PGX_DUCKDB_MEMORY_LIMIT")
+        # Memory limit — CPIC_DUCKDB_MEMORY_LIMIT takes priority
+        memory_limit = os.getenv("CPIC_DUCKDB_MEMORY_LIMIT") or os.getenv("PGX_DUCKDB_MEMORY_LIMIT")
         if memory_limit:
             conn.sql(f"SET memory_limit='{memory_limit}'")
             logger.info(f"✅ Simple DuckDB connection created - {threads} threads, memory_limit={memory_limit}")
@@ -444,15 +442,15 @@ def calculate_memory_limit_per_worker(total_workers: Optional[int] = None, total
     Returns:
         Memory limit string (e.g., '2GB', '1GB')
     """
-    # Check if explicitly set via environment
-    explicit_limit = os.getenv('PGX_DUCKDB_MEMORY_LIMIT')
+    # Check if explicitly set via environment (CPIC_ takes priority over PGX_)
+    explicit_limit = os.getenv('CPIC_DUCKDB_MEMORY_LIMIT') or os.getenv('PGX_DUCKDB_MEMORY_LIMIT')
     if explicit_limit:
         return explicit_limit
     
     # Try to detect worker count
     if total_workers is None:
-        # Priority: PGX_TOTAL_WORKERS (explicit) > PGX_WORKERS_MEDICAL > PGX_WORKERS_PHARMACY > default
-        total_workers_env = os.getenv('PGX_TOTAL_WORKERS')
+        # Priority: CPIC_TOTAL_WORKERS > PGX_TOTAL_WORKERS > default
+        total_workers_env = os.getenv('CPIC_TOTAL_WORKERS') or os.getenv('PGX_TOTAL_WORKERS')
         if total_workers_env and total_workers_env.isdigit():
             total_workers = int(total_workers_env)
         else:

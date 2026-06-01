@@ -1,11 +1,17 @@
-# README: 32-core / 1TB EC2 Cohort Pipeline (Two Jobs, Sequential Partitions)
+# EC2 Runbook: CPIC Falls/ED Cohort Pipeline
 
-This runbook is optimized for a **32 vCPU, 1TB RAM EC2 instance** with **NVMe**. The goal is:
+Optimized for a **32 vCPU / 1TB RAM EC2 instance** with **NVMe**.
 
-* run **two jobs concurrently** (one per cohort type)
-* process **age_band × event_year** sequentially *inside each job*
-* prioritize heavy partitions (**25–44** and **65–74**)
-* avoid CPU oversubscription and DuckDB memory thrash
+## Scope
+
+| Cohort | Target | Age bands | Partitions (band × year) |
+|--------|--------|-----------|--------------------------|
+| `falls` | `fall_injury_any` | 65–74, 75–84 | 2 × 4 = **8** |
+| `ed`    | `ed_event`        | 65–74, 75–84 | 2 × 4 = **8** |
+
+Both cohorts run **concurrently** (one process each). Within each job, partitions run **sequentially** in heavy-first order (`65-74` before `75-84`). Total: 16 partitions.
+
+> **Much lighter than the original pgx-analysis run** (8 age bands × 2 cohorts = 128 partitions). Expect the full run to complete in a fraction of the original time.
 
 ## 0) Summary of the required updates
 
@@ -18,7 +24,7 @@ In `duckdb_utils.py`, `create_simple_duckdb_connection()` currently forces:
 Change it to use an env var (default safe):
 
 ```python
-threads = int(os.getenv("PGX_DUCKDB_THREADS", "1"))
+threads = int(os.getenv("CPIC_DUCKDB_THREADS", "1"))
 conn.sql(f"PRAGMA threads={threads}")
 ```
 
@@ -26,256 +32,201 @@ Source: `py_helpers/duckdb_utils.py`
 
 ### Update B — Memory limit clamp must allow large RAM instances
 
-`calculate_memory_limit_per_worker()` clamps per-worker memory to max **4GB**, which is too small for heavy joins on 1TB RAM.
-
-Change clamp to allow larger limits on EC2:
+`calculate_memory_limit_per_worker()` clamps per-worker memory to max **4GB**. Change to:
 
 ```python
 # old: per_worker_gb = max(0.5, min(4.0, per_worker_gb))
 per_worker_gb = max(4.0, min(256.0, per_worker_gb))
 ```
 
-Also: explicitly pass or set total workers to **2** (since we run 2 jobs total):
+Set total workers to **2**:
 
-* set `PGX_TOTAL_WORKERS=2` (recommended) and read it in the function
-  OR
-* call `create_duckdb_conn(..., total_workers=2)` from the job entrypoint.
+```bash
+export CPIC_TOTAL_WORKERS=2
+```
 
 Source: `py_helpers/duckdb_utils.py`
 
-### Update C — Do not multiply parallelism (separate "job concurrency" vs "in-job workers")
+---
 
-In orchestrators, keep these separate:
+## 1) CPU & memory allocation (32-core / 1TB)
 
-* `JOB_PARALLELISM` = number of concurrent cohort processes (here: 2)
-* `--concurrent-workers` = internal workers used by your cohort script (recommend: 1–2)
-* DuckDB threading is controlled separately via `PGX_DUCKDB_THREADS`
+Reserve ~4 cores for OS/network. Two concurrent processes, equal weight:
 
-Do **not** reuse the same variable for all three.
+| Process | Cohort | `CPIC_DUCKDB_THREADS` | `CPIC_DUCKDB_MEMORY_LIMIT` | `--concurrent-workers` |
+|---------|--------|-----------------------|----------------------------|------------------------|
+| 1 | `falls` | 14 | 384GB | 1 |
+| 2 | `ed`    | 14 | 384GB | 1 |
 
-### Update D — Optional: reduce noise and avoid collisions
+Total: 28 threads — leaves 4 cores for OS + S3 uploads.
 
-* Make profiling filenames include `{cohort}/{age_band}/{event_year}` if profiling is enabled.
-* For logs, include milliseconds or PID to avoid collisions.
+> **Note**: Both cohorts have identical age bands (65-74, 75-84), so workload is symmetric.
 
 ---
 
-## 1) Recommended CPU & memory allocation on this instance
-
-We reserve ~4 cores for OS/network overhead.
-
-We run **two processes**:
-
-### Process 1 (heavier): `ed_non_opioid`
-
-* `PGX_DUCKDB_THREADS=16`
-* `PGX_DUCKDB_MEMORY_LIMIT=256GB` (or allow auto via per-worker calc with clamp)
-* `--concurrent-workers=1` (or 2 if your script overlaps I/O safely)
-
-### Process 2 (lighter): `opioid_ed`
-
-* `PGX_DUCKDB_THREADS=12`
-* `PGX_DUCKDB_MEMORY_LIMIT=192GB`
-* `--concurrent-workers=1` (or 2)
-
-This uses ~28 threads total, leaving headroom for OS + uploads.
-
----
-
-## 2) NVMe setup and temp directories
-
-DuckDB spills should go to NVMe.
-
-Expected temp base:
-
-* `/mnt/nvme/duckdb_tmp`
-
-`duckdb_utils.get_worker_temp_dir()` already prefers NVMe when available. Source: `py_helpers/duckdb_utils.py`
-
-### One-time prep (shell)
+## 2) First-time EC2 setup
 
 ```bash
-sudo mkdir -p /mnt/nvme/duckdb_tmp
-sudo chown -R "$USER":"$USER" /mnt/nvme/duckdb_tmp
+# 1. Clone repo
+git clone https://github.com/Jerome3590/cpic_time_to_event_analysis.git ~/cpic_time_to_event_analysis
+cd ~/cpic_time_to_event_analysis
+
+# 2. Create and activate virtual environment
+python3.11 -m venv ~/jupyter-env
+source ~/jupyter-env/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# 3. NVMe temp directories for DuckDB spill
+sudo mkdir -p /mnt/nvme/duckdb_tmp /mnt/nvme/cohorts
+sudo chown -R "$USER":"$USER" /mnt/nvme
+
+# 4. AWS credentials
+mkdir -p ~/cpic_time_to_event_analysis/secrets
+# Copy your .env or credentials file here
+
+# 5. Set project environment variables (add to ~/.bashrc)
+export CPIC_S3_BUCKET=pgxdatalake
+export DUCKDB_TMP_DIRECTORY=/mnt/nvme/duckdb_tmp
+export LOCAL_DATA_PATH=/mnt/nvme/cohorts
+export CPIC_TOTAL_WORKERS=2
 ```
 
 ---
 
-## 3) Job ordering (heavy partitions first)
+## 3) Job ordering
 
-Within each cohort job, process age bands in this order:
-
-1. `25-44`
-2. `65-74`
-3. remaining bands (descending expected size)
-
-Years: 2016–2019 (or your configured list).
+Within each cohort: `65-74` first (heavier), then `75-84`.
+Years: 2016 → 2017 → 2018 → 2019.
 
 ---
 
-## 4) Notebook run cells (two concurrent jobs)
+## 4) Notebook run cells (Jupyter on EC2)
 
-Below assumes you are in a Jupyter notebook on the EC2 instance.
-
-### Cell 1 — Define common paths and env (Python)
+### Cell 1 — Environment setup
 
 ```python
 import os
 from pathlib import Path
 
-PROJECT_ROOT = Path("/home/pgx3874/pgx-analysis")  # adjust to your path
-PYTHON_BIN = "/home/pgx3874/jupyter-env/bin/python3.11"  # adjust to your Python path
+PROJECT_ROOT = Path("/home/ec2-user/cpic_time_to_event_analysis")
+PYTHON_BIN   = "/home/ec2-user/jupyter-env/bin/python3.11"
 
-# Always use NVMe spill directory for DuckDB
-os.environ["DUCKDB_TMP_DIRECTORY"] = "/mnt/nvme/duckdb_tmp"
-
-# Two-job plan: treat total workers as 2 for memory calc
-os.environ["PGX_TOTAL_WORKERS"] = "2"
-
-# Optional: enable DuckDB profiling (only if debugging performance)
-# os.environ["PGX_ENABLE_DUCKDB_PROFILING"] = "1"
+os.environ["CPIC_S3_BUCKET"]          = "pgxdatalake"
+os.environ["DUCKDB_TMP_DIRECTORY"]    = "/mnt/nvme/duckdb_tmp"
+os.environ["LOCAL_DATA_PATH"]          = "/mnt/nvme/cohorts"
+os.environ["CPIC_TOTAL_WORKERS"]       = "2"
 ```
 
-### Cell 2 — Launch `ed_non_opioid` (shell via notebook)
-
-**IMPORTANT**: `0_create_cohort.py` processes **one partition at a time** (one age_band + one event_year). 
-
-Use the wrapper script `run_series_ed_non_opioid.py` which processes all partitions **sequentially in heavy-first order**:
+### Cell 2 — Launch `falls` cohort
 
 ```bash
 %%bash
 set -euo pipefail
+export CPIC_DUCKDB_THREADS=14
+export CPIC_DUCKDB_MEMORY_LIMIT=384GB
+export CPIC_TOTAL_WORKERS=2
+export CPIC_S3_BUCKET=pgxdatalake
+export DUCKDB_TMP_DIRECTORY=/mnt/nvme/duckdb_tmp
+export LOCAL_DATA_PATH=/mnt/nvme/cohorts
 
-export PGX_DUCKDB_THREADS=16
-export PGX_DUCKDB_MEMORY_LIMIT=256GB
-export PGX_TOTAL_WORKERS=2
+cd ~/cpic_time_to_event_analysis
+mkdir -p logs
 
-cd /home/pgx3874/pgx-analysis
-
-# Launch ed_non_opioid
-nohup /home/pgx3874/jupyter-env/bin/python3.11 2_create_cohort/run_series_ed_non_opioid.py \
+nohup ~/jupyter-env/bin/python3.11 2_create_cohort/run_series_falls.py \
   --skip-existing \
   --concurrent-workers 1 \
-  --python-bin /home/pgx3874/jupyter-env/bin/python3.11 \
-  > logs/ed_non_opioid_run.log 2>&1 &
-echo "ed_non_opioid PID: $!"
+  --python-bin ~/jupyter-env/bin/python3.11 \
+  > logs/falls_run.log 2>&1 &
+echo "falls PID: $!"
 ```
 
-**Processing order**: `25-44` → `65-74` → `45-54` → `55-64` → `75-84` → `85-114` → `13-24` → `0-12`
+**Processing order**: `65-74` → `75-84`, years 2016–2019
 
-### Cell 3 — Launch `opioid_ed` (shell via notebook)
-
-Use the wrapper script `run_series_opioid_ed.py` which processes all partitions **sequentially in heavy-first order**:
+### Cell 3 — Launch `ed` cohort
 
 ```bash
 %%bash
 set -euo pipefail
+export CPIC_DUCKDB_THREADS=14
+export CPIC_DUCKDB_MEMORY_LIMIT=384GB
+export CPIC_TOTAL_WORKERS=2
+export CPIC_S3_BUCKET=pgxdatalake
+export DUCKDB_TMP_DIRECTORY=/mnt/nvme/duckdb_tmp
+export LOCAL_DATA_PATH=/mnt/nvme/cohorts
 
-export PGX_DUCKDB_THREADS=12
-export PGX_DUCKDB_MEMORY_LIMIT=192GB
-export PGX_TOTAL_WORKERS=2
+cd ~/cpic_time_to_event_analysis
 
-cd /home/pgx3874/pgx-analysis
-
-# Launch opioid_ed
-nohup /home/pgx3874/jupyter-env/bin/python3.11 2_create_cohort/run_series_opioid_ed.py \
+nohup ~/jupyter-env/bin/python3.11 2_create_cohort/run_series_ed.py \
   --skip-existing \
   --concurrent-workers 1 \
-  --python-bin /home/pgx3874/jupyter-env/bin/python3.11 \
-  > logs/opioid_ed_run.log 2>&1 &
-echo "opioid_ed PID: $!"
+  --python-bin ~/jupyter-env/bin/python3.11 \
+  > logs/ed_run.log 2>&1 &
+echo "ed PID: $!"
 ```
-
-**Processing order**: `25-44` → `65-74` → `45-54` → `55-64` → `75-84` → `85-114` → `13-24` → `0-12`
 
 ### Cell 4 — Monitor logs
 
 ```bash
 %%bash
-tail -n 50 logs/ed_non_opioid_run.log
+echo "=== FALLS ==="
+tail -n 30 logs/falls_run.log
+echo "=== ED ==="
+tail -n 30 logs/ed_run.log
 ```
+
+### Cell 5 — Live follow
 
 ```bash
 %%bash
-tail -n 50 logs/opioid_ed_run.log
+tail -f logs/falls_run.log
 ```
-
-### Cell 5 — Live follow (optional)
-
-```bash
-%%bash
-tail -f logs/ed_non_opioid_run.log
-```
-
-Stop with Ctrl+C in notebook output.
 
 ---
 
-## 5) Wrapper scripts for sequential processing
+## 5) Wrapper scripts
 
-**IMPORTANT**: `0_create_cohort.py` processes **one partition at a time** (one age_band + one event_year). 
-
-Two wrapper scripts are provided to process all partitions sequentially in heavy-first order:
-
-* `run_series_ed_non_opioid.py` - Processes all ed_non_opioid partitions
-* `run_series_opioid_ed.py` - Processes all opioid_ed partitions
-
-### Wrapper script features
-
-* **Heavy-first ordering**: Processes `25-44` and `65-74` first
-* **Sequential processing**: One partition at a time (no parallelization within job)
-* **Skip existing**: Use `--skip-existing` to skip partitions already in S3
-* **Progress tracking**: Shows progress and summary at end
-
-### Usage
+| Script | Cohort | Bands processed |
+|--------|--------|-----------------|
+| `2_create_cohort/run_series_falls.py` | `falls` | 65-74 → 75-84 |
+| `2_create_cohort/run_series_ed.py`    | `ed`    | 65-74 → 75-84 |
 
 ```bash
-# Process all ed_non_opioid partitions (heavy first)
-python 2_create_cohort/run_series_ed_non_opioid.py --skip-existing
+# Dry run — check what needs processing
+python 2_create_cohort/run_series_falls.py --skip-existing
 
-# Process all opioid_ed partitions (heavy first)
-python 2_create_cohort/run_series_opioid_ed.py --skip-existing
+# Force rerun all
+python 2_create_cohort/run_series_falls.py
 ```
-
-### Processing order
-
-Both wrappers process partitions in this order:
-
-1. **Heavy partitions first**: `25-44`, `65-74`
-2. **Medium partitions**: `45-54`, `55-64`, `75-84`, `85-114`
-3. **Light partitions**: `13-24`, `0-12`
-
-Within each age band, processes years: `2016` → `2017` → `2018` → `2019`
 
 ---
 
-## 6) Safety: locks and existing cohorts
-
-You already have helpers to avoid reprocessing when cohorts exist and to detect locks. Source: `py_helpers/cohort_utils.py`
-
-Before running, you can optionally list what needs processing:
+## 6) Check existing cohorts before running
 
 ```python
 from py_helpers.cohort_utils import check_existing_cohorts
 
 jobs = check_existing_cohorts(
-    age_bands=["25-44","65-74","45-54","55-64","75-84","85-114","13-24","0-12"],
-    event_years=[2016,2017,2018,2019]
+    age_bands=["65-74", "75-84"],
+    event_years=[2016, 2017, 2018, 2019]
 )
-len(jobs), jobs[:5]
+print(f"{len(jobs)} partitions need processing")
+for j in jobs:
+    print(f"  {j['cohort']} / {j['age_band']} / {j['event_year']}")
 ```
 
 ---
 
-## 7) Recommended defaults (final)
+## 7) Recommended defaults
 
-Use these until you have evidence to change:
-
-* Two concurrent jobs total
-* `ed_non_opioid`: `PGX_DUCKDB_THREADS=16`, `PGX_DUCKDB_MEMORY_LIMIT=256GB`, `--concurrent-workers=1`
-* `opioid_ed`: `PGX_DUCKDB_THREADS=12`, `PGX_DUCKDB_MEMORY_LIMIT=192GB`, `--concurrent-workers=1`
-* Heavy age bands first: `25-44`, `65-74`
-* NVMe temp spill: `/mnt/nvme/duckdb_tmp`
+| Setting | Value |
+|---------|-------|
+| Concurrent jobs | 2 (falls + ed) |
+| `CPIC_DUCKDB_THREADS` | 14 per job |
+| `CPIC_DUCKDB_MEMORY_LIMIT` | 384GB per job |
+| `--concurrent-workers` | 1 |
+| NVMe spill | `/mnt/nvme/duckdb_tmp` |
+| Age band order | 65-74 → 75-84 |
 
 ---
 
@@ -293,20 +244,19 @@ Use these until you have evidence to change:
 
 ## 9) Verification
 
-After starting both jobs, verify they're running correctly:
-
 ```bash
-# Check processes
+# Check running processes
 ps aux | grep "0_create_cohort.py" | grep -v grep
 
-# Check memory usage
+# Memory per process
 ps aux | grep "0_create_cohort.py" | grep -v grep | awk '{print $2, $6/1024 "MB"}'
 
-# Check logs for worker count
-grep "concurrent workers" logs/*.log
-
-# Check for errors
+# Errors
 grep -i error logs/*.log | tail -20
+
+# S3 output check
+aws s3 ls s3://pgxdatalake/gold/cohorts/cohort_name=falls/ --recursive | head -20
+aws s3 ls s3://pgxdatalake/gold/cohorts/cohort_name=ed/ --recursive | head -20
 ```
 
 ---
@@ -334,6 +284,23 @@ grep -i error logs/*.log | tail -20
 
 ### Issue: Duplicate processing
 
-* Check for lock files: `aws s3 ls s3://pgxdatalake/cohorts/locks/`
+* Check for lock files: `aws s3 ls s3://pgxdatalake/gold/cohorts/locks/`
 * Verify `check_existing_cohorts()` is working correctly
 * Check logs for "already exists" messages
+
+---
+
+## 11) Full pipeline order after cohort creation
+
+```
+Step 2  (this runbook)     → 2_create_cohort/    falls + ed × 65-74, 75-84
+Step 3a (EC2)              → 3a_feature_importance/  run_mc_feature_importance.py
+Step 3b (EC2)              → 3b_feature_importance_eda/  BupaR + filter
+Step 4  (EC2)              → 4_model_data/  create_model_data.py
+Step 5  (EC2)              → 5_pgx_analysis/  run_analysis.py
+Step 6  (EC2)              → 6_final_model/  run_final_model.py
+Step 7  (EC2)              → 7_shap_analysis/  run_shap_analysis.py
+Step 8  (EC2)              → 8_ffa_analysis/  ffa_analysis.py
+```
+
+All steps use `--cohort falls --age_band 65-74` etc. and are S3-backed + idempotent.
