@@ -97,9 +97,9 @@ def cleanup_persistent_tables(context):
         persistent_tables = [
             "medical_clean", "pharmacy_clean", "medical_filtered", "pharmacy_filtered",
             "medical_with_demographics", "pharmacy_with_demographics",  # APCD tables
-            "cohort_event_features", "first_falls", "first_ed_non_opioid",
-            "tagged_cohort_events", "opioid_drug_exposure", "ade_drug_exposure",
-            "control_cohort_events", "opioid_patients", "ade_patients",
+            "cohort_event_features", "first_falls", "first_ed",
+            "tagged_cohort_events", "falls_drug_exposure", "ed_drug_exposure",
+            "control_cohort_events", "falls_patients", "ed_patients",
             "control_patients_filtered", "demographics_lookup"  # APCD demographics lookup
         ]
         
@@ -136,7 +136,7 @@ STEP_TABLE_DEPENDENCIES = {
     "phase2_step1_event_fact_table": ["medical_clean", "pharmacy_clean"], # Needs data from phase 1
     "phase2_step2_drug_exposure": ["unified_event_fact_table"], # Needs event fact table from phase 2 step 1
     "phase3_step3_final_cohort_fact": ["unified_event_fact_table", "unified_drug_exposure"], # Needs both from phase 2
-    "phase4_complete_pipeline": ["falls_cohort", "ed_non_opioid_cohort"] # Needs final cohorts from phase 3
+    "phase4_complete_pipeline": ["falls_cohort", "ed_cohort"] # Needs final cohorts from phase 3
 }
 
 # Map step names to their corresponding functions (new 4-phase workflow)
@@ -211,14 +211,9 @@ def execute_pipeline(context):
     
     try:
         # Pre-phase: Sync gold data from S3 to local /mnt/nvme if needed
-        # For 85-114, sync both 85-94 and 95-114 (treated as one in Phase 1)
         from phases.common import sync_gold_data_to_local
         logger.info("→ [PIPELINE] Pre-phase: Ensuring gold medical/pharmacy data is available locally...")
-        if age_band == "85-114":
-            for band in ("85-94", "95-114"):
-                sync_gold_data_to_local("medical", band, event_year, logger)
-                sync_gold_data_to_local("pharmacy", band, event_year, logger)
-        else:
+        if True:
             sync_gold_data_to_local("medical", age_band, event_year, logger)
             sync_gold_data_to_local("pharmacy", age_band, event_year, logger)
         
@@ -259,7 +254,7 @@ def main():
     parser = argparse.ArgumentParser(description="Optimized Cohort Creation Pipeline with DuckDB Optimizations")
     parser.add_argument("--age-band", required=True, help="Age band (e.g., '65-74')")
     parser.add_argument("--event-year", type=int, required=True, help="Event year (e.g., 2016)")
-    parser.add_argument("--cohort", default="both", choices=["falls", "ed_non_opioid", "both"], 
+    parser.add_argument("--cohort", default="both", choices=["falls", "ed", "both"], 
                        help="Cohort type to create")
     parser.add_argument("--starting-step", default="phase1_data_preparation", 
                        help="Phase/Step to start execution from")
@@ -365,7 +360,7 @@ def main():
             logger.info(f"{SYMBOLS['info']} --repair-state: checking output and updating state only")
             if args.cohort == "both":
                 opioid_path = s3_utils.get_cohort_parquet_path("falls", args.age_band, args.event_year)
-                ed_path = s3_utils.get_cohort_parquet_path("ed_non_opioid", args.age_band, args.event_year)
+                ed_path = s3_utils.get_cohort_parquet_path("ed", args.age_band, args.event_year)
                 if PipelineState.check_output_exists(opioid_path) and PipelineState.check_output_exists(ed_path):
                     pipeline_state.mark_pipeline_completed({'output': opioid_path, 'repair_state': True})
                     logger.info(f"{SYMBOLS['success']} State updated to completed (both outputs exist)")
@@ -384,7 +379,7 @@ def main():
         # Idempotent: if output already exists, mark state completed and exit (fixes stuck "running" state)
         if args.cohort == "both":
             opioid_path = s3_utils.get_cohort_parquet_path("falls", args.age_band, args.event_year)
-            ed_path = s3_utils.get_cohort_parquet_path("ed_non_opioid", args.age_band, args.event_year)
+            ed_path = s3_utils.get_cohort_parquet_path("ed", args.age_band, args.event_year)
             both_exist = (
                 PipelineState.check_output_exists(opioid_path) and
                 PipelineState.check_output_exists(ed_path)
@@ -392,7 +387,7 @@ def main():
             if both_exist:
                 if pipeline_state.state.get('status') == 'running':
                     logger.info(f"{SYMBOLS['info']} Output exists but state was 'running'; updating state to completed (idempotent)")
-                logger.info(f"{SYMBOLS['success']} Both cohort parquets already exist: falls, ed_non_opioid")
+                logger.info(f"{SYMBOLS['success']} Both cohort parquets already exist: falls, ed")
                 logger.info(f"{SYMBOLS['success']} Skipping pipeline - cohort already created")
                 pipeline_state.mark_pipeline_completed({'output': opioid_path, 'skipped': True})
                 try:

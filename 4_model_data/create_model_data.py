@@ -27,8 +27,6 @@ to avoid pandas memory pressure on large cohorts:
              (drug_name, all ICD diagnosis columns, procedure_code)
        * **controls** (target = 0):
            - patients drawn from gold medical/pharmacy for the same age band
-           - must have no opioid ICD codes in any diagnosis column across
-             all their medical events, using OPIOID_ICD_CODES
            - must not appear in the case set for this cohort/age band
            - all medical + pharmacy events are kept (no FI-based filtering)
          Controls are sampled to maintain an approximate DEFAULT_SAMPLE_RATIO
@@ -37,7 +35,7 @@ to avoid pandas memory pressure on large cohorts:
        4_model_data/cohort_name={cohort_name}/age_band={age_band}/model_events.parquet
      with an event-level `target` column.
    - **Target leakage removal (Step 4):** For case events, keeps only events strictly before
-     the target date (event_date < first_falls_date or first_ed_non_opioid_date). Events
+     the target date (event_date < first_fall_date or first_ed_date). Events
      on or after the target date are dropped here (linear flow: 3b identifies leakage → 4 removes it).
 
 This output is then used as input for:
@@ -74,9 +72,7 @@ from py_helpers.constants import (
     ALL_ICD_DIAGNOSIS_COLUMNS,
     DRUG_NAMES_EXCLUDED_MODEL_TRAINING,
     FEATURE_SUBSTRINGS_EXCLUDED,
-    OPIOID_ICD_CODES,
     DEFAULT_SAMPLE_RATIO,
-    get_opioid_icd_sql_condition,
     get_physical_age_bands_for_gold,
     get_physical_age_bands_for_medical_pharmacy,
     age_band_partition_candidates,
@@ -91,17 +87,16 @@ except ImportError:
 
 STEP3B_OUTPUTS_DIR = PROJECT_ROOT / "3b_feature_importance_eda" / "outputs"
 
-# Explicit target date column names in model_events: first_{cohort_target}_date
-# Opioid-ED: F11.20 = opioid use disorder ICD-10
-# Polypharmacy: O11_P = canonical ED identifier (includes P51b, O11, P33), 21-day drug window
-TARGET_DATE_COL_OPIOID = "first_f1120_date"
-TARGET_DATE_COL_NON_OPIOID = "first_o11_p_date"
+# Explicit target date column names in model_events
+# falls: fall_injury_any = 1 (injury ICD + W00-W19 external cause)
+# ed:    ed_event = 1     (POS=23 or revenue code 045x/0981)
+TARGET_DATE_FALLS = "first_fall_date"
+TARGET_DATE_ED = "first_ed_date"
 # Cohort (Step 2) column names we read from
-COHORT_SOURCE_COL_OPIOID = "first_falls_date"
-COHORT_SOURCE_COL_NON_OPIOID = "first_ed_non_opioid_date"
+COHORT_SOURCE_FALLS = "first_fall_date"
+COHORT_SOURCE_ED = "first_ed_date"
 
-# Use exact cohort name so "ed" is not treated as falls (substring "falls" would match both)
-def _is_opioid_cohort(cohort_name: str) -> bool:
+def _is_falls_cohort(cohort_name: str) -> bool:
     return (cohort_name or "").strip().lower() == "falls"
 
 
@@ -339,15 +334,13 @@ def _validate_model_events_target_date_column(
 ) -> Tuple[bool, str]:
     """
     Validate that model_events.parquet has the required target date column and case rows have it set.
-    Uses explicit names: first_f1120_date (falls), first_o11_p_date (ed).
-    Accepts legacy column names as alias: first_falls_date (opioid), first_ed_non_opioid_date (non_opioid).
+    Uses explicit names: first_fall_date (falls), first_ed_date (ed).
 
     Returns:
         (success: bool, message: str)
     """
-    is_opioid = _is_opioid_cohort(cohort_name)
-    canonical_col = TARGET_DATE_COL_OPIOID if is_opioid else TARGET_DATE_COL_NON_OPIOID
-    legacy_col = COHORT_SOURCE_COL_OPIOID if is_opioid else COHORT_SOURCE_COL_NON_OPIOID
+    is_falls = _is_falls_cohort(cohort_name)
+    canonical_col = TARGET_DATE_FALLS if is_falls else TARGET_DATE_ED
     path_str = str(parquet_path).replace("'", "''")
     con = duckdb.connect()
     try:
@@ -355,12 +348,11 @@ def _validate_model_events_target_date_column(
             f"DESCRIBE SELECT * FROM read_parquet('{path_str}')"
         ).fetchall()
         col_names = [row[0] for row in schema]
-        # Use canonical name if present, else accept legacy alias
-        target_date_col = canonical_col if canonical_col in col_names else (legacy_col if legacy_col in col_names else None)
+        target_date_col = canonical_col if canonical_col in col_names else None
         if target_date_col is None:
             return (
                 False,
-                f"Output schema missing required column '{canonical_col}' (or legacy '{legacy_col}'). BupaR needs it for pre-target events.",
+                f"Output schema missing required column '{canonical_col}'. BupaR needs it for pre-target events.",
             )
         # For case rows (target=1), at least one must have non-null target date
         result = con.execute(
@@ -373,8 +365,7 @@ def _validate_model_events_target_date_column(
                 False,
                 f"Case rows (target=1) have no non-null '{target_date_col}'; BupaR will get 0 pre-target events.",
             )
-        alias_note = f" (canonical: {canonical_col})" if target_date_col != canonical_col else ""
-        return True, f"Target date column '{target_date_col}'{alias_note} present; {n_with_date} case rows have it set."
+        return True, f"Target date column '{target_date_col}' present; {n_with_date} case rows have it set."
     finally:
         con.close()
 
@@ -729,14 +720,10 @@ def filter_cohort_events_for_items(
         return
 
     # Require target date column in cohort (BupaR/dashboard need it for pre-target split).
-    # We read cohort source column and write explicit output column: first_f1120_date / first_o11_p_date.
-    is_opioid = _is_opioid_cohort(cohort_name)
-    output_col = TARGET_DATE_COL_OPIOID if is_opioid else TARGET_DATE_COL_NON_OPIOID
-    source_col = COHORT_SOURCE_COL_OPIOID if is_opioid else COHORT_SOURCE_COL_NON_OPIOID
-    # ed: allow first_falls_date as fallback if first_ed_non_opioid_date missing (legacy schema)
-    if not is_opioid and source_col not in cohort_cols and COHORT_SOURCE_COL_OPIOID in cohort_cols:
-        source_col = COHORT_SOURCE_COL_OPIOID
-        print(f"[INFO] Using cohort column '{source_col}' AS '{output_col}' (legacy schema).")
+    # We read cohort source column and write explicit output column: first_fall_date / first_ed_date.
+    is_falls = _is_falls_cohort(cohort_name)
+    output_col = TARGET_DATE_FALLS if is_falls else TARGET_DATE_ED
+    source_col = COHORT_SOURCE_FALLS if is_falls else COHORT_SOURCE_ED
     if source_col not in cohort_cols:
         msg = (
             f"[ERROR] Cohort schema missing required target date column '{source_col}' for {cohort_name}/{age_band}. "
@@ -752,7 +739,7 @@ def filter_cohort_events_for_items(
         common_cols = list(common_cols) + [source_col]
         print(f"[INFO] Including cohort-only column in model_events for target date (output: {output_col}).")
 
-    # Output schema uses explicit names (first_f1120_date / first_o11_p_date)
+    # Output schema uses explicit names (first_fall_date / first_ed_date)
     output_common_cols = [output_col if c == source_col else c for c in common_cols]
     # Case SELECT: from cohort, alias source_col -> output_col
     case_cols_sql = ", ".join(
@@ -854,10 +841,7 @@ def filter_cohort_events_for_items(
         con.close()
         return
 
-    # 2. Control candidates from gold medical + pharmacy, excluding patients
-    #    with opioid ICDs and excluding case patients.
-    opioid_condition = get_opioid_icd_sql_condition(table_alias="ue")
-
+    # 2. Control candidates from gold medical + pharmacy, excluding case patients.
     control_candidates_query = f"""
         CREATE TEMP TABLE control_candidates AS
         WITH unified_gold_events AS (
@@ -891,13 +875,7 @@ def filter_cohort_events_for_items(
         ),
         per_patient_icd_check AS (
             SELECT
-                mi_person_key,
-                MAX(
-                    CASE
-                        WHEN {opioid_condition} THEN 1
-                        ELSE 0
-                    END
-                ) AS has_opioid_icd
+                mi_person_key
             FROM unified_gold_events ue
             GROUP BY mi_person_key
         )
@@ -907,8 +885,7 @@ def filter_cohort_events_for_items(
         LEFT JOIN case_patients cp
             ON pp.mi_person_key = cp.mi_person_key
         WHERE
-            pp.has_opioid_icd = 0
-            AND cp.mi_person_key IS NULL
+            cp.mi_person_key IS NULL
     """
     con.execute(control_candidates_query)
 

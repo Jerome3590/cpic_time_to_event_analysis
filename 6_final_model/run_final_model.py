@@ -106,9 +106,9 @@ def remove_target_leakage_features(df: pd.DataFrame, cohort: str, age_band: str)
       - Datetime helper columns: 'target_time', 'first_time'
       - DTW-derived features (any column with 'dtw' in its name)
       - Trajectory/sequence/itemset (defensive only; feature engineering never generates these)
-      - Any feature whose name contains 'F1120'
+      - Any feature whose name contains the target ICD prefix (e.g. fall injury codes)
       - Non-predictive markers/confounders (SUBOXONE, BUPRENORPHINE, F1123)
-      - For ed cohort: ICD and CPT features (polypharmacy uses drugs only)
+      - For ed cohort: ICD and CPT features (ed cohort uses drugs only)
       - item_* features with post-target events (validated against event data)
     """
     cols = list(df.columns)
@@ -165,12 +165,11 @@ def remove_target_leakage_features(df: pd.DataFrame, cohort: str, age_band: str)
             print(f"  ... and {len(interval_features) - 5} more")
 
     # 3. Target time, first time, and cohort target-date columns (not features; must not be used for training)
-    # Step 4 writes first_f1120_date / first_o11_p_date; exclude legacy names if present.
+    # Step 4 writes first_fall_date / first_ed_date; exclude all target date columns.
     datetime_features = [
         c for c in (
             "target_time", "first_time",
-            "first_f1120_date", "first_o11_p_date",
-            "first_falls_date", "first_ed_non_opioid_date",  # legacy
+            "first_fall_date", "first_ed_date",
         )
         if c in cols
     ]
@@ -207,15 +206,14 @@ def remove_target_leakage_features(df: pd.DataFrame, cohort: str, age_band: str)
     safe_features = [c for c in cols if c not in leakage]
     df_clean = df[safe_features].copy()
 
-    # Verify no F1120 in feature names (should be excluded during feature engineering)
-    f1120_features = [c for c in df_clean.columns if "F1120" in c.upper()]
-    if f1120_features:
-        print(f"\n[WARNING] Found {len(f1120_features)} features with F1120 in name:")
-        for f in f1120_features:
+    # Verify no target ICD codes appear as features (should be excluded during feature engineering)
+    target_icd_features = [c for c in df_clean.columns if "fall_injury" in c.lower() or "ed_event" in c.lower()]
+    if target_icd_features:
+        print(f"\n[WARNING] Found {len(target_icd_features)} features containing target column names:")
+        for f in target_icd_features:
             print(f"  - {f}")
-        print("[INFO] These should be removed - F1120 must be excluded from final model features")
-        safe_features = [c for c in safe_features if c not in f1120_features]
-        leakage.update(f1120_features)
+        safe_features = [c for c in safe_features if c not in target_icd_features]
+        leakage.update(target_icd_features)
         df_clean = df[safe_features].copy()
 
     # 5. Remove non-predictive markers/confounders
@@ -234,8 +232,8 @@ def remove_target_leakage_features(df: pd.DataFrame, cohort: str, age_band: str)
         leakage.update(found_excluded)
         df_clean = df[safe_features].copy()
 
-    # 6. For ed cohort: remove ICD and CPT features (polypharmacy uses drugs only)
-    if "non_opioid" in cohort.lower() or "ed_non_opioid" in cohort.lower():
+    # 6. For ed cohort: remove ICD and CPT features (ed cohort uses drugs only)
+    if cohort.lower() == "ed":
         item_icd_features_to_remove = [c for c in df_clean.columns if c.startswith("item_icd_")]
         item_cpt_features_to_remove = [c for c in df_clean.columns if c.startswith("item_cpt_")]
         if item_icd_features_to_remove or item_cpt_features_to_remove:
@@ -274,15 +272,12 @@ def remove_target_leakage_features(df: pd.DataFrame, cohort: str, age_band: str)
         if model_data_path.exists():
             try:
                 # Determine target date field (must exist in model_events.parquet; Step 4 uses canonical names)
-                if "opioid" in cohort.lower():
-                    target_date_field = "first_f1120_date"
-                else:
-                    target_date_field = "first_o11_p_date"
+                target_date_field = "first_fall_date" if cohort.lower() == "falls" else "first_ed_date"
 
                 con = duckdb.connect()
                 model_data_path_str = str(model_data_path).replace("\\", "/")
 
-                # model_events.parquet has target date from Step 4: first_f1120_date / first_o11_p_date.
+                # model_events.parquet has target date from Step 4: first_fall_date / first_ed_date.
                 # Step 2 already constrains target events to a 21-day window; temporal filtering is done there.
                 parquet_cols = [
                     row[0]
@@ -420,7 +415,7 @@ def remove_target_leakage_features(df: pd.DataFrame, cohort: str, age_band: str)
 
     print(f"\n[INFO] Removing {len(leakage)} leakage features")
     print(f"[INFO] Clean dataset: {len(df_clean)} patients, {len(df_clean.columns)} columns")
-    print(f"[INFO] All features are from events BEFORE F1120 (excluding F1120 and everything after)")
+    print(f"[INFO] All features are from events BEFORE target event (post-target leakage removed)")
 
     return df_clean
 
@@ -850,7 +845,7 @@ def _load_aggregated_feature_importance_codes(cohort: str, age_band: str, top_n:
         print(f"[INFO] Feature importance range: min={df['importance_scaled'].min():.6f}, max={df['importance_scaled'].max():.6f}, mean={df['importance_scaled'].mean():.6f}")
     
     # Check for potential leakage indicators in feature names
-    leakage_indicators = ['post', 'f1120', 'target', 'leakage']
+    leakage_indicators = ['post', 'fall_injury', 'ed_event', 'target', 'leakage']
     potential_leakage = df[df['feature'].str.lower().str.contains('|'.join(leakage_indicators), na=False)]
     if len(potential_leakage) > 0:
         print(f"[WARN] Found {len(potential_leakage)} features with potential leakage indicators:")
@@ -882,7 +877,7 @@ def _load_aggregated_feature_importance_codes(cohort: str, age_band: str, top_n:
         print(f"[WARNING] No importance column found (tried importance_scaled, importance_normalized, importance_scaled_by_model_sum, importance_mean). Not filtering by importance.")
 
     # For ed we only use drug features; when Step 3b provides code_type, keep only drug
-    if ("non_opioid" in cohort.lower() or "ed_non_opioid" in cohort.lower()) and "code_type" in df.columns:
+    if cohort.lower() == "ed" and "code_type" in df.columns:
         before = len(df)
         df = df[df["code_type"].astype(str).str.strip().str.lower() == "drug"].copy()
         if len(df) < before:
@@ -1019,33 +1014,19 @@ def build_final_features(cohort: str, age_band: str) -> pd.DataFrame:
         # Create a view so we can reference it multiple times without re-reading the parquet
         con.execute(f"CREATE OR REPLACE VIEW events_view AS SELECT * FROM read_parquet('{events_path}')")
         
-        # Check if target column exists, if not create it based on F1120 presence
-        # F1120 (opioid dependence) indicates a target case (target=1)
+        # Check if target column exists in model_events.parquet
         columns_info = con.execute("DESCRIBE events_view").df()
         has_target_column = 'target' in columns_info['column_name'].values
-        
+
         if not has_target_column:
             print("[WARN] Target column not found in model_events.parquet")
-            print("[INFO] Creating target column based on F1120 presence (F1120 = target=1)")
-            # Create target column: 1 if patient has F1120 in any ICD diagnosis column, 0 otherwise
+            print("[INFO] Creating target column from is_target_case column if available")
+            # Create target column from is_target_case (set by Step 2)
             con.execute(f"""
                 CREATE OR REPLACE VIEW events_view AS
-                SELECT 
+                SELECT
                     *,
-                    CASE 
-                        WHEN primary_icd_diagnosis_code LIKE '%F1120%'
-                          OR two_icd_diagnosis_code LIKE '%F1120%'
-                          OR three_icd_diagnosis_code LIKE '%F1120%'
-                          OR four_icd_diagnosis_code LIKE '%F1120%'
-                          OR five_icd_diagnosis_code LIKE '%F1120%'
-                          OR six_icd_diagnosis_code LIKE '%F1120%'
-                          OR seven_icd_diagnosis_code LIKE '%F1120%'
-                          OR eight_icd_diagnosis_code LIKE '%F1120%'
-                          OR nine_icd_diagnosis_code LIKE '%F1120%'
-                          OR ten_icd_diagnosis_code LIKE '%F1120%'
-                        THEN 1
-                        ELSE 0
-                    END AS target
+                    COALESCE(CAST(is_target_case AS INTEGER), 0) AS target
                 FROM read_parquet('{events_path}')
             """)
             print("[OK] Target column created successfully")
@@ -1146,7 +1127,7 @@ def build_final_features(cohort: str, age_band: str) -> pd.DataFrame:
             # Fallback for ed: if Step 3b yielded no drug codes, use distinct drugs from model_events
             # so we do not end up with only n_events + PGx (e.g. ed 75-84 with 3 features)
             if (
-                ("non_opioid" in cohort.lower() or "ed_non_opioid" in cohort.lower())
+                cohort.lower() == "ed"
                 and not drug_codes
                 and "drug_name" in available_cols
             ):
@@ -3245,7 +3226,7 @@ def main() -> None:
         description="Build final features and train a baseline model for a cohort/age_band."
     )
     parser.add_argument("--cohort", required=True, help="Cohort name, e.g. falls")
-    parser.add_argument("--age_band", required=True, help="Age band, e.g. 0-12")
+    parser.add_argument("--age_band", required=True, help="Age band, e.g. 65-74")
     parser.add_argument(
         "--n_runs",
         type=int,

@@ -4,7 +4,7 @@ step2_data_quality_qa.py
 
 Final QA for cohort outputs produced by 2_create_cohort.
 Validates that all steps were successfully applied and that final cohort
-data structures (falls, ed_non_opioid) are consistent.
+data structures (falls, ed) are consistent.
 
 Usage:
   python step2_data_quality_qa.py --age-band 65-74 --event-year 2019 --cohorts both --save-results
@@ -27,7 +27,7 @@ if project_root not in sys.path:
 from py_helpers.logging_utils import setup_logging, save_logs_to_s3
 from py_helpers.duckdb_utils import create_simple_duckdb_connection
 from py_helpers.s3_utils import get_cohort_parquet_path
-from py_helpers.constants import OPIOID_ICD_CODES, get_opioid_icd_sql_condition, ALL_ICD_DIAGNOSIS_COLUMNS
+from py_helpers.constants import ALL_ICD_DIAGNOSIS_COLUMNS
 
 
 def build_qa_output_path(cohort_name: str, age_band: str, event_year: int, bucket: str = "pgxdatalake") -> str:
@@ -141,7 +141,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
     logger.info(f"QA reading cohort parquet: {s3_path}")
     try:
         # First, check what cohort_name values are actually in the file
-        # Files may contain lowercase (falls, ed) or uppercase (falls, ED_NON_OPIOID)
+        # Files may contain lowercase (falls, ed)
         actual_cohort_names = conn.sql(
             f"""
             SELECT DISTINCT cohort_name
@@ -158,8 +158,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
             logger.info(f"📊 Detected cohort_name in file: '{actual_cohort_name}'")
         else:
             # Fallback: try both case variations
-            expected_upper = "falls" if cohort_name == "falls" else "ED_NON_OPIOID"
-            expected_lower = "falls" if cohort_name == "falls" else "ed"
+            expected_lower = cohort_name.lower()
             # Try uppercase first
             try:
                 count = conn.sql(
@@ -179,7 +178,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
         
         if actual_cohort_name is None:
             logger.warning(f"⚠️  Could not determine cohort_name value in file, using expected value")
-            actual_cohort_name = "falls" if cohort_name == "falls" else "ED_NON_OPIOID"
+            actual_cohort_name = cohort_name.lower()
 
         # Create view for cohort data, filtering to only the actual cohort_name found in file
         # This handles cases where PARTITION_BY (cohort_name) created multiple partitions
@@ -224,8 +223,8 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                 cohort_validation["cohort_name_values"] = {name: count for name, count in cohort_names}
                 
                 # Expected cohort_name based on file being checked (for reference)
-                expected_cohort_name = "falls" if cohort_name == "falls" else "ED_NON_OPIOID"
-                
+                expected_cohort_name = cohort_name.lower()
+
                 # Check if all records have the correct cohort_name (should be 0 after filtering)
                 # Use the actual_cohort_name that was detected, not the expected one
                 actual_cohort_name_in_view = cohort_names[0][0] if cohort_names else None
@@ -260,7 +259,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                     # Log what cohort_name values were found
                     if all_cohort_names:
                         cohort_names_str = ", ".join([f"{name}={count}" for name, count in all_cohort_names])
-                        expected_cohort_name = "falls" if cohort_name == "falls" else "ED_NON_OPIOID"
+                        expected_cohort_name = cohort_name.lower()
                         logger.info(f"📊 Found cohort_name values in file: {cohort_names_str} (expected: {expected_cohort_name})")
                     
                     total_in_file = conn.sql(f"SELECT COUNT(*) FROM read_parquet('{s3_path}')").fetchone()[0]
@@ -444,50 +443,25 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
         results["metrics"]["control_cases"] = control_cases
         results["is_target_case_validation"] = is_target_case_validation
         
-        # Cohort separation validation: check that opioid patients don't appear in ed_non_opioid cohort
-        # CRITICAL: Check ALL 10 ICD diagnosis columns for opioid codes
+        # Cohort validation: check that cohort_name column contains expected value
         cohort_separation_validation = {
-            "opioid_patients_in_ed_non_opioid": 0,
-            "separation_valid": True,
-            "opioid_codes_by_position": {}
+            "cohort_name_valid": True,
+            "unexpected_cohort_name_count": 0
         }
 
-        # Check if any ICD columns are available
-        available_icd_cols = [col for col in ALL_ICD_DIAGNOSIS_COLUMNS if col in cols]
-
-        if cohort_name == "ed_non_opioid" and available_icd_cols:
+        if "cohort_name" in cols:
             try:
-                # Check for opioid ICD codes in ed_non_opioid cohort across ALL diagnosis positions
-                opioid_icd_condition = get_opioid_icd_sql_condition()
-                opioid_patients = conn.sql(
-                    f"""
-                    SELECT COUNT(DISTINCT mi_person_key) 
-                    FROM cohort_qa 
-                    WHERE {opioid_icd_condition}
-                    """
-                ).fetchone()[0]
-                cohort_separation_validation["opioid_patients_in_ed_non_opioid"] = opioid_patients
-                cohort_separation_validation["separation_valid"] = opioid_patients == 0
-
-                # If violations found, count by position for diagnostics
-                if opioid_patients > 0:
-                    for col in available_icd_cols:
-                        opioid_codes_tuple = "(" + ", ".join([f"'{code}'" for code in OPIOID_ICD_CODES]) + ")"
-                        count = conn.sql(f"""
-                            SELECT COUNT(DISTINCT mi_person_key)
-                            FROM cohort_qa
-                            WHERE {col} IN {opioid_codes_tuple}
-                        """).fetchone()[0]
-                        if count > 0:
-                            cohort_separation_validation["opioid_codes_by_position"][col] = count
-
-                    logger.error(
-                        f"❌ Cohort separation violation: Found {opioid_patients} opioid patients "
-                        f"in ed_non_opioid cohort (should be 0) - check ANY diagnosis position"
-                    )
-                    logger.error(f"   Opioid codes by position: {cohort_separation_validation['opioid_codes_by_position']}")
+                unexpected = conn.sql(f"""
+                    SELECT COUNT(DISTINCT mi_person_key)
+                    FROM cohort_qa
+                    WHERE LOWER(cohort_name) != '{cohort_name.lower()}'
+                """).fetchone()[0]
+                cohort_separation_validation["unexpected_cohort_name_count"] = unexpected
+                cohort_separation_validation["cohort_name_valid"] = unexpected == 0
+                if unexpected > 0:
+                    logger.warning(f"⚠️  Found {unexpected} records with unexpected cohort_name (expected '{cohort_name}')")
             except Exception as e:
-                logger.debug(f"Could not validate cohort separation: {e}")
+                logger.debug(f"Could not validate cohort_name: {e}")
                 cohort_separation_validation["error"] = str(e)
         
         results["cohort_separation_validation"] = cohort_separation_validation
@@ -525,8 +499,8 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                     drug_window_validation["pharmacy_events_outside_window"] = drug_stats[3] or 0
                     drug_window_validation["avg_days_to_target"] = round(drug_stats[4], 2) if drug_stats[4] else None
 
-                # For ed_non_opioid (control-only), days_to_target_event should be NULL
-                if cohort_name == "ed_non_opioid":
+                # For ed controls, days_to_target_event should be NULL
+                if cohort_name == "ed":
                     non_null_count = conn.sql(
                         """
                         SELECT COUNT(*)
@@ -539,7 +513,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
 
                     if non_null_count > 0:
                         logger.warning(
-                            f"⚠️  ED_NON_OPIOID should have NULL days_to_target_event (control-only), "
+                            f"⚠️  ed control rows should have NULL days_to_target_event, "
                             f"but found {non_null_count} non-null values"
                         )
 
@@ -615,14 +589,8 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                         WHERE age_imputed IS NOT NULL
                           AND age_band = '{age_band}'
                           AND NOT (
-                            (age_band = '0-12' AND age_imputed BETWEEN 0 AND 12) OR
-                            (age_band = '13-24' AND age_imputed BETWEEN 13 AND 24) OR
-                            (age_band = '25-44' AND age_imputed BETWEEN 25 AND 44) OR
-                            (age_band = '45-54' AND age_imputed BETWEEN 45 AND 54) OR
-                            (age_band = '55-64' AND age_imputed BETWEEN 55 AND 64) OR
                             (age_band = '65-74' AND age_imputed BETWEEN 65 AND 74) OR
-                            (age_band = '75-84' AND age_imputed BETWEEN 75 AND 84) OR
-                            (age_band = '85-114' AND age_imputed BETWEEN 85 AND 114)
+                            (age_band = '75-84' AND age_imputed BETWEEN 75 AND 84)
                           )
                     """).fetchone()[0]
                     age_validation["age_band_mismatch_count"] = age_band_check
@@ -680,105 +648,71 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
 
         results["date_validation"] = date_validation
 
-        # F1120 and opioid ICD code validation
-        # CRITICAL: Check ALL 10 ICD diagnosis columns for opioid codes
-        opioid_code_validation = {
-            "f1120_present": False,
-            "f1120_count": 0,
-            "opioid_codes_present": False,
-            "total_opioid_code_records": 0,
-            "f1120_by_position": {}
+        # Target ICD validation: confirm W00-W19 (fall cause) codes present for falls cohort
+        target_code_validation = {
+            "fall_cause_icd_present": False,
+            "fall_cause_icd_count": 0
         }
 
-        # Check if any ICD columns are available
         available_icd_cols = [col for col in ALL_ICD_DIAGNOSIS_COLUMNS if col in cols]
 
         if available_icd_cols and cohort_name == "falls":
             try:
-                # Check for F1120 specifically across ALL ICD diagnosis positions
-                f1120_conditions = " OR ".join([f"{col} = 'F1120'" for col in available_icd_cols])
-                f1120_count = conn.sql(f"""
+                w_conditions = " OR ".join(
+                    [f"LEFT({col}, 3) BETWEEN 'W00' AND 'W19'" for col in available_icd_cols]
+                )
+                w_count = conn.sql(f"""
                     SELECT COUNT(*)
                     FROM cohort_qa
-                    WHERE {f1120_conditions}
+                    WHERE is_target_case = 1 AND ({w_conditions})
                 """).fetchone()[0]
-                opioid_code_validation["f1120_count"] = f1120_count
-                opioid_code_validation["f1120_present"] = f1120_count > 0
-
-                # Count F1120 by position for analysis
-                for col in available_icd_cols:
-                    count = conn.sql(f"""
-                        SELECT COUNT(*)
-                        FROM cohort_qa
-                        WHERE {col} = 'F1120'
-                    """).fetchone()[0]
-                    if count > 0:
-                        opioid_code_validation["f1120_by_position"][col] = count
-
-                # Check for all opioid ICD codes across ALL diagnosis positions
-                opioid_icd_condition = get_opioid_icd_sql_condition()
-                opioid_total = conn.sql(f"""
-                    SELECT COUNT(*)
-                    FROM cohort_qa
-                    WHERE {opioid_icd_condition}
-                """).fetchone()[0]
-                opioid_code_validation["total_opioid_code_records"] = opioid_total
-                opioid_code_validation["opioid_codes_present"] = opioid_total > 0
-
-                if not opioid_code_validation["opioid_codes_present"]:
-                    logger.warning("⚠️  falls cohort has no records with opioid ICD codes in ANY diagnosis position")
-                
-                # Log F1120 distribution if found in non-primary positions
-                non_primary_f1120 = sum(count for col, count in opioid_code_validation["f1120_by_position"].items() 
-                                       if col != 'primary_icd_diagnosis_code')
-                if non_primary_f1120 > 0:
-                    logger.info(f"ℹ️  Found {non_primary_f1120} F1120 codes in non-primary diagnosis positions")
-
+                target_code_validation["fall_cause_icd_count"] = w_count
+                target_code_validation["fall_cause_icd_present"] = w_count > 0
+                if not target_code_validation["fall_cause_icd_present"]:
+                    logger.warning("⚠️  falls cohort: no W00–W19 external cause codes found in case records")
             except Exception as e:
-                logger.debug(f"Could not validate opioid codes: {e}")
-                opioid_code_validation["error"] = str(e)
+                logger.debug(f"Could not validate fall cause codes: {e}")
+                target_code_validation["error"] = str(e)
 
-        results["opioid_code_validation"] = opioid_code_validation
+        results["target_code_validation"] = target_code_validation
 
         # Cohort-specific date fields validation
         cohort_date_fields_validation = {
-            "first_falls_date_valid": True,
-            "first_ed_non_opioid_date_valid": True,
+            "first_fall_date_valid": True,
+            "first_ed_date_valid": True,
             "incorrect_null_count": 0
         }
 
-        if "first_falls_date" in cols and "first_ed_non_opioid_date" in cols:
+        if "first_fall_date" in cols or "first_ed_date" in cols:
             try:
-                if cohort_name == "falls":
-                    # For falls: first_falls_date should be populated, first_ed_non_opioid_date should be NULL
+                if cohort_name == "falls" and "first_fall_date" in cols:
+                    # For falls: first_fall_date should be populated for case rows
                     incorrect_nulls = conn.sql("""
                         SELECT COUNT(*)
                         FROM cohort_qa
-                        WHERE first_falls_date IS NULL OR first_ed_non_opioid_date IS NOT NULL
+                        WHERE is_target_case = 1 AND first_fall_date IS NULL
                     """).fetchone()[0]
                     cohort_date_fields_validation["incorrect_null_count"] = incorrect_nulls
-                    cohort_date_fields_validation["first_falls_date_valid"] = incorrect_nulls == 0
+                    cohort_date_fields_validation["first_fall_date_valid"] = incorrect_nulls == 0
 
                     if incorrect_nulls > 0:
                         logger.warning(
-                            f"⚠️  falls cohort: {incorrect_nulls} records with incorrect date field NULLs "
-                            f"(first_falls_date should be populated, first_ed_non_opioid_date should be NULL)"
+                            f"⚠️  falls cohort: {incorrect_nulls} case records with NULL first_fall_date"
                         )
 
-                elif cohort_name == "ed_non_opioid":
-                    # For ED_NON_OPIOID: first_ed_non_opioid_date should be populated, first_falls_date should be NULL
+                elif cohort_name == "ed" and "first_ed_date" in cols:
+                    # For ed: first_ed_date should be populated for case rows
                     incorrect_nulls = conn.sql("""
                         SELECT COUNT(*)
                         FROM cohort_qa
-                        WHERE first_ed_non_opioid_date IS NULL OR first_falls_date IS NOT NULL
+                        WHERE is_target_case = 1 AND first_ed_date IS NULL
                     """).fetchone()[0]
                     cohort_date_fields_validation["incorrect_null_count"] = incorrect_nulls
-                    cohort_date_fields_validation["first_ed_non_opioid_date_valid"] = incorrect_nulls == 0
+                    cohort_date_fields_validation["first_ed_date_valid"] = incorrect_nulls == 0
 
                     if incorrect_nulls > 0:
                         logger.warning(
-                            f"⚠️  ED_NON_OPIOID cohort: {incorrect_nulls} records with incorrect date field NULLs "
-                            f"(first_ed_non_opioid_date should be populated, first_falls_date should be NULL)"
+                            f"⚠️  ed cohort: {incorrect_nulls} case records with NULL first_ed_date"
                         )
 
             except Exception as e:
@@ -1015,11 +949,11 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
         if not date_validation.get("dates_in_valid_range", True):
             status_issues.append("Dates outside valid range (2016-2020)")
 
-        if not cohort_date_fields_validation.get("first_falls_date_valid", True):
-            status_issues.append("Incorrect first_falls_date NULLs")
+        if not cohort_date_fields_validation.get("first_fall_date_valid", True):
+            status_issues.append("Incorrect first_fall_date NULLs")
 
-        if not cohort_date_fields_validation.get("first_ed_non_opioid_date_valid", True):
-            status_issues.append("Incorrect first_ed_non_opioid_date NULLs")
+        if not cohort_date_fields_validation.get("first_ed_date_valid", True):
+            status_issues.append("Incorrect first_ed_date NULLs")
 
         if not data_completeness_validation.get("medical_events_have_icd", True):
             status_issues.append("Medical events missing ICD codes")
@@ -1121,7 +1055,7 @@ def main():
     ap.add_argument("--event-year", type=int, help="Single event year to validate")
     ap.add_argument("--event-years", help="Comma-separated list of event years to validate (e.g., '2018,2019')")
     ap.add_argument("--all-event-years", action="store_true", help="Validate all standard event years")
-    ap.add_argument("--cohorts", choices=["both", "falls", "ed_non_opioid"], default="both")
+    ap.add_argument("--cohorts", choices=["both", "falls", "ed"], default="both")
     ap.add_argument("--save-results", action="store_true", help="Save QA JSON to S3")
     ap.add_argument("--max-workers", type=int, default=None,
                    help="Maximum number of parallel workers (default: CPU count)")
@@ -1181,10 +1115,10 @@ def main():
     if args.max_workers is None or args.max_workers == 1:
         conn = create_simple_duckdb_connection(logger)
 
-    cohorts = ["falls", "ed_non_opioid"] if args.cohorts == "both" else [args.cohorts]
+    cohorts = ["falls", "ed"] if args.cohorts == "both" else [args.cohorts]
 
     # Resolve age bands to process
-    standard_bands = ["0-12", "13-24", "25-44", "45-54", "55-64", "65-74", "75-84", "85-114"]
+    standard_bands = ["65-74", "75-84"]
     if args.all_age_bands:
         age_bands = standard_bands
     elif args.age_bands:
@@ -1215,7 +1149,6 @@ def main():
         "results": {}
     }
 
-<<<<<<< HEAD
     # Ensure PGX_TARGET_NAME is set in main process
     if 'PGX_TARGET_NAME' not in os.environ or not os.environ['PGX_TARGET_NAME']:
         logger.warning("PGX_TARGET_NAME not set, defaulting to 'falls'")

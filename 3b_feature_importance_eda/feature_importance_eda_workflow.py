@@ -150,12 +150,10 @@ except ModuleNotFoundError as e:
 # 3. Manual override: Change values below
 
 # Check for command-line arguments
-# POLYPHARMACY COHORT: cohort_name in data partitions is "ed"
-# but we refer to this as "polypharmacy cohort" throughout
-COHORT = "ed"  # Data partition name (must match S3/parquet partitions)
-AGE_BAND = "85-114"
-# User-facing target name (no F1120 reference for polypharmacy)
-TARGET_LABEL = "F1120" if COHORT == "falls" else "target"
+COHORT = "falls"  # Data partition name (must match S3/parquet partitions)
+AGE_BAND = "65-74"
+# Target column: fall_injury_any for falls, ed_event for ed
+TARGET_LABEL = "fall_injury_any" if COHORT == "falls" else "ed_event"
 
 # First, try command-line arguments
 # Only parse if running as script (not in Jupyter/interactive mode)
@@ -173,7 +171,7 @@ if not IN_JUPYTER and len(sys.argv) > 1:
     parser.add_argument("--cohort", type=str, default=None,
                        help="Cohort name (e.g., 'falls' or 'ed')")
     parser.add_argument("--age-band", type=str, default=None,
-                       help="Age band (e.g., '13-24')")
+                       help="Age band (e.g., '65-74')")
     # Use parse_known_args to avoid errors
     args, unknown = parser.parse_known_args()
     if args.cohort:
@@ -191,7 +189,7 @@ if not AGE_BAND:
 if not COHORT:
     COHORT = "falls"  # Change as needed: "falls" or "ed" (polypharmacy cohort)
 if not AGE_BAND:
-    AGE_BAND = "13-24"    # Change as needed
+    AGE_BAND = "65-74"    # Change as needed
 
 AGE_BAND_FNAME = age_band_to_fname(AGE_BAND)
 
@@ -200,8 +198,8 @@ print(f"   Cohort: {COHORT}")
 print(f"   Age Band: {AGE_BAND} ({AGE_BAND_FNAME})")
 print(f"   Output Directory: {PROJECT_ROOT / '3b_feature_importance_eda' / 'outputs' / COHORT / AGE_BAND_FNAME}")
 print(f"\n💡 Tip: Set cohort/age_band via:")
-print(f"   - Command-line: python feature_importance_eda_workflow.py --cohort falls --age-band 13-24")
-print(f"   - Environment: export FEATURE_IMPORTANCE_EDA_COHORT=falls && export FEATURE_IMPORTANCE_EDA_AGE_BAND=13-24")
+print(f"   - Command-line: python feature_importance_eda_workflow.py --cohort falls --age-band 65-74")
+print(f"   - Environment: export FEATURE_IMPORTANCE_EDA_COHORT=falls && export FEATURE_IMPORTANCE_EDA_AGE_BAND=65-74")
 print(f"   - Manual: Edit COHORT and AGE_BAND variables above\n")
 
 # %% [markdown]
@@ -214,7 +212,7 @@ print(f"   - Manual: Edit COHORT and AGE_BAND variables above\n")
 # 
 # 1. **Load aggregated feature importances** from Step 3 for the specified cohort
 # 2. **Administrative/Non-informative code filtering** → Remove non-informative ICD/CPT codes (from lookup table)
-# 3. **BupaR post-target analysis** → Identifies pre/post target events (target leakage detection; F1120 for falls, ED visit for polypharmacy) with automated ratio-based detection
+# 3. **BupaR post-target analysis** → Identifies pre/post target events (target leakage detection; fall_injury_any for falls, ed_event for ed) with automated ratio-based detection
 # 4. **Interactive review** → Validate and manually add/remove codes to filter
 # 5. **Filter & refine** → Generate final `cohort_feature_importance.csv` with filtered features for Step 4a
 
@@ -435,7 +433,7 @@ print(f"   These codes will be filtered in the 'Filter and Refine' step")
 # 
 # BupaR analysis identifies pre vs post-target events. Codes that appear primarily after the target event are post-target leakage and should be filtered.
 # 
-# **Polypharmacy (ed):** Model events are built with drug events only up to the first ED visit (HCG Setting) within 21 days of drug event, so post-target leakage is expected to be zero by construction.
+# **ed cohort:** Model events are built before the first qualifying ED visit, so post-target leakage is expected to be minimal by construction.
 
 # %% [markdown]
 # ### 1. Verify Rscript is Available
@@ -611,7 +609,7 @@ if bupar_results_path.exists():
     else:
         print(f"\n   ✅ No post-target leakage features identified")
         if COHORT == "ed":
-            print(f"   ℹ️  (Expected for polypharmacy: model_events are built with drug events only up to the first ED visit [HCG] within 21d of drug, so no post-target leakage by construction.)")
+            print(f"   ℹ️  (Expected for ed: model_events are built before first qualifying ED visit, so post-target leakage should be minimal.)")
     
     # Display full results
     print(f"\n   Full BupaR results:")
@@ -626,9 +624,9 @@ else:
 # Visualize the post-target leakage analysis results to identify features that occur primarily after the target event.
 
 # %%
-# Create visualizations for post-target leakage candidates (ratio column: post_target_ratio or post_f1120_ratio)
-post_ratio_col = 'post_target_ratio' if 'post_target_ratio' in bupar_results.columns else ('post_f1120_ratio' if 'post_f1120_ratio' in bupar_results.columns else None)
-pre_ratio_col = 'pre_target_ratio' if 'pre_target_ratio' in bupar_results.columns else ('pre_f1120_ratio' if 'pre_f1120_ratio' in bupar_results.columns else None)
+# Create visualizations for post-target leakage candidates
+post_ratio_col = 'post_target_ratio' if 'post_target_ratio' in bupar_results.columns else None
+pre_ratio_col = 'pre_target_ratio' if 'pre_target_ratio' in bupar_results.columns else None
 if not bupar_results.empty and post_ratio_col:
     # Set up the plotting style
     plt.style.use('default')
@@ -824,7 +822,7 @@ else:
 # ### 5. View BupaR Visualizations
 
 # %%
-# Display BupaR visualizations (F1120 pre/post for falls; polypharmacy uses first ED within 21d of drug)
+# Display BupaR visualizations (pre/post target split for falls and ed)
 bupar_plots = [
     f"{COHORT}_{AGE_BAND_FNAME}_overall_activity_frequency.png",
     f"{COHORT}_{AGE_BAND_FNAME}_activity_milestones_gantt.png",
@@ -832,8 +830,8 @@ bupar_plots = [
 ]
 if COHORT == "falls":
     bupar_plots.extend([
-        f"{COHORT}_{AGE_BAND_FNAME}_pre_f1120_activity_frequency.png",
-        f"{COHORT}_{AGE_BAND_FNAME}_post_f1120_activity_frequency.png",
+        f"{COHORT}_{AGE_BAND_FNAME}_pre_target_activity_frequency.png",
+        f"{COHORT}_{AGE_BAND_FNAME}_post_target_activity_frequency.png",
     ])
 
 # Check if plots directory exists and list available plots

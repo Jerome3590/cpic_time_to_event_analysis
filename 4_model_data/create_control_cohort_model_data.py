@@ -1,19 +1,12 @@
 #!/usr/bin/env python3
 """
-Create model_events.parquet for control cohort (non_opioid_non_ed).
+Create model_events.parquet for control cohort (BupaR analysis).
 
 This script creates model_events.parquet for the control cohort used in BupaR analysis.
-For POLYPHARMACY COHORT (cohort_name="ed" in data partitions), 
-the control cohort consists of patients who:
-- Have drug events (pharmacy events)
-- Have NO first ED visit (HCG Setting) within the time window of a drug event (no qualifying HCG line ED visits)
-- Have no opioid ICD codes (non-opioid)
+For each cohort (falls or ed), the control cohort consists of patients who:
 - Are in the same age band as the target cohort
-
-Qualifying ED = first ED (HCG Setting) within 21 days of drug; hcg_line IN (same as 2_create_cohort):
-  - 'P51 - ER Visits and Observation Care'
-  - 'O11 - Emergency Room'
-  - 'P33 - Urgent Care Visits'
+- Do NOT appear in the target cohort parquet (not a case patient)
+- Have medical or pharmacy events in the analysis period
 
 This is a simplified version that only creates control events (target=0).
 """
@@ -36,7 +29,6 @@ if str(MODEL_DATA_DIR) not in sys.path:
 from py_helpers.constants import (
     ALL_ICD_DIAGNOSIS_COLUMNS,
     get_cohort_slug,
-    get_opioid_icd_sql_condition,
     get_physical_age_bands_for_medical_pharmacy,
     age_band_partition_candidates,
 )
@@ -130,32 +122,30 @@ def _item_filter_condition_sql(important_items: List[str]) -> str:
 
 def create_control_cohort_model_data(
     age_band: str,
+    cohort_name: str = "falls",
     years: List[int] = [2016, 2017, 2018],
     sample_size: int = 10000,
     output_root: Path = None,
     target_cohort_path: Path = None,
     aggregated_fi_csv: Optional[Path] = None,
-    time_window_days: int = 14,
 ) -> None:
     """
-    Create model_events.parquet for non_opioid_non_ed control cohort.
-    
-    For POLYPHARMACY COHORT, controls must have drug events but NO HCG target events
-    within the specified time window of their drug events.
-    
+    Create model_events.parquet for control cohort (BupaR analysis).
+
+    Controls are patients in the same age band who are NOT in the target cohort case set.
+
     Optionally filter control events to the same feature set as target (3a aggregated FI
     minus admin codes) to reduce noise in BupaR analysis.
-    
+
     Args:
-        age_band: Age band (e.g., "13-24")
+        age_band: Age band (e.g., "65-74")
+        cohort_name: Cohort name ("falls" or "ed")
         years: List of years to include
         sample_size: Number of control patients to sample
         output_root: Root directory for output (default: get_model_data_root())
-        target_cohort_path: Optional path to target cohort model_events.parquet for ratio logging
+        target_cohort_path: Optional path to target cohort parquet for case exclusion
         aggregated_fi_csv: Path to 3a aggregated feature importance CSV; control events are filtered
             to the same items (with admin codes removed) as target. Required when output_root is set (Step 3b).
-        time_window_days: Time window in days for checking HCG target events near drug events (default: 30)
-                          Common values: 30, 60, 90, 120
     """
     if output_root is None:
         output_root = get_model_data_root()
@@ -176,7 +166,7 @@ def create_control_cohort_model_data(
     local_medical_root = resolve_local_medical_root()
     local_pharmacy_root = resolve_local_pharmacy_root()
     
-    cohort_name = "non_opioid_non_ed"
+    cohort_name = cohort_name or "falls"
     
     # Build paths to medical and pharmacy parquet files.
     # For 85-114 use sub-cohorts 85-94 and 95-114 (same as create_model_data).
@@ -202,8 +192,7 @@ def create_control_cohort_model_data(
     
     print(f"[INFO] Found {len(medical_parquet_paths)} medical files and {len(pharmacy_parquet_paths)} pharmacy files")
     
-    # Control cohort uses fixed slug "non_opioid_non_ed" (matches R/control_cohort_utils and S3)
-    control_slug = "non_opioid_non_ed"
+    control_slug = get_cohort_slug(cohort_name)
 
     # When writing under 3b/outputs use flat layout (cohort_name=.../age_band=...) so R finds it first
     if "3b_feature_importance_eda" in str(output_root) and "outputs" in str(output_root):
@@ -225,17 +214,12 @@ def create_control_cohort_model_data(
         return
     
     con = duckdb.connect()
-    
-    # Get opioid ICD condition
-    opioid_condition = get_opioid_icd_sql_condition("me")
-    
+
     # Build query to:
     # 1. Load all medical and pharmacy events
-    # 2. Identify patients with opioid ICD codes
-    # 3. Identify patients with ED visits (hcg_line is not null for ED visits)
-    # 4. Select control patients (no opioids, no ED)
-    # 5. Sample control patients
-    # 6. Extract all events for sampled controls
+    # 2. Exclude patients already in the target cohort case set
+    # 3. Sample control patients
+    # 4. Extract all events for sampled controls
     
     medical_paths_literal = ", ".join(f"'{p}'" for p in medical_parquet_paths) if medical_parquet_paths else ""
     pharmacy_paths_literal = ", ".join(f"'{p}'" for p in pharmacy_parquet_paths) if pharmacy_parquet_paths else ""
@@ -268,7 +252,6 @@ def create_control_cohort_model_data(
             nine_icd_diagnosis_code,
             ten_icd_diagnosis_code,
             procedure_code,
-            hcg_line,
             age_band
         FROM read_parquet([{medical_paths_literal}])
     ),
@@ -295,7 +278,6 @@ def create_control_cohort_model_data(
             NULL AS nine_icd_diagnosis_code,
             NULL AS ten_icd_diagnosis_code,
             NULL AS procedure_code,
-            NULL AS hcg_line,
             age_band
         FROM read_parquet([{pharmacy_paths_literal}])
     ),
@@ -305,61 +287,21 @@ def create_control_cohort_model_data(
         SELECT DISTINCT mi_person_key
         FROM pharmacy_events
     ),
-    patient_hcg_dates AS (
-        -- Get HCG target event dates for each patient
-        SELECT
-            me.mi_person_key,
-            me.event_date AS hcg_event_date
-        FROM medical_events me
-        WHERE me.hcg_line IN ('P51 - ER Visits and Observation Care', 'O11 - Emergency Room', 'P33 - Urgent Care Visits')
-    ),
-    drug_hcg_pairs AS (
-        -- For each patient, check if ANY HCG target event occurs within {time_window_days} days of ANY drug event
-        -- This creates pairs of (drug_event_date, hcg_event_date) where they're within the time window
-        SELECT DISTINCT
-            pe.mi_person_key,
-            pe.event_date AS drug_event_date,
-            phd.hcg_event_date
-        FROM pharmacy_events pe
-        INNER JOIN patients_with_drug_events pde ON pe.mi_person_key = pde.mi_person_key
-        LEFT JOIN patient_hcg_dates phd ON pe.mi_person_key = phd.mi_person_key
-            AND phd.hcg_event_date >= pe.event_date
-            AND phd.hcg_event_date <= DATE_ADD(pe.event_date, INTERVAL {time_window_days} DAY)
-        WHERE phd.hcg_event_date IS NOT NULL  -- Only keep pairs where HCG event is within window
-    ),
-    patients_with_hcg_in_window AS (
-        -- Get distinct patients who have HCG target events within time window of drug events
+    case_patients AS (
+        -- Patients already in the target cohort case set (to exclude from controls)
         SELECT DISTINCT mi_person_key
-        FROM drug_hcg_pairs
+        FROM read_parquet([{cohort_paths_literal}])
+        WHERE is_target_case = 1
     ),
-    per_patient_flags AS (
-        -- Check ALL patients with drug events for opioid ICD codes and time-windowed HCG target events
-        -- Use LEFT JOIN to check even if patient only has pharmacy events
-        -- Time window: Check if HCG target event occurs within {time_window_days} days of ANY drug event
-        SELECT
-            pde.mi_person_key,
-            COALESCE(MAX(
-                CASE
-                    WHEN {opioid_condition} THEN 1
-                    ELSE 0
-                END
-            ), 0) AS has_opioid_icd,  -- Default to 0 if no medical events
-            CASE
-                WHEN phw.mi_person_key IS NOT NULL THEN 1
-                ELSE 0
-            END AS has_hcg_target_event_in_window  -- 1 if patient has HCG target event within window of any drug event
-        FROM patients_with_drug_events pde
-        LEFT JOIN medical_events me ON pde.mi_person_key = me.mi_person_key
-        LEFT JOIN patients_with_hcg_in_window phw ON pde.mi_person_key = phw.mi_person_key
-        GROUP BY pde.mi_person_key, phw.mi_person_key
+    all_patients AS (
+        SELECT DISTINCT mi_person_key FROM patients_with_drug_events
     ),
     control_candidates AS (
-        -- POLYPHARMACY COHORT: Controls must have drug events AND no time-windowed HCG target events
-        -- Drug event requirement already enforced by patients_with_drug_events filter above
-        -- has_hcg_target_event_in_window = 0 means patient has NO HCG target events within {time_window_days} days of drug events
-        SELECT mi_person_key
-        FROM per_patient_flags
-        WHERE has_opioid_icd = 0 AND has_hcg_target_event_in_window = 0
+        -- Exclude case patients; remaining are eligible controls
+        SELECT ap.mi_person_key
+        FROM all_patients ap
+        LEFT JOIN case_patients cp ON ap.mi_person_key = cp.mi_person_key
+        WHERE cp.mi_person_key IS NULL
     ),
     sampled_controls AS (
         SELECT mi_person_key
