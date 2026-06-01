@@ -230,8 +230,8 @@ def parse_aggregated_filename(path: Path) -> Tuple[str, str]:
     where age_band_fname is two numeric parts, e.g. 13_24 or 0_12.
 
     Example:
-        falls_13_24_cohort_feature_importance.csv -> cohort_name=falls, age_band=13-24
-        falls_0_12_cohort_feature_importance.csv  -> cohort_name=falls, age_band=0-12
+        falls_65_74_cohort_feature_importance.csv -> cohort_name=falls, age_band=65-74
+        falls_75_84_cohort_feature_importance.csv -> cohort_name=falls, age_band=75-84
     """
     stem = path.stem
     if not stem.endswith("_cohort_feature_importance"):
@@ -254,9 +254,9 @@ def parse_aggregated_filename(path: Path) -> Tuple[str, str]:
 def get_important_items(agg_csv: Path, cohort: Optional[str] = None) -> List[str]:
     """Read aggregated feature-importance CSV and return raw item codes for SQL matching.
 
-    Step 3b CSVs use feature names like item_icd_F1120, item_cpt_80307, item_drug_SUBOXONE,
+    Step 3b CSVs use feature names like item_icd_W19, item_cpt_80307, item_drug_METFORMIN,
     and may include a raw_code column. Gold medical/pharmacy tables store raw codes:
-    primary_icd_diagnosis_code='F1120', procedure_code='80307', drug_name='SUBOXONE'.
+    primary_icd_diagnosis_code='W19', procedure_code='80307', drug_name='METFORMIN'.
     We use raw_code when present (from 3b), else feature_to_code(feature), so that the
     filter matches all three sources; otherwise only drugs would match and ICD/CPT would
     never appear in model_events (falls would effectively get Drug-only features).
@@ -389,7 +389,7 @@ def load_control_exclusions(cohort_name: str, age_band: str, step3b_outputs_dir:
         
         # Get features to exclude and remove 'item_' prefix
         features_to_exclude = exclusions_data.get('features_to_exclude', [])
-        # Features are already normalized: item_80307, item_SUBOXONE, item_F1120
+        # Features are already normalized: item_80307, item_METFORMIN, item_W19
         # Just remove 'item_' prefix to get the code
         items_to_exclude = []
         for feature in features_to_exclude:
@@ -431,8 +431,7 @@ def filter_cohort_events_for_items(
             important item (drug_name, all ICD diagnosis columns, procedure_code),
       - for **controls** (target = 0):
           * selects patients from gold medical/pharmacy in the same age_band/years
-          * excludes any patient who has an opioid ICD code in any diagnosis
-            column across their medical events
+          * excludes any patient who is in the case set (ensures clean controls)
           * excludes any patient whose mi_person_key is in the case set
           * samples patients to approximate `sample_ratio` controls per case
           * keeps all medical + pharmacy events for selected controls
@@ -449,7 +448,6 @@ def filter_cohort_events_for_items(
         print(f"[INFO] No feature importance CSVs found. Creating model_events.parquet with ALL events (no filtering) for {cohort_name}/{age_band}.")
 
     # Build list of local cohort parquet paths for this cohort/age_band across years.
-    # For 85-114: prefer single partition age_band=85-114 when present; else use 85-94 and 95-114.
     # Try both hyphen and underscore partition names for gold data.
     cohort_parquet_paths: List[str] = []
     physical_bands = get_physical_age_bands_for_gold(age_band)
@@ -470,9 +468,6 @@ def filter_cohort_events_for_items(
                 if p.exists():
                     cohort_parquet_paths.append(str(p))
                     added_for_year = True
-                    # For 85-114, using single partition; don't also add 85-94/95-114 this year
-                    if physical == "85-114":
-                        break
                     break
                 print(f"[INFO]   {p}  -> MISSING")
             if added_for_year:
@@ -502,7 +497,6 @@ def filter_cohort_events_for_items(
         return
 
     # Build lists of gold medical and pharmacy parquet paths for this age_band across years.
-    # For 85-114, medical/pharmacy use two sub-cohorts (85-94 and 95-114); cohort uses single 85-114.
     medical_pharmacy_bands = get_physical_age_bands_for_medical_pharmacy(age_band)
     medical_parquet_paths: List[str] = []
     pharmacy_parquet_paths: List[str] = []
@@ -766,10 +760,10 @@ def filter_cohort_events_for_items(
 
     # 1. Case patients from gold cohorts
     # NOTE: Time window filtering is now handled in Step 2 (2_create_cohort)
-    # Step 2 creates cohorts with first ED visit (HCG Setting) within 21 days of drug event; we use all target cases from the cohort
+    # Step 2 creates cohorts with ed_event = 1 within 21 days of drug event; we use all target cases from the cohort
     # No need to re-filter here - the cohort definition in Step 2 is the source of truth
     if False:  # Disabled - time window filtering moved to Step 2
-        # Filter target cases to only those with first ED (HCG) within time_window_days of drug events
+        # Filter target cases to only those with first ED within time_window_days of drug events
         # Need to get gold medical/pharmacy paths for time window checking
         gold_medical_paths_literal = ", ".join(f"'{p}'" for p in medical_parquet_paths) if medical_parquet_paths else ""
         gold_pharmacy_paths_literal = ", ".join(f"'{p}'" for p in pharmacy_parquet_paths) if pharmacy_parquet_paths else ""
@@ -1215,7 +1209,7 @@ def main() -> None:
     parser.add_argument(
         "--age-band",
         type=str,
-        help="Process specific age band (e.g., 13-24). Requires --cohort to be specified.",
+        help="Process specific age band (e.g., 65-74). Requires --cohort to be specified.",
     )
     parser.add_argument(
         "--time-window-days",
@@ -1333,7 +1327,7 @@ def main() -> None:
     local_pharmacy_root = resolve_local_pharmacy_root()
 
     print(f"[INFO] Step 4 data roots: cohorts={local_cohort_root}, medical={local_medical_root}, pharmacy={local_pharmacy_root}")
-    example_cohort = local_cohort_root / "cohort_name=falls" / "event_year=2016" / "age_band=13-24" / "cohort.parquet"
+    example_cohort = local_cohort_root / "cohort_name=falls" / "event_year=2016" / "age_band=65-74" / "cohort.parquet"
     print(f"[INFO] Example cohort path (must exist for build to run): {example_cohort}  exists={example_cohort.exists()}")
 
     for agg_path in aggregated_files:

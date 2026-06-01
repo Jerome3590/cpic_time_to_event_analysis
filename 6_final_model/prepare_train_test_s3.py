@@ -17,7 +17,7 @@ S3 Structure:
 - s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/inputs/model_test/final_features.parquet
 
 Usage:
-    python prepare_train_test_s3.py --cohort-name falls --age-band 0-12
+    python prepare_train_test_s3.py --cohort-name falls --age-band 65-74
 """
 
 import argparse
@@ -401,8 +401,8 @@ def main():
     parser.add_argument(
         "--age-band",
         type=str,
-        default="0-12",
-        help="Age band (e.g., 0-12)",
+        default="65-74",
+        help="Age band (e.g., 65-74)",
     )
     parser.add_argument(
         "--project-root",

@@ -16,7 +16,7 @@ Uses DuckDB to query S3 parquet files and saves all metrics as CSV files.
 Usage:
   python 3_cohort_final_metrics.py
   python 3_cohort_final_metrics.py --output-dir ./metrics
-  python 3_cohort_final_metrics.py --target-slug F1120
+  python 3_cohort_final_metrics.py --target-slug fall_injury_any
 """
 
 import os
@@ -39,7 +39,7 @@ from py_helpers.s3_utils import S3_BUCKET, get_cohort_parquet_path
 import boto3
 
 
-def discover_cohort_files(target_slug: str = "F1120", bucket: str = S3_BUCKET) -> Dict[str, List[Dict[str, str]]]:
+def discover_cohort_files(target_slug: str = "fall_injury_any", bucket: str = S3_BUCKET) -> Dict[str, List[Dict[str, str]]]:
     """
     Discover all cohort parquet files in S3.
     
@@ -353,7 +353,7 @@ def calculate_distinct_patients_by_year(conn, cohort_files: List[Dict], cohort_n
 def main():
     parser = argparse.ArgumentParser(description="Generate final metrics for cohorts")
     parser.add_argument("--output-dir", type=str, default="./cohort_metrics", help="Output directory for CSV files")
-    parser.add_argument("--target-slug", type=str, default="F1120", help="Target slug for S3 path (default: F1120)")
+    parser.add_argument("--target-slug", type=str, default="fall_injury_any", help="Target slug for S3 path (e.g. fall_injury_any or ed_event)")
     parser.add_argument("--log-level", type=str, default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     
     args = parser.parse_args()

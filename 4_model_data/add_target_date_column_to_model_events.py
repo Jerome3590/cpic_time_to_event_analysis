@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
-One-off: Add first_o11_p_date to existing ed model_events.parquet
+One-off: Add first_ed_date to existing ed model_events.parquet
 when the column is missing. Populates with a date per target=1 patient (max(event_date)+1)
-so BupaR pre-HCG logic sees events; target=0 stays NULL. Use for local testing only.
-Step 4 canonical name is first_o11_p_date (O11_P includes P51b, O11, P33).
+so BupaR pre-target logic sees events; target=0 stays NULL. Use for local testing only.
 """
 import sys
 from pathlib import Path
@@ -13,8 +12,8 @@ import duckdb
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MODEL_DATA_ROOT = PROJECT_ROOT / "4_model_data"
 COHORT = "ed"
-AGE_BAND = "85-114"
-TARGET_DATE_COL = "first_o11_p_date"
+AGE_BAND = "65-74"
+TARGET_DATE_COL = "first_ed_date"
 
 
 def main() -> int:

@@ -90,7 +90,7 @@ def analyze_trigger_features(cohort_name: str, age_band: str):
     # ========================================================================
     # 2. PRE-EVENT COUNT FEATURES (from BupaR analysis)
     # ========================================================================
-    print("\n\n2. PRE-EVENT COUNT FEATURES (All Events Before F1120)")
+    print("\n\n2. PRE-EVENT COUNT FEATURES (All Events Before Target)")
     print("-" * 80)
     
     pre_cols = [c for c in df.columns if c.startswith('pre_n_')]
@@ -99,7 +99,7 @@ def analyze_trigger_features(cohort_name: str, age_band: str):
         for col in pre_cols[:6]:  # Show first 6
             print(f"\n  {col}:")
             print(f"    Description: Count of {'all events' if 'events' in col and 'unique' not in col else 'unique activities' if 'unique' in col else col.split('_')[-1] + ' events'}")
-            print(f"    Source: BupaR analysis (all pre-F1120 events)")
+            print(f"    Source: BupaR analysis (all pre-target events)")
             print(f"    Min: {df[col].min():.2f}")
             print(f"    Max: {df[col].max():.2f}")
             print(f"    Mean: {df[col].mean():.2f}")
@@ -138,7 +138,7 @@ def analyze_trigger_features(cohort_name: str, age_band: str):
         print(f"    Trajectory length (filtered): mean={df['combined_trajectory_length'].mean():.2f}, median={df['combined_trajectory_length'].median():.2f}")
         print(f"    Pre-event count (all events): mean={df['pre_n_events'].mean():.2f}, median={df['pre_n_events'].median():.2f}")
         print(f"    Difference: Trajectory features are FILTERED by FP-Growth itemsets (only important codes)")
-        print(f"                Pre-event features include ALL events before F1120")
+        print(f"                Pre-event features include ALL events before target")
         
         # Correlation
         corr = df['combined_trajectory_length'].corr(df['pre_n_events'])
@@ -149,7 +149,7 @@ def analyze_trigger_features(cohort_name: str, age_band: str):
         print(f"    Trajectory diversity (filtered): mean={df['combined_trajectory_diversity'].mean():.2f}, median={df['combined_trajectory_diversity'].median():.2f}")
         print(f"    Pre-event unique (all events): mean={df['pre_n_unique_activities'].mean():.2f}, median={df['pre_n_unique_activities'].median():.2f}")
         print(f"    Difference: Trajectory diversity counts unique items in FILTERED trajectory")
-        print(f"                Pre-event unique counts unique items in ALL pre-F1120 events")
+        print(f"                Pre-event unique counts unique items in ALL pre-target events")
         
         # Correlation
         corr = df['combined_trajectory_diversity'].corr(df['pre_n_unique_activities'])
@@ -200,7 +200,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="Analyze features for triggering/thresholding")
     parser.add_argument("--cohort-name", type=str, default="falls", help="Cohort name")
-    parser.add_argument("--age-band", type=str, default="0-12", help="Age band")
+    parser.add_argument("--age-band", type=str, default="65-74", help="Age band (e.g. 65-74)")
     
     args = parser.parse_args()
     

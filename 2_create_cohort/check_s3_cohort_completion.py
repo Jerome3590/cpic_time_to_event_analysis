@@ -155,7 +155,7 @@ def list_cohort_outputs(s3_client, bucket=COHORT_BUCKET, prefix=COHORT_PREFIX):
 
 
 def _parse_entity_id(entity_id):
-    """Parse entity_id into cohort, age_band, event_year. e.g. ed_non_opioid_85-114_2016 -> ('ed_non_opioid', '85-114', '2016')."""
+    """Parse entity_id into cohort, age_band, event_year. e.g. ed_65-74_2016 -> ('ed', '65-74', '2016')."""
     parts = entity_id.split("_")
     if len(parts) < 3:
         return None, None, None
@@ -166,7 +166,7 @@ def _parse_entity_id(entity_id):
 
 
 def _cohort_output_exists(s3_client, cohort, age_band, event_year, bucket=COHORT_BUCKET):
-    """Check if cohort parquet exists in pgxdatalake. cohort is e.g. falls or ed_non_opioid."""
+    """Check if cohort parquet exists in pgxdatalake. cohort is e.g. falls or ed."""
     import py_helpers.s3_utils as s3_utils
     path = s3_utils.get_cohort_parquet_path(cohort, age_band, event_year, bucket_name=bucket)
     if path.startswith("s3://"):
@@ -196,7 +196,7 @@ def _repair_running_states(s3_client, states, bucket_state, bucket_cohorts, dry_
         if cohort == "both":
             exists = (
                 _cohort_output_exists(s3_client, "falls", age_band, event_year, bucket_cohorts)
-                and _cohort_output_exists(s3_client, "ed_non_opioid", age_band, event_year, bucket_cohorts)
+                and _cohort_output_exists(s3_client, "ed", age_band, event_year, bucket_cohorts)
             )
         else:
             exists = _cohort_output_exists(s3_client, cohort, age_band, event_year, bucket_cohorts)

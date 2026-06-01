@@ -93,7 +93,7 @@ def get_cohort_paths(cohort_name, age_band, event_year, logger: Optional[logging
         raise
 
 
-def list_cohort_input(cohort_name: str = "ed_non_opioid", bucket_name: str = "pgxdatalake", logger: Optional[logging.Logger] = None) -> List[str]:
+def list_cohort_input(cohort_name: str = "ed", bucket_name: str = "pgxdatalake", logger: Optional[logging.Logger] = None) -> List[str]:
     prefix = f"cohorts/cohort_name={cohort_name}/"
     results = []
 
@@ -109,7 +109,7 @@ def list_cohort_input(cohort_name: str = "ed_non_opioid", bucket_name: str = "pg
     return results
 
 
-def list_fpgrowth_cohort_output(cohort_name: str = "ed_non_opioid", logger: Optional[logging.Logger] = None, bucket_name: str = "pgxdatalake") -> List[str]:
+def list_fpgrowth_cohort_output(cohort_name: str = "ed", logger: Optional[logging.Logger] = None, bucket_name: str = "pgxdatalake") -> List[str]:
     prefix = f"fpgrowth_features/cohort_name={cohort_name}/"
     result_paths = []
     paginator = s3_client.get_paginator("list_objects_v2")
@@ -182,7 +182,7 @@ def check_cohort_exists(age_band, event_year, cohort_name, logger: Optional[logg
 
 def check_cohort_exists_and_delete_message(age_band, event_year, sqs_queue_url, receipt_handle, logger: Optional[logging.Logger] = None):
     try:
-        if check_cohort_exists(age_band, event_year, "falls") and check_cohort_exists(age_band, event_year, "ed_non_opioid"):
+        if check_cohort_exists(age_band, event_year, "falls") and check_cohort_exists(age_band, event_year, "ed"):
             sqs = boto3.client('sqs')
             sqs.delete_message(
                 QueueUrl=sqs_queue_url,
@@ -201,17 +201,17 @@ def check_cohort_exists_and_delete_message(age_band, event_year, sqs_queue_url, 
 def check_and_fix_mismatched_sets(age_band, event_year, logger: Optional[logging.Logger] = None):
     try:
         falls_exists = check_cohort_exists(age_band, event_year, "falls", logger)
-        ed_non_opioid_exists = check_cohort_exists(age_band, event_year, "ed_non_opioid", logger)
+        ed_exists = check_cohort_exists(age_band, event_year, "ed", logger)
 
-        if falls_exists and not ed_non_opioid_exists:
+        if falls_exists and not ed_exists:
             if logger:
-                logger.info("Only falls cohort exists, will process ed_non_opioid cohort")
-            return "ed_non_opioid"
-        elif not falls_exists and ed_non_opioid_exists:
+                logger.info("Only falls cohort exists, will process ed cohort")
+            return "ed"
+        elif not falls_exists and ed_exists:
             if logger:
-                logger.info("Only ed_non_opioid cohort exists, will process falls cohort")
+                logger.info("Only ed cohort exists, will process falls cohort")
             return "falls"
-        elif not falls_exists and not ed_non_opioid_exists:
+        elif not falls_exists and not ed_exists:
             if logger:
                 logger.info("Neither cohort exists, will process both")
             return None
@@ -449,10 +449,8 @@ def check_existing_cohorts(age_bands=None, event_years=None, bucket_name: str = 
     Returns a list of dicts: [{'age_band':..., 'event_year':...}, ...]
     """
     s3 = boto3.client("s3")
-    age_bands = age_bands or [
-        "0-12", "13-24", "25-44", "45-54", "55-64",
-        "65-74", "75-84", "85-114"
-    ]
+    from py_helpers.constants import AGE_BANDS
+    age_bands = age_bands or list(AGE_BANDS)
     event_years = event_years or [2016, 2017, 2018, 2019, 2020]
     bucket_name = bucket_name or S3_BUCKET
 
@@ -469,11 +467,11 @@ def check_existing_cohorts(age_bands=None, event_years=None, bucket_name: str = 
 
             # Use gold/cohorts paths (cohort_name/event_year/age_band) to match phase4 write
             falls_path = get_cohort_parquet_path("falls", band, year)
-            ed_non_opioid_path = get_cohort_parquet_path("ed_non_opioid", band, year)
+            ed_path = get_cohort_parquet_path("ed", band, year)
             lock_key = f"cohorts/locks/{band}_{year}.lock"
 
             falls_exists = s3_exists(falls_path)
-            ed_non_opioid_exists = s3_exists(ed_non_opioid_path)
+            ed_exists = s3_exists(ed_path)
             lock_exists = False
 
             # Check lock (legacy location)
@@ -489,16 +487,16 @@ def check_existing_cohorts(age_bands=None, event_years=None, bucket_name: str = 
                 continue
 
             if falls_exists:
-                print(f"✓ Opioid ED cohort exists for {band}/{year}")
+                print(f"✓ Falls cohort exists for {band}/{year}")
             else:
-                print(f"→ Missing opioid ED cohort for {band}/{year}")
+                print(f"→ Missing falls cohort for {band}/{year}")
 
-            if ed_non_opioid_exists:
-                print(f"✓ ED non-opioid cohort exists for {band}/{year}")
+            if ed_exists:
+                print(f"✓ ED cohort exists for {band}/{year}")
             else:
-                print(f"→ Missing ED non-opioid cohort for {band}/{year}")
+                print(f"→ Missing ED cohort for {band}/{year}")
 
-            if falls_exists and ed_non_opioid_exists:
+            if falls_exists and ed_exists:
                 existing_cohorts.append((band, year))
             else:
                 jobs_to_process.append({
@@ -624,21 +622,24 @@ def run_cohort(job, script_path, python_bin=sys.executable, target_icd=None, con
 
 
 
-def build_ed_non_opioid_union_query(tagged_cols, age_band, event_year):
+def build_ed_union_query(tagged_cols, age_band, event_year):
     override_map = {
         "mi_person_key": "a.mi_person_key",
-        "event_date": "a.ade_date",
+        "event_date": "a.ed_date",
         "age_band": f"'{age_band}'",
         "event_year": f"{event_year}",
         "drug_name": "a.drug_name",
         "therapeutic_class_1": "a.therapeutic_class_1",
         "therapeutic_class_2": "a.therapeutic_class_2",
         "therapeutic_class_3": "a.therapeutic_class_3",
-        "first_ed_non_opioid_date": "a.ade_date",
-        "First_Event": "'ED_NON_OPIOID'",
-        "days_to_ade": "a.days_to_ade",
+        "first_ed_date": "a.ed_date",
+        "First_Event": "'ED'",
+        "days_to_ed": "a.days_to_ed",
         "data_source": "'drug_exposure'",
         "Event": "'Drug_Prescription'"
     }
     return generate_null_filled_select("a", tagged_cols, override_map)
+
+
+build_ed_non_opioid_union_query = build_ed_union_query  # backward-compat alias
 

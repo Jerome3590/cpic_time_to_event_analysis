@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from collections import defaultdict
 
-def analyze_code_groups(cohort="falls", age_band="13-24", project_root=None):
+def analyze_code_groups(cohort="falls", age_band="65-74", project_root=None):
     """Analyze ICD and CPT codes grouped by letter/range"""
     
     # Determine project root if not provided
@@ -266,7 +266,7 @@ if __name__ == '__main__':
     import platform
     
     cohort = sys.argv[1] if len(sys.argv) > 1 else "falls"
-    age_band = sys.argv[2] if len(sys.argv) > 2 else "13-24"
+    age_band = sys.argv[2] if len(sys.argv) > 2 else "65-74"
     
     # Determine project root
     current_file = Path(__file__).resolve()

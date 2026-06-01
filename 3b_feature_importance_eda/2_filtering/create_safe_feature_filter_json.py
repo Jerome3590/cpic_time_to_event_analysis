@@ -2,7 +2,7 @@
 """
 Create safe feature filter JSON: Exclude post-target leakage, keep all pre-target features.
 
-Works for any target: F1120 (opioid use disorder) or first ED (HCG) within 21 days of drug (polypharmacy).
+Works for any target: fall_injury_any (falls cohort) or ed_event (ed cohort).
 
 This script:
 1. Loads bupar_post_target_analysis.csv
@@ -37,7 +37,7 @@ else:
 
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from py_helpers.constants import age_band_to_fname, get_target_name_by_cohort, cohort_uses_f1120_target
+from py_helpers.constants import age_band_to_fname, get_target_name_by_cohort
 from py_helpers.feature_utils import categorize_feature
 
 
@@ -51,10 +51,10 @@ def create_safe_feature_filter_json(
     min_events: int = 1  # Keep features with at least 1 event
 ):
     """Create safe feature filter: exclude post-target leakage, keep all pre-target features.
-    Works for F1120 target (age < 65) or first ED (HCG) within 21d of drug (age >= 65)."""
+    Works for fall_injury_any (falls cohort) or ed_event (ed cohort)."""
     age_band_fname = age_band_to_fname(age_band)
     project_root = PROJECT_ROOT
-    # Target by cohort: falls=F1120, ed=HCG (polypharmacy / 14-day window)
+    # Target by cohort: falls=fall_injury_any, ed=ed_event
     target_name = get_target_name_by_cohort(cohort)
 
     # Load BupaR analysis results
@@ -113,8 +113,8 @@ def create_safe_feature_filter_json(
     # Ensure minimum event count
     features_to_keep = features_to_keep[features_to_keep['total_count'] >= min_events].copy()
 
-    # Target feature to always include (only falls has single ICD target F1120; ed uses HCG window)
-    target_feature = "item_icd_F1120" if cohort_uses_f1120_target(cohort) else None
+    # No single ICD target feature to force-include (falls=fall_injury_any is a computed field, not an ICD code)
+    target_feature = None
     if target_feature and target_feature not in features_to_keep['feature'].values:
         target_row = df[df['feature'] == target_feature]
         if len(target_row) > 0:
@@ -219,7 +219,7 @@ def create_safe_feature_filter_json(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Create safe feature filter: exclude post-target leakage, keep all pre-target features")
     parser.add_argument("--cohort", default="falls", help="Cohort name")
-    parser.add_argument("--age-band", default="13-24", help="Age band")
+    parser.add_argument("--age-band", default="65-74", help="Age band (e.g. 65-74)")
     parser.add_argument(
         "--post-target-threshold",
         type=float,

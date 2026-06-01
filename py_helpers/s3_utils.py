@@ -2411,7 +2411,7 @@ def check_cohort_file_exists(cohort_name: str, age_band: str, event_year: int) -
     # If not set, try common locations
     if not local_data_path:
         # Check Windows path first (for local development)
-        windows_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "cohorts_F1120")
+        windows_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "cohorts")
         if os.path.exists(windows_path):
             local_data_path = windows_path
         else:

@@ -61,13 +61,13 @@ final_cohort_schema = [
     ("hcg_detail", "str", "Healthcare detail (medical events only)"),
     
     # Event classification and sequence
-    ("event_classification", "str", "Event classification: 'falls', 'ed_non_opioid', 'target', 'non_target'"),
+    ("event_classification", "str", "Event classification: 'falls', 'ed', 'target', 'non_target'"),
     ("event_sequence", "int", "Sequential order of events per patient (globally ordered across medical and pharmacy)"),
     
     # Cohort metadata
     # NOTE: target column is legacy compatibility - use is_target_case for actual target/control distinction
-    ("target", "int", "Legacy target column: 1 for falls/ED_NON_OPIOID cohorts (use is_target_case instead)"),
-    ("cohort_name", "str", "Cohort group name: 'falls' or 'ED_NON_OPIOID'"),
+    ("target", "int", "Legacy target column: 1 for falls/ed cohorts (use is_target_case instead)"),
+    ("cohort_name", "str", "Cohort group name: 'falls' or 'ed'"),
     ("cohort", "str", "Cohort classification: 'falls', 'ed', or 'NON_ED'"),
     
     # Target case indicators
@@ -76,13 +76,13 @@ final_cohort_schema = [
     ("is_target_case", "int", "Target case indicator: 1=target case (drug event 1-21 days before ED), 0=control (ED without qualifying drug event)"),
     
     # Cohort-specific event dates
-    # NOTE: first_falls_date is populated for falls cohort only (NULL for ED_NON_OPIOID)
-    # NOTE: first_ed_non_opioid_date is populated for ED_NON_OPIOID cohort only (NULL for falls)
-    ("first_falls_date", "str", "Date of first opioid ED event (if any) - falls cohort only"),
-    ("first_ed_non_opioid_date", "str", "Date of first non-opioid ED event (if any) - ED_NON_OPIOID cohort only"),
+    # NOTE: first_fall_date is populated for falls cohort only (NULL for ed)
+    # NOTE: first_ed_date is populated for ed cohort only (NULL for falls)
+    ("first_fall_date", "str", "Date of first fall injury event (if any) - falls cohort only"),
+    ("first_ed_date", "str", "Date of first ED visit event (if any) - ed cohort only"),
     
     # Temporal analysis
-    # NOTE: days_to_target_event is NULL for falls cohort (can be calculated from event_date and first_falls_date)
-    # NOTE: days_to_target_event is calculated for ED_NON_OPIOID cohort (used for 21-day window filtering)
-    ("days_to_target_event", "int", "Days from event to target event - NULL for falls, calculated for ED_NON_OPIOID")
+    # NOTE: days_to_target_event is NULL for falls cohort (can be calculated from event_date and first_fall_date)
+    # NOTE: days_to_target_event is calculated for ed cohort (used for 21-day window filtering)
+    ("days_to_target_event", "int", "Days from event to target event - NULL for falls, calculated for ed")
 ]

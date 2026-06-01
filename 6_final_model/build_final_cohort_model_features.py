@@ -43,7 +43,7 @@ def build_final_features(project_root: Path, cohort_name: str, age_band: str) ->
     cohort_name : str
         Cohort identifier, e.g. "falls" or "ed".
     age_band : str
-        Age band string, e.g. "0-12", "13-24", "65-74".
+        Age band string, e.g. "65-74" or "75-84".
     """
     age_band_fname = age_band.replace("-", "_")
 
@@ -133,7 +133,7 @@ def build_final_features(project_root: Path, cohort_name: str, age_band: str) ->
             print(f"[INFO] Excluded {before_sub - len(important_items)} feature(s) containing excluded substrings (e.g. syringe)")
 
         # For ed cohort: only include drug events (exclude ICD and CPT codes)
-        if "non_opioid" in cohort_name.lower() or "ed_non_opioid" in cohort_name.lower():
+        if cohort_name.lower() == "ed":
             original_count = len(important_items)
             # Filter to only drug items (exclude ICD and CPT)
             important_items = [item for item in important_items if item.startswith('drug_')]
@@ -147,7 +147,6 @@ def build_final_features(project_root: Path, cohort_name: str, age_band: str) ->
             'drug_SUBOXONE',  # Treatment medication - marker, not predictive
             'drug_BUPRENORPHINE_HCL',  # Treatment medication - marker, not predictive
             'drug_BUPRENORPHINE_HCL_NALOXON',  # Treatment medication - marker, not predictive
-            'icd_F1123',  # Opioid dependence ICD code - marker, not predictive
         ]
         original_count = len(important_items)
         actually_excluded = [item for item in important_items if item in excluded_items]
@@ -417,8 +416,8 @@ def main() -> None:
     parser.add_argument(
         "--age-band",
         type=str,
-        default="0-12",
-        help="Age band string, e.g. '0-12', '13-24', '65-74'. Default: 0-12",
+        default="65-74",
+        help="Age band string, e.g. '65-74' or '75-84'. Default: 65-74",
     )
     args = parser.parse_args()
 

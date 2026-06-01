@@ -44,7 +44,7 @@ def main():
         description="Build BupaR input from cohort data + 3a aggregated FI + target"
     )
     parser.add_argument("--cohort", required=True, help="Cohort name (e.g. falls, ed)")
-    parser.add_argument("--age-band", required=True, dest="age_band", help="Age band (e.g. 13-24)")
+    parser.add_argument("--age-band", required=True, dest="age_band", help="Age band (e.g. 65-74)")
     args = parser.parse_args()
 
     cohort_name = args.cohort

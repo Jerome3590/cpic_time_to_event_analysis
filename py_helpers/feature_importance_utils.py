@@ -268,7 +268,7 @@ def run_cohort_analysis(
         if not local_data_path:
             # Check project-relative path first (works for both Windows and Linux)
             project_root = Path(__file__).parent.parent
-            project_data_path = project_root / "data" / "cohorts_F1120"
+            project_data_path = project_root / "data" / "cohorts"
             if project_data_path.exists():
                 local_data_path = str(project_data_path)
             else:
@@ -440,8 +440,7 @@ def run_cohort_analysis(
         
         # Filter out non-meaningful items and target codes
         # - event_type contains metadata values like "pharmacy" and "medical" which are not features
-        # - F1120 is the target ICD code (opioid use disorder) - including it would cause data leakage
-        excluded_items = {'pharmacy', 'medical', 'F1120'}  # Filter out event_type metadata and target code
+        excluded_items = {'pharmacy', 'medical'}  # Filter out event_type metadata
         train_patient_items = train_patient_items[~train_patient_items['item'].isin(excluded_items)]
         
         train_patient_targets = train_cohort_data[['mi_person_key', 'target']].drop_duplicates()
@@ -452,7 +451,7 @@ def run_cohort_analysis(
         test_patient_items = _build_patient_items(test_cohort_data, feature_cols)
         
         # Filter out non-meaningful items and target codes (same exclusions as training)
-        excluded_items = {'pharmacy', 'medical', 'F1120'}  # Filter out event_type metadata and target code
+        excluded_items = {'pharmacy', 'medical'}  # Filter out event_type metadata
         test_patient_items = test_patient_items[~test_patient_items['item'].isin(excluded_items)]
         
         test_patient_targets = test_cohort_data[['mi_person_key', 'target']].drop_duplicates()
@@ -821,7 +820,7 @@ def run_cohort_analysis(
             # Remove constant features from datasets. In some legacy runs,
             # the constant-features list may include columns that are no
             # longer present after vocabulary/pruning changes (especially
-            # for small cohorts like 0-12). To keep things robust and
+            # for small cohorts. To keep things robust and
             # idempotent, intersect with the actual columns before dropping.
             cols_cat_train = set(train_data_catboost.columns)
             cols_rf_train = set(train_data_rf.columns)

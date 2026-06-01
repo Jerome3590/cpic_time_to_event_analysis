@@ -9,7 +9,7 @@ This script:
 4. Saves results to CSV
 
 Usage:
-    python extract_final_feature_importance.py --cohort-name falls --age-band 0-12
+    python extract_final_feature_importance.py --cohort-name falls --age-band 65-74
 """
 
 import argparse
@@ -232,8 +232,8 @@ def main():
     parser.add_argument(
         "--age-band",
         type=str,
-        default="0-12",
-        help="Age band (e.g., 0-12)",
+        default="65-74",
+        help="Age band (e.g., 65-74)",
     )
     parser.add_argument(
         "--project-root",

@@ -5,9 +5,9 @@ Create BupaR Post-Target Analysis CSV
 Analyzes BupaR post-target outputs to identify which features (ICD/CPT codes, drugs)
 appear primarily after the target event, indicating post-target leakage.
 
-Target is determined by age band:
-- Age bands < 65 (13-24, 25-44, 45-54, 55-64): F1120 (opioid dependence ICD code)
-- Age bands >= 65 (65-74, 75-84, 85-114): First ED visit (HCG Setting) within 21 days of a prescription drug event (polypharmacy)
+Target is determined by cohort:
+- falls cohort: fall_injury_any = 1 (injury + external cause W00-W19 on same encounter; first_fall_date)
+- ed cohort:    ed_event = 1     (POS=23 or revenue code 045x/0981; first_ed_date)
 
 This script:
 1. Loads post-target traces/features from BupaR outputs
@@ -42,13 +42,9 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from py_helpers.constants import (
     age_band_to_fname,
-    age_band_uses_f1120_target,
-    get_cohort_slug,
     get_cohort_slug_by_cohort,
-    get_target_name,
     get_target_name_by_cohort,
     get_target_file_suffix,
-    cohort_uses_f1120_target,
 )
 from py_helpers.feature_utils import (
     extract_features_from_traces,
@@ -70,11 +66,11 @@ def analyze_post_target_leakage_from_events(
     Analyze event-level data to identify post-target leakage features.
     
     For falls cohort: Analyzes all features (ICD codes, CPT codes, drugs)
-    For POLYPHARMACY COHORT: Analyzes only drugs (polypharmacy focus)
+    For ed cohort: Analyzes only drugs
     
     For each feature, calculates:
     - Total occurrences in target cases
-    - Occurrences BEFORE target event (F1120 for falls, ED visit for ed)
+    - Occurrences BEFORE target event (first_fall_date for falls, first_ed_date for ed)
     - Occurrences AFTER target event
     - Post-target ratio (post / total)
     
@@ -127,49 +123,36 @@ def analyze_post_target_leakage_from_events(
 
     print(f"Loading event data from: {model_data_path}")
 
-    # Target by cohort: falls -> F1120, ed -> first_ed_non_opioid_date from cohort (polypharmacy)
-    uses_f1120 = cohort_uses_f1120_target(cohort)
+    # Target by cohort: falls -> first_fall_date, ed -> first_ed_date
+    uses_falls_target = (cohort == "falls")
     target_name = get_target_name_by_cohort(cohort)
-    # Cohort-specific analysis scope
-    if cohort == "ed":  # POLYPHARMACY COHORT
-        print(f"[INFO] POLYPHARMACY COHORT: Analyzing DRUGS only (target: {target_name})")
+    if cohort == "ed":
+        print(f"[INFO] ed cohort: Analyzing DRUGS only (target: {target_name})")
     else:
-        print(f"[INFO] falls COHORT: Analyzing all features (target: {target_name})")
+        print(f"[INFO] falls cohort: Analyzing all features (target: {target_name})")
 
     con = duckdb.connect()
 
     # Query to analyze each feature's pre/post target distribution
-    # falls: first F1120 event date from model_events; ed: first_ed_non_opioid_date from cohort parquet (model_events may be pharmacy-only, so no hcg_line)
+    # falls: first_fall_date from model_events; ed: first_ed_date from cohort parquet
     model_data_path_str = str(model_data_path).replace("'", "''")
 
-    if uses_f1120:
-        # Find first F1120 event date for each target patient (age bands < 65)
+    if uses_falls_target:
+        # Find first fall date for each target patient using first_fall_date column
         query = f"""
     WITH target_patients AS (
         SELECT DISTINCT
             mi_person_key,
-            MIN(CAST(event_date AS DATE)) as target_date
+            MIN(CAST(first_fall_date AS DATE)) as target_date
         FROM read_parquet('{model_data_path_str}')
         WHERE target = 1
-          AND (
-            primary_icd_diagnosis_code LIKE '%F1120%'
-            OR two_icd_diagnosis_code LIKE '%F1120%'
-            OR three_icd_diagnosis_code LIKE '%F1120%'
-            OR four_icd_diagnosis_code LIKE '%F1120%'
-            OR five_icd_diagnosis_code LIKE '%F1120%'
-            OR six_icd_diagnosis_code LIKE '%F1120%'
-            OR seven_icd_diagnosis_code LIKE '%F1120%'
-            OR eight_icd_diagnosis_code LIKE '%F1120%'
-            OR nine_icd_diagnosis_code LIKE '%F1120%'
-            OR ten_icd_diagnosis_code LIKE '%F1120%'
-          )
+          AND first_fall_date IS NOT NULL
         GROUP BY mi_person_key
         HAVING target_date IS NOT NULL
     ),
     """
     else:
-        # POLYPHARMACY COHORT: Get target date from cohort parquet (first_ed_non_opioid_date).
-        # model_events for polypharmacy may contain only drug (pharmacy) events for cases, so hcg_line is always NULL there.
+        # ed cohort: Get target date from cohort parquet (first_ed_date).
         cohort_parquet_paths = []
         for year in [2016, 2017, 2018, 2019]:
             for base in [project_root, data_root]:
@@ -178,7 +161,7 @@ def analyze_post_target_leakage_from_events(
                     cohort_parquet_paths.append(str(p))
                     break
         if not cohort_parquet_paths:
-            print(f"[ERROR] Cohort parquet(s) not found for {cohort}/{age_band}. Need first_ed_non_opioid_date for polypharmacy target. Checked gold/cohorts/cohort_name={cohort}/event_year=*/age_band={age_band}/cohort.parquet under project_root and data_root.")
+            print(f"[ERROR] Cohort parquet(s) not found for {cohort}/{age_band}. Need first_ed_date for ed target. Checked gold/cohorts/cohort_name={cohort}/event_year=*/age_band={age_band}/cohort.parquet under project_root and data_root.")
             con.close()
             return pd.DataFrame()
         cohort_paths_literal = ", ".join(f"'{p.replace(chr(39), chr(39) + chr(39))}'" for p in cohort_parquet_paths)
@@ -186,20 +169,20 @@ def analyze_post_target_leakage_from_events(
     WITH target_patients AS (
         SELECT
             mi_person_key,
-            MIN(CAST(first_ed_non_opioid_date AS DATE)) as target_date
+            MIN(CAST(first_ed_date AS DATE)) as target_date
         FROM read_parquet([{cohort_paths_literal}])
         WHERE is_target_case = 1
-          AND first_ed_non_opioid_date IS NOT NULL
+          AND first_ed_date IS NOT NULL
         GROUP BY mi_person_key
         HAVING target_date IS NOT NULL
     ),
     """
     
     # Continue with the rest of the query
-    # POLYPHARMACY COHORT: only analyze drugs (not ICD/CPT codes)
+    # ed cohort: only analyze drugs (not ICD/CPT codes)
     # falls cohort: analyze all features (ICD, CPT, drugs)
-    if cohort == "ed":  # POLYPHARMACY COHORT
-        # POLYPHARMACY COHORT: only drugs
+    if cohort == "ed":
+        # ed cohort: only drugs
         query += f"""
     events_with_target_dates AS (
         SELECT 
@@ -212,7 +195,7 @@ def analyze_post_target_leakage_from_events(
         LEFT JOIN target_patients t ON e.mi_person_key = t.mi_person_key
         WHERE e.target = 1  -- Only analyze target cases
     ),
-    -- Flatten to individual drug events (POLYPHARMACY COHORT: drugs only)
+    -- Flatten to individual drug events (ed cohort: drugs only)
     feature_events AS (
         SELECT 
             mi_person_key,
@@ -413,7 +396,7 @@ def analyze_post_target_leakage(
     output_dir = project_root / "3b_feature_importance_eda" / "outputs" / cohort / age_band_fname
     suffix = get_target_file_suffix(cohort)  # f1120 for falls, target for ed (no F1120 ref)
 
-    # Paths to BupaR output files (cohort-aware: falls uses f1120, polypharmacy uses target)
+    # Paths to BupaR output files (cohort-aware: falls uses fall_injury_any, ed uses ed_event)
     post_traces_path = output_dir / "features" / f"{cohort}_{age_band_fname}_train_target_post_{suffix}_traces_bupar.csv"
     pre_traces_path = output_dir / "features" / f"{cohort}_{age_band_fname}_train_target_pre_{suffix}_traces_bupar.csv"
     post_features_path = output_dir / "features" / f"{cohort}_{age_band_fname}_train_target_post_{suffix}_patient_features_bupar.csv"
@@ -556,7 +539,7 @@ def main():
     print(f"   Total features analyzed: {len(results_df)}")
     print(f"   Post-target leakage features: {results_df['is_post_target_leakage'].sum()}")
     
-    # Show statistics (target by cohort: falls=F1120, ed=HCG)
+    # Show statistics (target by cohort: falls=fall_injury_any, ed=ed_event)
     target_name = get_target_name_by_cohort(args.cohort)
     ratio_col = 'post_target_ratio' if 'post_target_ratio' in results_df.columns else 'post_f1120_ratio'
     pre_ratio_col = 'pre_target_ratio' if 'pre_target_ratio' in results_df.columns else 'pre_f1120_ratio'

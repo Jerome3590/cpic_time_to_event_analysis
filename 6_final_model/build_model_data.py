@@ -13,7 +13,7 @@ This script orchestrates the complete model data build process:
 8. Builds train/test splits with temporal validation
 
 Usage:
-    python build_model_data.py --cohort-name falls --age-band 0-12
+    python build_model_data.py --cohort-name falls --age-band 65-74
 """
 
 import argparse
@@ -84,7 +84,7 @@ def build_model_data(
     cohort_name : str
         Cohort name (e.g., "falls")
     age_band : str
-        Age band (e.g., "0-12")
+        Age band (e.g., "65-74")
     skip_feature_engineering : bool
         Skip individual feature engineering steps (use existing features)
     skip_final_merge : bool
@@ -295,7 +295,7 @@ def main():
         "--age-band",
         type=str,
         required=True,
-        help="Age band (e.g., 0-12)",
+        help="Age band (e.g., 65-74)",
     )
     parser.add_argument(
         "--project-root",

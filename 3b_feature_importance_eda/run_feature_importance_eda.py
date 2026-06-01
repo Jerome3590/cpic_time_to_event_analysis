@@ -4,7 +4,7 @@ Feature Importance EDA and Refinement - Orchestration Script
 
 Runs all Feature Importance EDA analyses in order:
 1. Administrative/Non-informative code filtering (remove non-informative ICD/CPT codes)
-2. BupaR post-target analysis (identify pre/post target events; F1120 for falls, HCG for polypharmacy)
+2. BupaR post-target analysis (identify pre/post target events; first_fall_date for falls, first_ed_date for ed)
 3. Create safe feature filter JSON (idempotent: skip if already exists; exclude leakage, keep pre-target features)
 3.5. Ensure aggregated feature importance (Step 3a): if missing or empty, rerun Step 3a for this cohort/age_band
 4. Filter and refine feature importances (uses safe_feature_filter.json when present)

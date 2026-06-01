@@ -11,7 +11,7 @@ This script runs the complete final model workflow:
 6. Create visualizations
 
 Usage:
-    python 8_final_model/run_analysis.py --cohort-name falls --age-band 0-12
+    python 6_final_model/run_analysis.py --cohort-name falls --age-band 65-74
 """
 
 import argparse
@@ -46,7 +46,7 @@ def run_final_model_analysis(
     cohort_name : str
         Cohort name (e.g., "falls")
     age_band : str
-        Age band (e.g., "0-12")
+        Age band (e.g., "65-74")
     skip_feature_build : bool
         Skip final feature table build (default: False)
     skip_leakage_removal : bool
@@ -252,7 +252,7 @@ if __name__ == "__main__":
         "--age-band",
         type=str,
         required=True,
-        help="Age band (e.g., 0-12)"
+        help="Age band (e.g., 65-74)"
     )
     parser.add_argument(
         "--skip-feature-build",

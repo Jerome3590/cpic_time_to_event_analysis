@@ -87,27 +87,6 @@ ALL_ICD_DIAGNOSIS_COLUMNS = [
 ]
 
 
-def get_opioid_icd_sql_condition(table_alias=None):
-    """
-    Generate SQL condition to check for opioid ICD codes across ALL diagnosis code positions.
-    
-    Args:
-        table_alias: Optional table alias (e.g., 'uef' for 'uef.primary_icd_diagnosis_code')
-    
-    Returns:
-        SQL WHERE condition string checking all 10 ICD diagnosis columns
-    
-    Example:
-        >>> get_opioid_icd_sql_condition()
-        "(primary_icd_diagnosis_code IN ('F1120', ...) OR two_icd_diagnosis_code IN (...) OR ...)"
-    """
-    prefix = f"{table_alias}." if table_alias else ""
-    codes_tuple = tuple(OPIOID_ICD_CODES)
-    
-    conditions = [f"{prefix}{col} IN {codes_tuple}" for col in ALL_ICD_DIAGNOSIS_COLUMNS]
-    return "(" + " OR ".join(conditions) + ")"
-
-
 def get_icd_codes_sql_condition(icd_codes, table_alias=None):
     """
     Generate SQL condition to check for specific ICD codes across ALL diagnosis code positions.
@@ -210,22 +189,12 @@ def age_band_to_fname(age_band: str) -> str:
 
 
 def get_physical_age_bands_for_gold(age_band: str) -> list:
-    """
-    Return the physical age-band partition(s) for gold COHORT data.
-    For 85-114 we use the single partition 85-114 only.
-    """
-    if age_band == "85-114":
-        return ["85-114"]
+    """Return the physical age-band partition(s) for gold COHORT data."""
     return [age_band]
 
 
 def get_physical_age_bands_for_medical_pharmacy(age_band: str) -> list:
-    """
-    Return the physical age-band partition(s) for gold MEDICAL and PHARMACY data.
-    For 85-114, medical/pharmacy are stored as two sub-cohorts: 85-94 and 95-114.
-    """
-    if age_band == "85-114":
-        return ["85-94", "95-114"]
+    """Return the physical age-band partition(s) for gold MEDICAL and PHARMACY data."""
     return [age_band]
 
 

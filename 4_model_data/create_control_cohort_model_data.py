@@ -28,7 +28,7 @@ if str(MODEL_DATA_DIR) not in sys.path:
 
 from py_helpers.constants import (
     ALL_ICD_DIAGNOSIS_COLUMNS,
-    get_cohort_slug,
+    get_cohort_slug_by_cohort,
     get_physical_age_bands_for_medical_pharmacy,
     age_band_partition_candidates,
 )
@@ -169,7 +169,6 @@ def create_control_cohort_model_data(
     cohort_name = cohort_name or "falls"
     
     # Build paths to medical and pharmacy parquet files.
-    # For 85-114 use sub-cohorts 85-94 and 95-114 (same as create_model_data).
     medical_parquet_paths = []
     pharmacy_parquet_paths = []
     medical_pharmacy_bands = get_physical_age_bands_for_medical_pharmacy(age_band)
@@ -192,7 +191,7 @@ def create_control_cohort_model_data(
     
     print(f"[INFO] Found {len(medical_parquet_paths)} medical files and {len(pharmacy_parquet_paths)} pharmacy files")
     
-    control_slug = get_cohort_slug(cohort_name)
+    control_slug = get_cohort_slug_by_cohort(cohort_name)
 
     # When writing under 3b/outputs use flat layout (cohort_name=.../age_band=...) so R finds it first
     if "3b_feature_importance_eda" in str(output_root) and "outputs" in str(output_root):
@@ -345,13 +344,11 @@ def create_control_cohort_model_data(
     """
     
     try:
-        # Get cohort slug based on age band
-        cohort_slug = get_cohort_slug(age_band)
+        cohort_slug = get_cohort_slug_by_cohort(cohort_name)
         print(f"[INFO] Creating control cohort model_events.parquet for {cohort_slug}/{age_band}...")
-        print(f"[INFO] POLYPHARMACY COHORT control definition (time window: {time_window_days} days):")
+        print(f"[INFO] Control definition (time window: {time_window_days} days):")
         print(f"[INFO]   - Patients with drug events (pharmacy events)")
-        print(f"[INFO]   - NO time-windowed HCG target events within {time_window_days} days of drug events")
-        print(f"[INFO]   - NO opioid ICD codes")
+        print(f"[INFO]   - Exclude case patients from target cohort")
         print(f"[INFO] Sampling {sample_size} control patients")
         
         # Diagnostic queries to understand where data is being filtered
@@ -392,57 +389,27 @@ def create_control_cohort_model_data(
             FROM read_parquet([{pharmacy_paths_literal}])
         ),
         patients_with_drug_events AS (
-            -- POLYPHARMACY COHORT: Controls must have drug events (pharmacy events)
+            -- Controls must have drug events (pharmacy events)
             SELECT DISTINCT mi_person_key
             FROM pharmacy_events
         ),
-        patient_hcg_dates AS (
-            SELECT
-                me.mi_person_key,
-                me.event_date AS hcg_event_date
-            FROM medical_events me
-            WHERE me.hcg_line IN ('P51 - ER Visits and Observation Care', 'O11 - Emergency Room', 'P33 - Urgent Care Visits')
-        ),
-        drug_hcg_pairs AS (
-            -- For each patient, check if ANY HCG target event occurs within {time_window_days} days of ANY drug event
-            SELECT DISTINCT
-                pe.mi_person_key,
-                pe.event_date AS drug_event_date,
-                phd.hcg_event_date
-            FROM pharmacy_events pe
-            INNER JOIN patients_with_drug_events pde ON pe.mi_person_key = pde.mi_person_key
-            LEFT JOIN patient_hcg_dates phd ON pe.mi_person_key = phd.mi_person_key
-                AND phd.hcg_event_date >= pe.event_date
-                AND phd.hcg_event_date <= DATE_ADD(pe.event_date, INTERVAL {time_window_days} DAY)
-            WHERE phd.hcg_event_date IS NOT NULL
-        ),
-        per_patient_flags AS (
-            -- Check ALL patients with drug events for opioid ICD codes and time-windowed HCG target events
-            SELECT
-                pde.mi_person_key,
-                COALESCE(MAX(CASE WHEN {opioid_condition} THEN 1 ELSE 0 END), 0) AS has_opioid_icd,
-                CASE
-                    WHEN EXISTS (
-                        SELECT 1 FROM drug_hcg_pairs dhp 
-                        WHERE dhp.mi_person_key = pde.mi_person_key
-                    ) THEN 1
-                    ELSE 0
-                END AS has_hcg_target_event_in_window
-            FROM patients_with_drug_events pde
-            LEFT JOIN medical_events me ON pde.mi_person_key = me.mi_person_key
-            GROUP BY pde.mi_person_key
+        case_patients_diag AS (
+            SELECT DISTINCT mi_person_key
+            FROM read_parquet([{cohort_paths_literal}])
+            WHERE is_target_case = 1
         ),
         control_candidates AS (
-            -- POLYPHARMACY COHORT: Controls must have drug events AND no time-windowed HCG target events
-            SELECT mi_person_key
-            FROM per_patient_flags
-            WHERE has_opioid_icd = 0 AND has_hcg_target_event_in_window = 0
+            -- Exclude case patients; remaining with drug events are eligible controls
+            SELECT pde.mi_person_key
+            FROM patients_with_drug_events pde
+            LEFT JOIN case_patients_diag cp ON pde.mi_person_key = cp.mi_person_key
+            WHERE cp.mi_person_key IS NULL
         )
         SELECT COUNT(*) as n FROM control_candidates
         """
         try:
             diag_candidates = con.execute(diag_candidates_simple).fetchone()[0]
-            print(f"[DEBUG] Control candidates (have drug events, no opioid ICD, no HCG target events): {diag_candidates:,}")
+            print(f"[DEBUG] Control candidates (have drug events, not in case set): {diag_candidates:,}")
             
             # Check if we're trying to sample more than available
             if sample_size > diag_candidates:
@@ -525,13 +492,13 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(
-        description="Create model_events.parquet for non_opioid_non_ed control cohort"
+        description="Create model_events.parquet for control cohort (patients without target event)"
     )
     parser.add_argument(
         "--age-band",
         type=str,
         required=True,
-        help="Age band (e.g., 13-24)",
+        help="Age band (e.g., 65-74)",
     )
     parser.add_argument(
         "--years",

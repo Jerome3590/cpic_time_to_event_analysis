@@ -6,12 +6,12 @@ This script:
 1. Removes post-event features (target leakage)
 2. Removes time-to-target features (target leakage)
 3. Removes trajectory/sequence/itemset if present (defensive only; feature engineering never generates these)
-4. Removes DTW, F1120, and other leakage-related columns
+4. Removes DTW and other leakage-related columns
 5. Identifies and documents remaining features for review
 6. Rebuilds feature table without leakage
 
 Usage:
-    python remove_target_leakage.py --cohort-name falls --age-band 0-12
+    python remove_target_leakage.py --cohort-name falls --age-band 65-74
 """
 
 import argparse
@@ -95,8 +95,8 @@ def remove_target_leakage(
         print(f"  ... and {len(interval_features) - 10} more")
     
     # 3. Target time, first time, and cohort target-date columns (not features; must not be used for training)
-    # first_falls_date / first_ed_non_opioid_date are in model_events for BupaR/leakage removal only.
-    datetime_features = ['target_time', 'first_time', 'first_falls_date', 'first_ed_non_opioid_date']
+    # first_fall_date / first_ed_date are in model_events for BupaR/leakage removal only.
+    datetime_features = ['target_time', 'first_time', 'first_fall_date', 'first_ed_date']
     leakage_features.extend([f for f in datetime_features if f in df.columns])
     
     # 4. DTW features (REMOVED - used for protocol filtering, not as features)
@@ -136,16 +136,15 @@ def remove_target_leakage(
     print(f"[INFO] Removing {len(leakage_features)} leakage features")
     df_clean = df[safe_features].copy()
     
-    # Verify no F1120 in feature names (should be excluded during feature engineering)
-    f1120_features = [c for c in df_clean.columns if 'F1120' in c.upper()]
-    if f1120_features:
-        print(f"\n[WARNING] Found {len(f1120_features)} features with F1120 in name:")
-        for f in f1120_features:
+    # Verify no target label columns leaked into features
+    target_label_features = [c for c in df_clean.columns if 'fall_injury' in c.lower() or 'ed_event' in c.lower()]
+    if target_label_features:
+        print(f"\n[WARNING] Found {len(target_label_features)} target label columns in features:")
+        for f in target_label_features:
             print(f"  - {f}")
-        print("[INFO] These should be removed - F1120 must be excluded from final model features")
-        # Remove F1120 features
-        safe_features = [c for c in safe_features if c not in f1120_features]
-        leakage_features.extend(f1120_features)
+        print("[INFO] Removing - target columns must not be used as model features")
+        safe_features = [c for c in safe_features if c not in target_label_features]
+        leakage_features.extend(target_label_features)
         df_clean = df[safe_features].copy()
     
     # Remove non-predictive markers/confounders
@@ -153,7 +152,6 @@ def remove_target_leakage(
         'item_drug_SUBOXONE',  # Treatment medication - marker, not predictive
         'item_drug_BUPRENORPHINE_HCL',  # Treatment medication - marker, not predictive
         'item_drug_BUPRENORPHINE_HCL_NALOXON',  # Treatment medication - marker, not predictive
-        'item_icd_F1123',  # Opioid dependence ICD code - marker, not predictive
     ]
     found_excluded = [c for c in df_clean.columns if c in excluded_markers]
     if found_excluded:
@@ -164,8 +162,8 @@ def remove_target_leakage(
         leakage_features.extend(found_excluded)
         df_clean = df[safe_features].copy()
     
-    # 5. For ed cohort: remove ICD and CPT features (polypharmacy uses drugs only)
-    if "non_opioid" in cohort_name.lower() or "ed_non_opioid" in cohort_name.lower():
+    # 5. For ed cohort: remove ICD and CPT features (ed uses drugs only)
+    if cohort_name.lower() == "ed":
         item_icd_features_to_remove = [c for c in df_clean.columns if c.startswith('item_icd_')]
         item_cpt_features_to_remove = [c for c in df_clean.columns if c.startswith('item_cpt_')]
         if item_icd_features_to_remove or item_cpt_features_to_remove:
@@ -207,10 +205,10 @@ def remove_target_leakage(
         if model_data_path.exists():
             try:
                 # Determine target date field
-                if "opioid" in cohort_name.lower():
-                    target_date_field = "first_falls_date"
+                if cohort_name.lower() == "falls":
+                    target_date_field = "first_fall_date"
                 else:
-                    target_date_field = "first_ed_non_opioid_date"
+                    target_date_field = "first_ed_date"
                 
                 con = duckdb.connect()
                 model_data_path_str = str(model_data_path).replace('\\', '/')
@@ -245,7 +243,7 @@ def remove_target_leakage(
                     
                     for i in range(0, len(patients_with_feature), max_batch_size):
                         batch = patients_with_feature[i:i + max_batch_size]
-                        patient_list = ','.join([f"'{p.replace(\"'\", \"''\")}'" for p in batch])
+                        patient_list = ','.join(["'" + p.replace("'", "''") + "'" for p in batch])
                         
                         # Check if any of these patients have this code/drug AFTER target event
                         if code_column == 'drug_name':
@@ -329,7 +327,7 @@ def remove_target_leakage(
     
     print(f"\n[INFO] Clean dataset: {len(df_clean)} patients, {len(df_clean.columns)} columns")
     print(f"[INFO] Removed {len(df.columns) - len(df_clean.columns)} columns")
-    print(f"[INFO] All features are from events BEFORE F1120 (excluding F1120 and everything after)")
+    print(f"[INFO] All features are from events BEFORE the target event (target columns excluded)")
     
     # Save cleaned feature table (Parquet format for efficiency)
     output_path_csv = (
@@ -437,8 +435,8 @@ def main():
     parser.add_argument(
         "--age-band",
         type=str,
-        default="0-12",
-        help="Age band (e.g., 0-12)",
+        default="65-74",
+        help="Age band (e.g., 65-74)",
     )
     parser.add_argument(
         "--project-root",
