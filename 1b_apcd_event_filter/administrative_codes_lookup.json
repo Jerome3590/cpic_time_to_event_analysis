@@ -1,0 +1,71 @@
+{
+  "description": "Lookup table for classifying codes as administrative vs. medical/pharmacy. Codes listed here will be filtered out during event filtering (Step 1b). For falls analysis: Z91.81 (fall history) and CPT 1100F (falls risk screening) are excluded as they represent history/screening rather than actual fall events.",
+  "version": "1.0",
+  "last_updated": "2026-06-01",
+  "documentation": "Falls target: R29.6, T02.*, S12.*, S22.*, S32.*, S42.*, S52.*, S62.*, S72.*, S82.*, S92.*. Excluded: Z91.81 (personal history of falls — administrative/historical), CPT 1100F (falls risk screening — preventive measure, not an event).",
+  "administrative_codes": {
+    "icd": [
+      "Z00.00",
+      "Z00.01",
+      "Z00.121",
+      "Z00.129",
+      "Z91.81"
+    ],
+    "cpt": [
+      "99024",
+      "99025",
+      "99026",
+      "99027",
+      "1100F"
+    ],
+    "drug": [
+      "Unknown"
+    ]
+  },
+  "falls_target_codes": {
+    "icd_include": [
+      "R29.6",
+      "T02",
+      "S12",
+      "S22",
+      "S32",
+      "S42",
+      "S52",
+      "S62",
+      "S72",
+      "S82",
+      "S92"
+    ],
+    "icd_exclude": [
+      "Z91.81"
+    ],
+    "cpt_exclude": [
+      "1100F"
+    ],
+    "notes": {
+      "R29.6": "Tendency to fall, not elsewhere classified",
+      "T02": "Fractures involving multiple body regions",
+      "S12": "Fracture of cervical vertebra",
+      "S22": "Fracture of rib(s), sternum, thoracic spine",
+      "S32": "Fracture of lumbar spine and pelvis",
+      "S42": "Fracture of shoulder and upper arm",
+      "S52": "Fracture of forearm",
+      "S62": "Fracture at wrist and hand level",
+      "S72": "Fracture of femur",
+      "S82": "Fracture of lower leg, including ankle",
+      "S92": "Fracture of foot and toe",
+      "Z91.81": "EXCLUDED — Personal history of falls (administrative/historical, not an event)",
+      "1100F": "EXCLUDED — Falls risk screening performed (preventive measure, not a fall event)"
+    }
+  },
+  "research_guidelines": {
+    "how_to_identify_administrative_codes": [
+      "1. Review code_analysis_protocol_vs_clinical CSV from research outputs",
+      "2. Identify codes with high protocol_pct (>80%) that appear in protocol-like sequences",
+      "3. Manually review codes to determine if they are administrative vs. clinical",
+      "4. Add confirmed administrative codes to this lookup table",
+      "5. Codes should be administrative/billing/scheduling, not clinical diagnoses or treatments"
+    ],
+    "post_event_leakage": "Events occurring on or after target event date are automatically classified as administrative (leakage) and do not need to be in this lookup table."
+  }
+}
