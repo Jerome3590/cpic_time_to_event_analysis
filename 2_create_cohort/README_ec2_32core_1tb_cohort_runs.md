@@ -64,33 +64,25 @@ Total: 28 threads — leaves 4 cores for OS + S3 uploads.
 
 ---
 
-## 2) First-time EC2 setup
+## 2) EC2 setup (same instance as pgx-analysis)
+
+This project runs on the **same EC2 instance** used for pgx-analysis. The existing
+`jupyter-env`, NVMe mounts, AWS credentials, and user (`pgx3874`) carry over.
 
 ```bash
-# 1. Clone repo
-git clone https://github.com/Jerome3590/cpic_time_to_event_analysis.git ~/cpic_time_to_event_analysis
-cd ~/cpic_time_to_event_analysis
+# Clone repo alongside pgx-analysis
+git clone https://github.com/Jerome3590/cpic_time_to_event_analysis.git /home/pgx3874/cpic_time_to_event_analysis
+cd /home/pgx3874/cpic_time_to_event_analysis
 
-# 2. Create and activate virtual environment
-python3.11 -m venv ~/jupyter-env
-source ~/jupyter-env/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
+# Reuse existing venv — install any new deps
+/home/pgx3874/jupyter-env/bin/pip install -r requirements.txt
 
-# 3. NVMe temp directories for DuckDB spill
-sudo mkdir -p /mnt/nvme/duckdb_tmp /mnt/nvme/cohorts
-sudo chown -R "$USER":"$USER" /mnt/nvme
-
-# 4. AWS credentials
-mkdir -p ~/cpic_time_to_event_analysis/secrets
-# Copy your .env or credentials file here
-
-# 5. Set project environment variables (add to ~/.bashrc)
+# Add project env vars to ~/.bashrc (NVMe + S3 already configured)
 export CPIC_S3_BUCKET=pgxdatalake
-export DUCKDB_TMP_DIRECTORY=/mnt/nvme/duckdb_tmp
-export LOCAL_DATA_PATH=/mnt/nvme/cohorts
 export CPIC_TOTAL_WORKERS=2
 ```
+
+> NVMe (`/mnt/nvme/duckdb_tmp`, `/mnt/nvme/cohorts`) and AWS credentials are already configured from the pgx-analysis run. No changes needed.
 
 ---
 
@@ -109,8 +101,8 @@ Years: 2016 → 2017 → 2018 → 2019.
 import os
 from pathlib import Path
 
-PROJECT_ROOT = Path("/home/ec2-user/cpic_time_to_event_analysis")
-PYTHON_BIN   = "/home/ec2-user/jupyter-env/bin/python3.11"
+PROJECT_ROOT = Path("/home/pgx3874/cpic_time_to_event_analysis")
+PYTHON_BIN   = "/home/pgx3874/jupyter-env/bin/python3.11"
 
 os.environ["CPIC_S3_BUCKET"]          = "pgxdatalake"
 os.environ["DUCKDB_TMP_DIRECTORY"]    = "/mnt/nvme/duckdb_tmp"
@@ -130,13 +122,13 @@ export CPIC_S3_BUCKET=pgxdatalake
 export DUCKDB_TMP_DIRECTORY=/mnt/nvme/duckdb_tmp
 export LOCAL_DATA_PATH=/mnt/nvme/cohorts
 
-cd ~/cpic_time_to_event_analysis
+cd /home/pgx3874/cpic_time_to_event_analysis
 mkdir -p logs
 
-nohup ~/jupyter-env/bin/python3.11 2_create_cohort/run_series_falls.py \
+nohup /home/pgx3874/jupyter-env/bin/python3.11 2_create_cohort/run_series_falls.py \
   --skip-existing \
   --concurrent-workers 1 \
-  --python-bin ~/jupyter-env/bin/python3.11 \
+  --python-bin /home/pgx3874/jupyter-env/bin/python3.11 \
   > logs/falls_run.log 2>&1 &
 echo "falls PID: $!"
 ```
@@ -155,12 +147,12 @@ export CPIC_S3_BUCKET=pgxdatalake
 export DUCKDB_TMP_DIRECTORY=/mnt/nvme/duckdb_tmp
 export LOCAL_DATA_PATH=/mnt/nvme/cohorts
 
-cd ~/cpic_time_to_event_analysis
+cd /home/pgx3874/cpic_time_to_event_analysis
 
-nohup ~/jupyter-env/bin/python3.11 2_create_cohort/run_series_ed.py \
+nohup /home/pgx3874/jupyter-env/bin/python3.11 2_create_cohort/run_series_ed.py \
   --skip-existing \
   --concurrent-workers 1 \
-  --python-bin ~/jupyter-env/bin/python3.11 \
+  --python-bin /home/pgx3874/jupyter-env/bin/python3.11 \
   > logs/ed_run.log 2>&1 &
 echo "ed PID: $!"
 ```
@@ -179,7 +171,7 @@ tail -n 30 logs/ed_run.log
 
 ```bash
 %%bash
-tail -f logs/falls_run.log
+tail -f /home/pgx3874/cpic_time_to_event_analysis/logs/falls_run.log
 ```
 
 ---

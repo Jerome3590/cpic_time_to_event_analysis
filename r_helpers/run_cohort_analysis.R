@@ -174,7 +174,7 @@ run_cohort_analysis <- function(cohort_name, age_band, event_year,
     # Determine local data path
     local_data_path <- Sys.getenv("LOCAL_DATA_PATH", "/mnt/nvme/cohorts")
     if (!dir.exists(local_data_path)) {
-      local_data_path <- Sys.getenv("LOCAL_DATA_PATH", "C:/Projects/cpic_time_to_event_analysis/data/gold/cohorts")
+      local_data_path <- Sys.getenv("LOCAL_DATA_PATH", "/mnt/nvme/cohorts")
     }
     
     parquet_file <- file.path(local_data_path, 
