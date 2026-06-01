@@ -633,19 +633,33 @@ def filter_cohort_events_for_items(
         f"cohort_name={cohort_name}/age_band={age_band}/model_events.parquet"
     )
 
-    # Idempotency / Windows-friendly: if the file already exists locally, assume this
-    # cohort/age_band has been built successfully and skip overwriting. This
-    # avoids DuckDB attempting to delete an open file and throwing WinError 32.
+    # Idempotency / Windows-friendly: if the file already exists locally, validate it
+    # is readable and non-empty before skipping. A partial/interrupted write could leave
+    # a corrupt file that passes an existence check but fails at read time.
     if out_path.exists():
-        msg = (
-            f"[INFO] model_events.parquet already exists at {out_path.resolve()}; "
-            f"skipping rebuild for {cohort_name}/{age_band}."
-        )
-        print(msg)
-        if logger:
-            logger.info(msg)
-        con.close()
-        return
+        try:
+            _chk = duckdb.connect()
+            n_rows = _chk.execute(f"SELECT COUNT(*) FROM read_parquet('{str(out_path).replace(chr(92), '/')}')").fetchone()[0]
+            _chk.close()
+            if n_rows > 0:
+                msg = (
+                    f"[INFO] model_events.parquet already exists ({n_rows:,} rows) at {out_path.resolve()}; "
+                    f"skipping rebuild for {cohort_name}/{age_band}."
+                )
+                print(msg)
+                if logger:
+                    logger.info(msg)
+                con.close()
+                return
+            else:
+                print(f"[WARN] Existing model_events.parquet has 0 rows — treating as corrupt, rebuilding.")
+                out_path.unlink()
+        except Exception as _e:
+            print(f"[WARN] Existing model_events.parquet failed integrity check ({_e}) — rebuilding.")
+            try:
+                out_path.unlink()
+            except Exception:
+                pass
 
     # Check S3 and download if exists there but not locally (skip when building 3b BupaR input)
     if not skip_s3_download:

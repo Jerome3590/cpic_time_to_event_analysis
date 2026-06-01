@@ -208,10 +208,24 @@ def create_control_cohort_model_data(
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "model_events.parquet"
     
-    # Check if already exists
+    # Check if already exists; validate integrity before skipping (guards against partial writes)
     if out_path.exists():
-        print(f"[INFO] Control cohort model_events.parquet already exists: {out_path}")
-        return
+        try:
+            _chk = duckdb.connect()
+            n_rows = _chk.execute(f"SELECT COUNT(*) FROM read_parquet('{str(out_path).replace(chr(92), '/')}')").fetchone()[0]
+            _chk.close()
+            if n_rows > 0:
+                print(f"[INFO] Control cohort model_events.parquet already exists ({n_rows:,} rows): {out_path}")
+                return
+            else:
+                print(f"[WARN] Existing control model_events.parquet has 0 rows — treating as corrupt, rebuilding.")
+                out_path.unlink()
+        except Exception as _e:
+            print(f"[WARN] Existing control model_events.parquet failed integrity check ({_e}) — rebuilding.")
+            try:
+                out_path.unlink()
+            except Exception:
+                pass
     
     con = duckdb.connect()
 
