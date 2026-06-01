@@ -1,31 +1,26 @@
 """
 Clear Step 3a (and optionally S3) feature importance outputs so you can rerun with
-new logic (e.g. drug-only for non_opioid_ed, or new cohort with <7 ED visits/year).
-
-Use when:
-- You changed polypharmacy to drug-only FI and want to regenerate aggregated FI.
-- You changed NON_OPIOID_ED_MAX_ED_VISITS_PER_YEAR and re-ran Step 2; now you want
-  to recompute feature importance from the new cohorts.
+new logic (e.g. after changing cohort definition or feature set).
 
 Usage:
-  # Clear local 3a outputs for non_opioid_ed, all polypharmacy age bands (65-74, 75-84, 85-114)
-  python utility_scripts/clear_feature_importance_outputs.py --cohort non_opioid_ed
+  # Clear local 3a outputs for ed cohort, all age bands (65-74, 75-84)
+  python utility_scripts/clear_feature_importance_outputs.py --cohort ed
 
   # Clear specific age bands only
-  python utility_scripts/clear_feature_importance_outputs.py --cohort non_opioid_ed --age-band 65-74 --age-band 75-84
+  python utility_scripts/clear_feature_importance_outputs.py --cohort ed --age-band 65-74 --age-band 75-84
 
   # Also delete from S3 (pgxdatalake) so downstream steps and other machines see the change
-  python utility_scripts/clear_feature_importance_outputs.py --cohort non_opioid_ed --s3
+  python utility_scripts/clear_feature_importance_outputs.py --cohort ed --s3
 
   # Dry run (print what would be removed)
-  python utility_scripts/clear_feature_importance_outputs.py --cohort non_opioid_ed --dry-run
+  python utility_scripts/clear_feature_importance_outputs.py --cohort ed --dry-run
 
-Full rerun workflow for drug-only FI with new cohorts (e.g. after changing ED visit threshold to 7):
-  1. Re-run Step 2 (cohort creation) for polypharmacy age bands so cohort.parquet uses the new filter.
-  2. Clear old FI: python utility_scripts/clear_feature_importance_outputs.py --cohort non_opioid_ed [--s3]
+Full rerun workflow after changing cohort definition:
+  1. Re-run Step 2 (cohort creation) so cohort.parquet uses the new filter.
+  2. Clear old FI: python utility_scripts/clear_feature_importance_outputs.py --cohort ed [--s3]
   3. Rerun Step 3a with --force for each age band, e.g.:
-     python 3a_feature_importance/run_mc_feature_importance.py --cohort non_opioid_ed --age_band 65-74 --force
-     (repeat for 75-84, 85-114)
+     python 3a_feature_importance/run_mc_feature_importance.py --cohort ed --age_band 65-74 --force
+     (repeat for 75-84)
   4. Optionally re-run Step 3b and downstream (model data, final model) so they use the new aggregated FI.
 """
 

@@ -10,7 +10,7 @@ Usage:
     python monitor_s3_uploads.py --check-all
     
     # Monitor specific cohort/age_band
-    python monitor_s3_uploads.py --cohort opioid_ed --age-band 1-0-12
+    python monitor_s3_uploads.py --cohort falls --age-band 65-74
     
     # Watch mode - continuously monitor for new uploads
     python monitor_s3_uploads.py --watch --interval 30

@@ -35,7 +35,7 @@ def main() -> int:
     existing = ", ".join(f'"{c}"' for c in col_names)
     out_tmp = path.parent / "model_events.parquet.tmp"
     out_str = str(out_tmp).replace("'", "''")
-    # Add column: for target=1 set first_o11_p_date = max(event_date)+1 day per patient
+    # Add column: for target=1 set first_ed_date = max(event_date)+1 day per patient
     con.execute(f"""
         COPY (
             WITH with_max_date AS (

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Check a sample parquet for HCG columns and hcg_setting vs hcg_line.
 
-O11_P is the canonical name for the polypharmacy ED target (first_o11_p_date) and includes all qualifying ED codes (P51b, O11, P33). See 2_create_cohort README § HCG-Based ED Visit Targets.
+Used to inspect gold medical parquet files for ED-related HCG line values
+(P51 - ER Visits, O11 - Emergency Room, P33 - Urgent Care) which define
+the ed_event target in the ed cohort (first_ed_date).
 """
 import sys
 from pathlib import Path

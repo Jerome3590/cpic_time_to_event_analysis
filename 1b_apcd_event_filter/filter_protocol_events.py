@@ -657,12 +657,12 @@ def classify_event_as_administrative(
         }
     
     # Check for post-event leakage (events after target event date)
-    # Step 4 model_events use first_f1120_date / first_o11_p_date; accept legacy names.
+    # Step 4 model_events use first_fall_date (falls) / first_ed_date (ed).
     if cohort_name:
-        if "opioid" in cohort_name.lower():
-            target_date_candidates = ("first_f1120_date", "first_falls_date")
+        if cohort_name.lower() == "falls":
+            target_date_candidates = ("first_fall_date", "first_f1120_date")  # second: legacy fallback
         else:
-            target_date_candidates = ("first_o11_p_date", "first_ed_non_opioid_date")
+            target_date_candidates = ("first_ed_date", "first_o11_p_date")  # second: legacy fallback
         target_date_field = next((c for c in target_date_candidates if c in event_row.index), None)
         if target_date_field is not None:
             target_date = event_row.get(target_date_field)

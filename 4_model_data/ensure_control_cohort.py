@@ -29,7 +29,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from py_helpers.constants import DEFAULT_SAMPLE_RATIO, get_cohort_slug
+from py_helpers.constants import DEFAULT_SAMPLE_RATIO, get_cohort_slug_by_cohort
 from py_helpers.env_utils import get_model_data_root
 
 try:
@@ -43,12 +43,10 @@ except ImportError:
 def get_control_cohort_path(control_cohort: str, age_band: str) -> Path:
     """Get the path to control cohort model_events.parquet (OS-aware).
     
-    New structure: cohorts/input_model_data/cohort_name={slug}/age_band={age_band}/model_events.parquet
-    where slug is "opioid" or "polypharmacy" based on age band.
+    New structure: cohorts/input_model_data/cohort_name={slug}/age_band={age_band}/model_events.parquet.
     """
     model_data_root = get_model_data_root()
-    # Get cohort slug based on age band: "opioid" for < 65, "polypharmacy" for >= 65
-    cohort_slug = get_cohort_slug(age_band)
+    cohort_slug = get_cohort_slug_by_cohort(control_cohort)
     # New structure: cohorts/input_model_data/cohort_name={slug}/age_band={age_band}/
     return (
         model_data_root 
@@ -65,9 +63,8 @@ def download_control_cohort_from_s3(control_cohort: str, age_band: str, local_pa
     import subprocess
     import shutil
     
-    # Get cohort slug based on age band: "opioid" for < 65, "polypharmacy" for >= 65
-    cohort_slug = get_cohort_slug(age_band)
-    # New format: s3://pgxdatalake/gold/cohorts/input_model_data/cohort_name={slug}/
+    cohort_slug = get_cohort_slug_by_cohort(control_cohort)
+    # S3 path: s3://pgxdatalake/gold/cohorts/input_model_data/cohort_name={slug}/
     s3_path = f"s3://pgxdatalake/gold/cohorts/input_model_data/cohort_name={cohort_slug}/age_band={age_band}/model_events.parquet"
     
     # Check if exists in S3

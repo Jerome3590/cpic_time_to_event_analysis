@@ -2,17 +2,17 @@
 Clear S3 pipeline checkpoints so a step runs again (e.g. after fixing code or re-running 3b).
 
 Usage:
-  # Clear Step 3b for opioid_ed, all F1120 age bands (13-24, 25-44, 45-54, 55-64)
-  python utility_scripts/clear_step_checkpoints.py --step 3b_feature_importance_eda --cohort opioid_ed
+  # Clear Step 3b for falls cohort, all age bands
+  python utility_scripts/clear_step_checkpoints.py --step 3b_feature_importance_eda --cohort falls
 
   # Clear specific age bands
-  python utility_scripts/clear_step_checkpoints.py --step 3b_feature_importance_eda --cohort opioid_ed --age-band 13-24 --age-band 25-44
+  python utility_scripts/clear_step_checkpoints.py --step 3b_feature_importance_eda --cohort falls --age-band 65-74 --age-band 75-84
 
   # Dry run (show what would be deleted)
-  python utility_scripts/clear_step_checkpoints.py --step 3b_feature_importance_eda --cohort opioid_ed --dry-run
+  python utility_scripts/clear_step_checkpoints.py --step 3b_feature_importance_eda --cohort falls --dry-run
 
   # Clear dashboard visuals (pipeline step 10) for one cohort/age_band
-  python utility_scripts/clear_step_checkpoints.py --step 9_dashboard_visuals --cohort opioid_ed --age-band 13-24
+  python utility_scripts/clear_step_checkpoints.py --step 9_dashboard_visuals --cohort falls --age-band 65-74
 """
 
 import argparse
