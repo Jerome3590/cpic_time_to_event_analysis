@@ -82,7 +82,48 @@ cpic_time_to_event_analysis/
 
 ---
 
-## 🚀 Workflow Notebooks (TODO — run in order)
+## � Pipeline Overview
+
+```mermaid
+flowchart LR
+    subgraph INPUT["Data Inputs"]
+        A([Virginia APCD Claims])
+    end
+
+    subgraph PREP["Steps 1a–1b: Prepare"]
+        B[1a: Bronze → Silver → Gold\nParquet · Imputation · Cleaning]
+        C[1b: Event Filter\nfall_injury_any · ed_event\nW00–W19 + S00–S99]
+    end
+
+    subgraph COHORT["Step 2: Cohorts\n(Age bands: 65–74, 75–84 only)"]
+        D1[falls cohort\nfall_injury_any = 1]
+        D2[ed cohort\ned_event = 1]
+    end
+
+    subgraph FI["Steps 3a–3b: Feature Importance"]
+        E[3a: MC-CV\nCatBoost · XGBoost · XGBoostRF]
+        F[3b: BupaR post-target\nleakage removal]
+    end
+
+    subgraph MODEL["Steps 4–8: Model Pipeline"]
+        G[4: Model Data\nmodel_events.parquet]
+        H[5: PGx Enrichment\nCPIC drug features]
+        I[6: Final Model\nXGBoost · CatBoost per bin]
+        J[7: SHAP Analysis]
+        K[8: FFA · DTW · FP-Growth · BupaR]
+    end
+
+    A --> B --> C --> D1 & D2
+    D1 & D2 --> E --> F --> G --> H --> I --> J --> K
+
+    style INPUT fill:#e8f4fd,stroke:#1a73e8
+    style COHORT fill:#fff3cd,stroke:#ffc107
+    style MODEL fill:#d4edda,stroke:#28a745
+```
+
+---
+
+## � Workflow Notebooks (TODO — run in order)
 
 | # | Notebook | Purpose | Steps |
 |---|----------|---------|-------|
@@ -114,7 +155,7 @@ cpic_time_to_event_analysis/
 ### Step 2: Cohort Creation
 - [ ] Copy `2_create_cohort/0_create_cohort.py` from pgx-analysis
 - [ ] Update cohort definition: target = falls OR ED visit (binary per outcome)
-- [ ] Update age band parameters if needed for falls-risk population
+- [x] **Age band restriction: 65–74 and 75–84 only** (falls risk is clinically concentrated in the 65–85 population)
 - [ ] Copy and adapt QA scripts (`2_step2_data_quality_qa.py`, `3_cohort_final_metrics.py`)
 - [ ] Update `final_cohort_schema.json` for new target columns
 - [ ] Run cohort creation on EC2 (see `README_ec2_32core_1tb_cohort_runs.md` in pgx-analysis)
@@ -179,6 +220,26 @@ cpic_time_to_event_analysis/
 - [ ] Update `run_cohort_analysis.R`: falls/ED target columns
 - [ ] Keep MC-CV, BupaR, and DTW logic intact
 
+### Notebook Adaptations (copied from pgx-analysis — needs updating)
+- [ ] `0_config_and_pipeline.ipynb`
+  - [ ] Update `PROJECT_OUTPUT_DIRS`: replace `cohort_name=opioid_ed` / `cohort_name=non_opioid_ed` with `cohort_name=falls` / `cohort_name=ed`; remove `10_risk_dashboard/outputs`
+  - [ ] Update pipeline run guide cell: cohort names, remove Steps 9–10 (no dashboard/deploy)
+  - [ ] Remove Docker / ECR / API Gateway cells (no Lambda in this project)
+  - [ ] Update S3 checkpoint bucket/prefix to cpic project values
+- [ ] `1_cohort_workflow.ipynb`
+  - [ ] Update cohort series markdown: OPIOID_ED → FALLS, POLYPHARMACY → ED
+  - [ ] Update script references: `run_series_opioid_ed.py` → `run_series_falls.py`, `run_series_ed_non_opioid.py` → `run_series_ed.py`
+  - [ ] Update cohort table: target column `fall_injury_any` / `ed_event`
+- [ ] `2_feature_importance.ipynb` — update cohort name and target variable references
+- [ ] `3_model_train_shap_ffa.ipynb` — update cohort names, S3 output paths, remove dashboard step
+- [ ] `2_create_cohort/cohort_workflow.ipynb` — update cohort name, target column
+- [ ] `3a_feature_importance/feature_importance_cohort_runner.ipynb` — update target variable: `fall_injury_any` / `ed_event`
+- [ ] `3b_feature_importance_eda/step3b_interactive_analysis_cohort*.ipynb` — update cohort name references
+- [ ] `5_pgx_analysis/pgx_cohort_runner.ipynb` — update drug categories for fall-risk medications
+- [ ] `6_final_model/build_train_test_datasets.ipynb` — update cohort names and S3 paths
+- [ ] `6_final_model/final_model_cohort_runner.ipynb` — update cohort names and target variable
+- [ ] `7_shap_analysis/shap_cohort_runner.ipynb` — update cohort name and target variable
+
 ---
 
 ## 🔬 Research Questions (DTW / BupaR)
@@ -213,6 +274,7 @@ Gold:   s3://<bucket>/gold/cpic_falls/final_model/
 |--------|-------------|----------------------------|
 | Target 1 | Opioid-related ED visit | **Falls** (`fall_injury_any`: injury S00–S99/T07/T14/T20–T34/T79 + external cause W00–W19) |
 | Target 2 | Polypharmacy/geriatric ED visit | **ED visit** (same logic) |
+| **Age bands** | Full set (0–12 through 85–114) | **65–74 and 75–84 only** (falls risk is clinically concentrated in the 65–85 population) |
 | Exclusions | Admin codes only | + Z91.81 (fall history) + CPT 1100F + R29.6 (moved to feature) + T80–T88 (surgical complications) |
 | PGx focus | Opioid metabolism (CYP2D6, CYP3A4) | Fall-risk drugs (CNS, antihypertensives, psychotropics) |
 | Dashboard | Yes (serverless Lambda) | No (analysis only) |

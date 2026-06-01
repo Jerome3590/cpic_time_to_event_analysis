@@ -3,9 +3,36 @@
 Creates the final analysis cohort with falls and ED visit targets.
 
 ## Cohort Definition
+
 - **Index date**: First qualifying `fall_injury_any` event OR ED visit per patient per age band
 - **Lookback**: 12 months of prior claims for feature engineering
 - **Exclusions**: Patients with < 90 days of enrollment prior to index date
+- **Age bands**: **65–74** and **75–84** only (falls risk is clinically concentrated in the 65–85 population)
+- **Event years**: 2016, 2017, 2018, 2019
+
+```mermaid
+flowchart TD
+    A([Virginia APCD Claims]) --> B[Step 1a: Bronze → Silver → Gold\nParquet conversion · Imputation · Cleaning]
+    B --> C[Step 1b: Event Filter\nfall_injury_any · ed_event · auxiliary flags]
+
+    C --> D{Age band\nrestriction}
+    D -->|65–74| E1[Cohort: falls / 65–74]
+    D -->|75–84| E2[Cohort: falls / 75–84]
+    D -->|65–74| F1[Cohort: ed / 65–74]
+    D -->|75–84| F2[Cohort: ed / 75–84]
+
+    E1 & E2 --> G1[fall_injury_any cohort parquets\ncohort_name=falls · event_year=Y · age_band=Z]
+    F1 & F2 --> G2[ed_event cohort parquets\ncohort_name=ed · event_year=Y · age_band=Z]
+
+    G1 & G2 --> H[Step 3a: MC-CV Feature Importance]
+    H --> I[Step 3b: BupaR Post-target EDA]
+    I --> J[Step 4: Model Data\nmodel_events.parquet]
+    J --> K[Steps 5–8: PGx · Final Model · SHAP · FFA]
+
+    style D fill:#fff3cd,stroke:#ffc107
+    style G1 fill:#d4edda,stroke:#28a745
+    style G2 fill:#d4edda,stroke:#28a745
+```
 
 ## Target Columns
 
@@ -40,6 +67,5 @@ Creates the final analysis cohort with falls and ED visit targets.
 - [ ] Copy `2_step2_data_quality_qa.py` and update outcome references
 - [ ] Copy `3_cohort_final_metrics.py`
 - [ ] Update `final_cohort_schema.json` with new target and auxiliary columns
-- [ ] Review and update age band parameters for falls-risk population
-  - Falls risk is highest in elderly (65+) — consider adjusting age band granularity
+- [x] **Age band restriction: 65–74 and 75–84 only** (falls risk is clinically concentrated in the 65–85 population)
 - [ ] Run on EC2 (32-core/1TB instance for full Virginia APCD)
