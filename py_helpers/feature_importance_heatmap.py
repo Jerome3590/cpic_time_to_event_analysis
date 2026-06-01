@@ -16,9 +16,9 @@ import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Canonical age-band order for heatmap columns (0-12 through 85-114)
+# Canonical age-band order for heatmap columns
 CANONICAL_AGE_BAND_ORDER = [
-    "0-12", "13-24", "25-44", "45-54", "55-64", "65-74", "75-84", "85-114"
+    "65-74", "75-84"
 ]
 
 # Model identifiers for dashboard filter (aggregated = cross-model; others = per-model CSVs)
@@ -565,7 +565,7 @@ def create_aggregated_fi_heatmap(
 
     Args:
         cohort: Cohort name (e.g. falls, ed).
-        age_bands: List of age bands (e.g. ["13-24", "25-44"]).
+        age_bands: List of age bands (e.g. ["65-74", "75-84"]).
         outputs_base: Base directory for heatmap outputs (e.g. 3a_feature_importance). Input CSVs are from Step 3b only.
         top_n: Number of top features per age band to include in union (default 200). None = all with importance > 0.
         importance_col: Column name for importance (default: first of scaled_importance_mean,

@@ -16,7 +16,7 @@ Usage:
     logger = setup_pipeline_logger(
         step_name="4_model_data",
         cohort="falls",
-        age_band="25-44",
+        age_band="65-74",
         script_name="create_model_data"
     )
     
@@ -189,7 +189,7 @@ def setup_pipeline_logger(
     Args:
         step_name: Pipeline step identifier (e.g., "4_model_data", "5_bupar")
         cohort: Cohort name (e.g., "falls")
-        age_band: Age band (e.g., "25-44")
+        age_band: Age band (e.g., "65-74")
         script_name: Script/module name for log filename
         log_dir: Optional log directory (default: 9_dashboard_visuals/logs/{step_name})
         console_level: Logging level for console output (default: INFO)

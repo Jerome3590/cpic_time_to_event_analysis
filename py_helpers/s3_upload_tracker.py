@@ -659,7 +659,7 @@ def print_upload_status(tracker_file: str = "status/s3_upload_tracker.json") -> 
     # Check for missing uploads (standard configuration)
     tracker.print_missing_uploads(
         expected_cohorts=["falls", "ed"],
-        expected_age_bands=["1-0-12", "1-13-24", "1-25-44", "1-45-54", "1-55-64", "1-65-74", "1-75-84", "1-85-114"],
+        expected_age_bands=["65-74", "75-84"],
         expected_viz_types=["bupar", "dtw", "fpgrowth"],
         expected_item_types=["drug_name"]  # Research focus: drugs only for FP-Growth
     )

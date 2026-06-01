@@ -171,7 +171,7 @@ def _parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
         description="Idempotent Step 6 upload to s3://…/gold/final_model/ (explicit keys, no sync)."
     )
     p.add_argument("--cohort", help="Cohort name (e.g. falls)")
-    p.add_argument("--age-band", help="Age band with hyphens (e.g. 13-24)")
+    p.add_argument("--age-band", help="Age band with hyphens (e.g. 65-74)")
     p.add_argument(
         "--all",
         action="store_true",

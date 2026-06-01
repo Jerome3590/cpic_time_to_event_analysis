@@ -28,13 +28,10 @@ from py_helpers.checkpoint_utils import (  # noqa: E402
     check_step_checkpoint_exists,
     clear_step_checkpoints,
 )
-from py_helpers.constants import AGE_BANDS, age_band_uses_f1120_target  # noqa: E402
+from py_helpers.constants import AGE_BANDS  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
-
-# Default age bands for opioid_ed (F1120 target)
-OPIOID_ED_AGE_BANDS = [ab for ab in AGE_BANDS if age_band_uses_f1120_target(ab)]
 
 
 def main():
@@ -51,7 +48,7 @@ def main():
         "--cohort",
         type=str,
         required=True,
-        help="Cohort name (e.g. opioid_ed, non_opioid_ed)",
+        help="Cohort name (e.g. falls, ed)",
     )
     parser.add_argument(
         "--age-band",
@@ -59,7 +56,7 @@ def main():
         action="append",
         default=None,
         dest="age_bands",
-        help="Age band(s) to clear (e.g. 13-24). If not set, uses all F1120 bands for opioid_ed else all AGE_BANDS.",
+        help="Age band(s) to clear (e.g. 65-74). If not set, uses all active AGE_BANDS.",
     )
     parser.add_argument(
         "--dry-run",
@@ -70,9 +67,6 @@ def main():
 
     if args.age_bands:
         age_bands = args.age_bands
-    elif args.cohort == "opioid_ed":
-        age_bands = OPIOID_ED_AGE_BANDS
-        logger.info("Using opioid_ed F1120 age bands: %s", age_bands)
     else:
         age_bands = AGE_BANDS
         logger.info("Using all age bands: %s", age_bands)

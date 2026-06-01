@@ -684,7 +684,7 @@ def validate_event_year_consistency(conn, logger, age_band, event_year):
 
 def validate_cohort_name(cohort_name):
     """Validate that cohort_name is one of the known values."""
-    valid_cohorts = ['falls', 'ed_non_opioid']
+    valid_cohorts = ['falls', 'ed']
     if cohort_name not in valid_cohorts:
         raise ValueError(f"Invalid cohort_name: {cohort_name}. Must be one of: {valid_cohorts}")
     return True

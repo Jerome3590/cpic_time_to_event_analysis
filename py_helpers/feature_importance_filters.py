@@ -58,7 +58,7 @@ def is_leakage_feature(feature_name: str) -> bool:
         return True
     if "dtw" in s.lower():
         return True
-    if "F1120" in s.upper():
+    if "fall_injury" in s.lower() or "ed_event" in s.lower():
         return True
     return False
 

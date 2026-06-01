@@ -103,8 +103,8 @@ def run(profile: str | None, show_outputs: bool) -> None:
     # Expected (cohort, age_band) count for reference
     expected = sum(len(bands) for bands in REQUIRED_COHORTS.values())
     print("  Expected cohort/age_band combinations (REQUIRED_COHORTS): {}".format(expected))
-    print("    opioid_ed: {}, non_opioid_ed: {}".format(
-        len(REQUIRED_COHORTS["opioid_ed"]), len(REQUIRED_COHORTS["non_opioid_ed"])))
+    print("    falls: {}, ed: {}".format(
+        len(REQUIRED_COHORTS["falls"]), len(REQUIRED_COHORTS["ed"])))
     print()
 
     # ----- 2. Optional: pgxdatalake outputs -----

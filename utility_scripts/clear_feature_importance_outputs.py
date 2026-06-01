@@ -41,14 +41,10 @@ if str(PROJECT_ROOT) not in sys.path:
 from py_helpers.constants import (  # noqa: E402
     AGE_BANDS,
     age_band_to_fname,
-    age_band_uses_f1120_target,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
-
-# Polypharmacy age bands (non_opioid_ed)
-POLYPHARMACY_AGE_BANDS = [ab for ab in AGE_BANDS if not age_band_uses_f1120_target(ab)]
 
 
 def list_local_files_to_remove(cohort: str, age_bands: list[str]) -> list[Path]:
@@ -121,14 +117,14 @@ def delete_s3_prefix(cohort: str, age_band: str, dry_run: bool) -> int:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Clear Step 3a feature importance outputs for a cohort so you can rerun (e.g. drug-only non_opioid_ed)."
+        description="Clear Step 3a feature importance outputs for a cohort so you can rerun."
     )
-    parser.add_argument("--cohort", required=True, help="Cohort name (e.g. non_opioid_ed)")
+    parser.add_argument("--cohort", required=True, help="Cohort name (e.g. falls, ed)")
     parser.add_argument(
         "--age-band",
         action="append",
         dest="age_bands",
-        help="Age band(s) to clear (e.g. 65-74). Default: all polypharmacy bands for non_opioid_ed, all bands for opioid_ed.",
+        help="Age band(s) to clear (e.g. 65-74). Default: all active age bands.",
     )
     parser.add_argument(
         "--s3",
@@ -140,9 +136,6 @@ def main():
 
     if args.age_bands:
         age_bands = args.age_bands
-    elif args.cohort == "non_opioid_ed":
-        age_bands = POLYPHARMACY_AGE_BANDS
-        logger.info("Using polypharmacy age bands: %s", age_bands)
     else:
         age_bands = AGE_BANDS
         logger.info("Using all age bands: %s", age_bands)

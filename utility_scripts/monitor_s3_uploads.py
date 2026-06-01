@@ -51,8 +51,8 @@ try:
     from py_helpers.constants import REQUIRED_COHORTS
 except ImportError:
     REQUIRED_COHORTS = {
-        "opioid_ed": ['0-12', '13-24', '25-44', '45-54', '55-64', '65-74', '75-84', '85-114'],
-        "non_opioid_ed": ['0-12', '13-24', '25-44', '45-54', '55-64', '65-74', '75-84', '85-114']
+        "falls": ['65-74', '75-84'],
+        "ed": ['65-74', '75-84']
     }
 
 # S3 Configuration
@@ -373,7 +373,7 @@ def main():
                        help="Continuously monitor for changes")
     
     # Filters
-    parser.add_argument("--cohort", choices=["opioid_ed", "non_opioid_ed"],
+    parser.add_argument("--cohort", choices=["falls", "ed"],
                        help="Check specific cohort")
     parser.add_argument("--age-band",
                        help="Check specific age band (e.g., 1-0-12)")
@@ -462,7 +462,7 @@ def main():
         print("\nExample usage:")
         print("  python monitor_s3_uploads.py --check-all")
         print("  python monitor_s3_uploads.py --watch --interval 30")
-        print("  python monitor_s3_uploads.py --cohort opioid_ed --age-band 1-0-12")
+        print("  python monitor_s3_uploads.py --cohort falls --age-band 65-74")
         print("  python monitor_s3_uploads.py --find-missing --output status/missing_uploads.json")
 
 
