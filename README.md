@@ -220,25 +220,29 @@ flowchart LR
 - [ ] Update `run_cohort_analysis.R`: falls/ED target columns
 - [ ] Keep MC-CV, BupaR, and DTW logic intact
 
-### Notebook Adaptations (copied from pgx-analysis — needs updating)
-- [ ] `0_config_and_pipeline.ipynb`
-  - [ ] Update `PROJECT_OUTPUT_DIRS`: replace `cohort_name=opioid_ed` / `cohort_name=non_opioid_ed` with `cohort_name=falls` / `cohort_name=ed`; remove `10_risk_dashboard/outputs`
-  - [ ] Update pipeline run guide cell: cohort names, remove Steps 9–10 (no dashboard/deploy)
-  - [ ] Remove Docker / ECR / API Gateway cells (no Lambda in this project)
-  - [ ] Update S3 checkpoint bucket/prefix to cpic project values
-- [ ] `1_cohort_workflow.ipynb`
-  - [ ] Update cohort series markdown: OPIOID_ED → FALLS, POLYPHARMACY → ED
-  - [ ] Update script references: `run_series_opioid_ed.py` → `run_series_falls.py`, `run_series_ed_non_opioid.py` → `run_series_ed.py`
-  - [ ] Update cohort table: target column `fall_injury_any` / `ed_event`
-- [ ] `2_feature_importance.ipynb` — update cohort name and target variable references
-- [ ] `3_model_train_shap_ffa.ipynb` — update cohort names, S3 output paths, remove dashboard step
-- [ ] `2_create_cohort/cohort_workflow.ipynb` — update cohort name, target column
-- [ ] `3a_feature_importance/feature_importance_cohort_runner.ipynb` — update target variable: `fall_injury_any` / `ed_event`
-- [ ] `3b_feature_importance_eda/step3b_interactive_analysis_cohort*.ipynb` — update cohort name references
-- [ ] `5_pgx_analysis/pgx_cohort_runner.ipynb` — update drug categories for fall-risk medications
-- [ ] `6_final_model/build_train_test_datasets.ipynb` — update cohort names and S3 paths
-- [ ] `6_final_model/final_model_cohort_runner.ipynb` — update cohort names and target variable
-- [ ] `7_shap_analysis/shap_cohort_runner.ipynb` — update cohort name and target variable
+### Notebook Adaptations ✅ COMPLETE
+- [x] `0_config_and_pipeline.ipynb`
+  - [x] Update `PROJECT_OUTPUT_DIRS`: `cohort_name=falls` / `cohort_name=ed`; removed `10_risk_dashboard/outputs`
+  - [x] Update pipeline run guide cell: cohort names, removed Steps 9–10
+  - [x] Remove Docker / ECR / API Gateway cells
+  - [x] Update S3 checkpoint bucket/prefix to cpic project values
+- [x] `1_cohort_workflow.ipynb`
+  - [x] Update cohort series markdown: OPIOID_ED → FALLS, POLYPHARMACY → ED
+  - [x] Update script references: `run_series_falls.py`, `run_series_ed.py`
+  - [x] Update cohort table: target column `fall_injury_any` / `ed_event`
+- [x] `2_feature_importance.ipynb` — cohort names, targets, age bands 65-74/75-84, S3 bucket var
+- [x] `3_model_train_shap_ffa.ipynb` — cohort names, S3 paths, removed dashboard cells
+- [x] `2_create_cohort/cohort_workflow.ipynb` — cohort names, age bands 65-74/75-84, mermaid diagram
+- [x] `3a_feature_importance/feature_importance_cohort_runner.ipynb` — falls/ed targets, 65-74/75-84 only, replaced R code cells
+- [x] `3b_feature_importance_eda/step3b_interactive_analysis_cohort1.ipynb` → falls / 65–74
+- [x] `3b_feature_importance_eda/step3b_interactive_analysis_cohort2.ipynb` → falls / 75–84
+- [x] `3b_feature_importance_eda/step3b_interactive_analysis_cohort3.ipynb` → ed / 65–74
+- [x] `3b_feature_importance_eda/step3b_interactive_analysis_cohort4.ipynb` → ed / 75–84
+- [x] `3b_feature_importance_eda/step3b_interactive_analysis_cohort5-7.ipynb` → marked SUPERSEDED (delete)
+- [x] `5_pgx_analysis/pgx_cohort_runner.ipynb` — falls/ed cohorts, 65-74/75-84, fixed project root
+- [x] `6_final_model/build_train_test_datasets.ipynb` — cohort names, 65-74/75-84, target columns
+- [x] `6_final_model/final_model_cohort_runner.ipynb` — falls/ed, 65-74/75-84, fixed project root
+- [x] `7_shap_analysis/shap_cohort_runner.ipynb` — falls/ed, 65-74/75-84, fixed project root
 
 ---
 
