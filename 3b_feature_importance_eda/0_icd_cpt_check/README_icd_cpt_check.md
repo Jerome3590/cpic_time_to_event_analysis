@@ -26,7 +26,7 @@ python analyze_code_groups.py <cohort> <age_band>
 
 **Example:**
 ```bash
-python analyze_code_groups.py opioid_ed 13-24
+python analyze_code_groups.py falls 13-24
 ```
 
 **Outputs:**
@@ -63,7 +63,7 @@ Document findings in:
 **All ICD chapters A-Y are 100% informative** - No administrative codes identified in these chapters.
 
 **Only Z chapter contains administrative codes:**
-- **Total Z codes:** 353 (for opioid_ed 13-24)
+- **Total Z codes:** 353 (for falls 13-24)
 - **Administrative:** 4 codes (Z00.00, Z00.01, Z00.121, Z00.129)
 - **Informative:** 349 codes
 - **Classification:** Mixed
@@ -79,7 +79,7 @@ Document findings in:
 **All CPT ranges 00000-89999 are 100% informative** - No administrative codes identified in these ranges.
 
 **Only 90000-99999 range contains administrative codes:**
-- **Total codes in range:** 561 (for opioid_ed 13-24)
+- **Total codes in range:** 561 (for falls 13-24)
 - **Administrative:** 1 code (99024-99027 series)
 - **Informative:** 560 codes
 - **Classification:** Mixed
@@ -112,7 +112,7 @@ This will:
 Run analysis directly:
 
 ```bash
-python analyze_code_groups.py opioid_ed 13-24
+python analyze_code_groups.py falls 13-24
 ```
 
 ## Output Files

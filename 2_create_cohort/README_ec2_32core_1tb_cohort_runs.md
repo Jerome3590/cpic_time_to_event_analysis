@@ -11,7 +11,7 @@ Optimized for a **32 vCPU / 1TB RAM EC2 instance** with **NVMe**.
 
 Both cohorts run **concurrently** (one process each). Within each job, partitions run **sequentially** in heavy-first order (`65-74` before `75-84`). Total: 16 partitions.
 
-> **Much lighter than the original pgx-analysis run** (8 age bands × 2 cohorts = 128 partitions). Expect the full run to complete in a fraction of the original time.
+> **Much lighter than the original cpic_time_to_event_analysis run** (8 age bands × 2 cohorts = 128 partitions). Expect the full run to complete in a fraction of the original time.
 
 ## 0) Summary of the required updates
 
@@ -64,13 +64,13 @@ Total: 28 threads — leaves 4 cores for OS + S3 uploads.
 
 ---
 
-## 2) EC2 setup (same instance as pgx-analysis)
+## 2) EC2 setup (same instance as cpic_time_to_event_analysis)
 
-This project runs on the **same EC2 instance** used for pgx-analysis. The existing
+This project runs on the **same EC2 instance** used for cpic_time_to_event_analysis. The existing
 `jupyter-env`, NVMe mounts, AWS credentials, and user (`pgx3874`) carry over.
 
 ```bash
-# Clone repo alongside pgx-analysis
+# Clone repo alongside cpic_time_to_event_analysis
 git clone https://github.com/Jerome3590/cpic_time_to_event_analysis.git /home/pgx3874/cpic_time_to_event_analysis
 cd /home/pgx3874/cpic_time_to_event_analysis
 
@@ -82,7 +82,7 @@ export CPIC_S3_BUCKET=pgxdatalake
 export CPIC_TOTAL_WORKERS=2
 ```
 
-> NVMe (`/mnt/nvme/duckdb_tmp`, `/mnt/nvme/cohorts`) and AWS credentials are already configured from the pgx-analysis run. No changes needed.
+> NVMe (`/mnt/nvme/duckdb_tmp`, `/mnt/nvme/cohorts`) and AWS credentials are already configured from the cpic_time_to_event_analysis run. No changes needed.
 
 ---
 

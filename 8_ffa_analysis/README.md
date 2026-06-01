@@ -33,13 +33,13 @@ FFA Analysis transforms opaque models into interpretable symbolic rules suitable
   - **Multi-Feature Interaction Analysis**: Tests combinations of features (pairs, triplets, etc.) to detect synergies/antagonisms
     - **Default Configuration**: Enabled by default (`enable_interaction_analysis: True`)
     - **Cohort-Specific Interaction Sizes**:
-      - **First cohort (`opioid_ed`)**: Tests pairs only (size 2)
-      - **Second cohort (`non_opioid_ed`/`polypharmacy`)**: Tests pairs and triplets (size 2 and 3)
-      - Prevents combinatorial explosion for first cohort while allowing higher-order interactions for polypharmacy
+      - **First cohort (`falls`)**: Tests pairs only (size 2)
+      - **Second cohort (`ed`)**: Tests pairs and triplets (size 2 and 3)
+      - Prevents combinatorial explosion for first cohort while allowing higher-order interactions for ed cohort
     - **Feature Selection**: Includes ALL features with SHAP > 0 OR FFA > 0 OR causal > 0 (no top_k limit)
       - Features sorted by combined importance (SHAP + causal + FFA) for prioritization
       - Safe for drug-only features where all drugs with any importance signal should be tested
-    - **Drug Interaction Calculator**: For `non_opioid_ed` cohort (drug-only features), this serves as a drug interaction causal calculator for ED visits
+    - **Drug Interaction Calculator**: For `ed` cohort (drug-only features), this serves as a drug interaction causal calculator for ED visits
       - Identifies which drug combinations causally increase ED visit risk
       - Measures synergy/antagonism effects (positive = synergy, negative = antagonism)
       - Output: `interaction_analysis.parquet` with drug-drug and drug-drug-drug interaction effects
@@ -92,7 +92,7 @@ The FFA pipeline follows three phases:
 
 ### XGBoost JSON → DataFrame → Rules (Current Implementation)
 
-For the leakage-filtered final models (e.g., `opioid_ed / 13-24`), we now use a **DataFrame-centric** path for XGBoost FFA:
+For the leakage-filtered final models (e.g., `falls / 65-74`), we now use a **DataFrame-centric** path for XGBoost FFA:
 
 - **Model export (step 6_final_model)**:
   - After MC-CV and final refit, `run_final_model.py` exports an FFA-friendly JSON at:

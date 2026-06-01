@@ -15,16 +15,16 @@ For each `(cohort, age_band)` combination, the following files should be generat
 
 | File Pattern | Description | Required |
 |--------------|-------------|----------|
-| `{cohort}_{age_band}_train_target_pre_f1120_patient_features_bupar.csv` | Pre-F1120 per-patient features | ✅ Yes |
-| `{cohort}_{age_band}_train_target_post_f1120_patient_features_bupar.csv` | Post-F1120 per-patient features | ✅ Yes |
-| `{cohort}_{age_band}_train_target_time_to_f1120_features_bupar.csv` | Time-to-F1120 features | ✅ Yes |
+| `{cohort}_{age_band}_train_target_pre_target_patient_features_bupar.csv` | Pre-target per-patient features | ✅ Yes |
+| `{cohort}_{age_band}_train_target_post_target_patient_features_bupar.csv` | Post-target per-patient features | ✅ Yes |
+| `{cohort}_{age_band}_train_target_time_to_target_features_bupar.csv` | Time-to-target features | ✅ Yes |
 | `{cohort}_{age_band}_train_target_traces_bupar.csv` | All trace sequences | ✅ Yes |
 | `{cohort}_{age_band}_train_target_traces_top_bupar.csv` | Top (frequent) sequences | ✅ Yes |
 | `{cohort}_{age_band}_train_target_traces_rare_bupar.csv` | Rare (unique) sequences | ✅ Yes |
-| `{cohort}_{age_band}_train_target_pre_f1120_traces_top_bupar.csv` | Pre-F1120 top sequences | ⚠️ Conditional |
-| `{cohort}_{age_band}_train_target_pre_f1120_traces_rare_bupar.csv` | Pre-F1120 rare sequences | ⚠️ Conditional |
-| `{cohort}_{age_band}_train_target_post_f1120_traces_top_bupar.csv` | Post-F1120 top sequences | ⚠️ Conditional |
-| `{cohort}_{age_band}_train_target_post_f1120_traces_rare_bupar.csv` | Post-F1120 rare sequences | ⚠️ Conditional |
+| `{cohort}_{age_band}_train_target_pre_target_traces_top_bupar.csv` | Pre-target top sequences | ⚠️ Conditional |
+| `{cohort}_{age_band}_train_target_pre_target_traces_rare_bupar.csv` | Pre-target rare sequences | ⚠️ Conditional |
+| `{cohort}_{age_band}_train_target_post_target_traces_top_bupar.csv` | Post-target top sequences | ⚠️ Conditional |
+| `{cohort}_{age_band}_train_target_post_target_traces_rare_bupar.csv` | Post-target rare sequences | ⚠️ Conditional |
 | `{cohort}_{age_band}_train_target_process_matrix_bupar.csv` | Process flow matrix | ⚠️ Optional |
 
 #### Feature Engineering Files (`outputs/feature_engineering/`)
@@ -41,18 +41,18 @@ For each `(cohort, age_band)` combination, the following files should be generat
 **Format:** CSV with `mi_person_key` column for joining with `model_data` in final model step.
 
 **Workflow (All R-based for consistency):**
-1. R script (`create_bupar_outputs_opioid_ed.R`) generates bupaR outputs (pre/post/time features, traces)
+1. R script (`create_bupar_outputs_falls.R`) generates bupaR outputs (pre/post/time features, traces)
 2. `create_sequence_features.R` creates sequence features from top/rare traces → saves `sequence_features_{cohort}_{age_band}.csv`
 3. `add_bupar_features_to_model_data.R` merges all features (pre/post/time + sequence) → saves `bupaR_added_features_{cohort}_{age_band}.csv`
 
 **Note:** All scripts in this directory are R-based to ensure consistency and enable execution in a single R Jupyter notebook kernel without switching between languages.
 
 **Example Files:**
-- `outputs/opioid_ed/0_12/eventlog_target.csv`
-- `outputs/opioid_ed/0_12/eventlog_sankey.csv`
-- `outputs/opioid_ed/0_12/eventlog_pre_target.csv`
-- `outputs/opioid_ed/0_12/process_features.csv`
-- `outputs/opioid_ed/0_12/trace_statistics.csv`
+- `outputs/falls/0_12/eventlog_target.csv`
+- `outputs/falls/0_12/eventlog_sankey.csv`
+- `outputs/falls/0_12/eventlog_pre_target.csv`
+- `outputs/falls/0_12/process_features.csv`
+- `outputs/falls/0_12/trace_statistics.csv`
 
 #### Visualization Files (`outputs/plots/`)
 
@@ -62,12 +62,12 @@ For each `(cohort, age_band)` combination, the following files should be generat
 | `{cohort}_{age_band}_sankey_diagram.png` | Sankey flow diagram (target vs control) | ✅ Yes |
 | `{cohort}_{age_band}_trace_frequency.png` | Most frequent traces | ⚠️ Optional |
 | `{cohort}_{age_band}_throughput_time.png` | Throughput time distribution | ⚠️ Optional |
-| `{cohort}_{age_band}_pre_post_comparison.png` | Pre/post target comparison (opioid_ed) | ⚠️ Conditional |
+| `{cohort}_{age_band}_pre_post_comparison.png` | Pre/post target comparison (falls) | ⚠️ Conditional |
 
 **Example Files:**
-- `outputs/plots/opioid_ed_0_12_process_map.png`
-- `outputs/plots/opioid_ed_0_12_sankey_diagram.png`
-- `outputs/plots/opioid_ed_0_12_pre_post_comparison.png`
+- `outputs/plots/falls_0_12_process_map.png`
+- `outputs/plots/falls_0_12_sankey_diagram.png`
+- `outputs/plots/falls_0_12_pre_post_comparison.png`
 
 ### Completion Checklist
 
@@ -93,7 +93,7 @@ The main input is an event log table (long format) from `model_events.parquet`:
 |---------------|---------------|-------------|-----------------------|
 | 12345         | DRUG:ACETAMINOPHEN  | 2020-01-01  | ...                   |
 | 12345         | DRUG:IBUPROFEN      | 2020-01-02  | ...                   |
-| 12345         | ICD:F1120           | 2020-01-15  | ...                   |
+| 12345         | ICD:W19.XXXA        | 2020-01-15  | ...                   |
 | 12345         | CPT:80307           | 2020-01-20  | ...                   |
 
 - **Source (Step 3b):** Built by `create_bupar_input_from_cohort.py` from cohort + 3a FI. Path: `3b_feature_importance_eda/outputs/cohort_name={cohort}/age_band={age_band}/model_events.parquet` (synced to S3 `gold/cohorts_model_data/cohort_name={cohort}/age_band={age_band}/`). No 4_model_data (that is created after target leakage removal).
@@ -152,8 +152,8 @@ DuckDB is used throughout the BupaR workflow for speed and to keep heavy work ou
 | **Post-target analysis** | `create_bupar_post_target_analysis.py` | Pre/post target analytics and feature tables are computed in DuckDB via SQL over `model_events.parquet`. |
 
 **Pre/post target split in DuckDB:**
-- **opioid_ed:** One DuckDB query returns long-form events plus `first_target_date` (first F1120 per patient via a CTE). R filters `event_date < first_target_date` for pre-F1120 and `event_date > first_target_date` for post-F1120, so the split no longer uses event indices in R.
-- **non_opioid_ed:** A small DuckDB query returns `(mi_person_key, first_target_date)` using `first_ed_non_opioid_date` or `hcg_line`; that is joined to the long table and used for the same pre/post split.
+- **falls:** One DuckDB query returns long-form events plus `first_target_date` (`first_fall_date` per patient via a CTE). R filters `event_date < first_target_date` for pre-target and `event_date > first_target_date` for post-target.
+- **ed:** A DuckDB query returns `(mi_person_key, first_target_date)` using `first_ed_date`; that is joined to the long table and used for the same pre/post split.
 
 **Control cohort path alignment:**
 - Target and control `model_events` paths use the same layout: `outputs/cohort_name={cohort}/age_band={age_band}/model_events.parquet` and S3 `gold/cohorts_model_data/cohort_name={cohort}/...`. Legacy `cohorts/input_model_data/...` remains as a fallback.

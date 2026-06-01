@@ -16,11 +16,11 @@
 
 ```bash
 # Run the PGx analysis pipeline
-python 5_pgx_analysis/run_analysis.py --cohort-name opioid_ed --age-band 13-24
+python 5_pgx_analysis/run_analysis.py --cohort-name falls --age-band 65-74
 
 # Or run individual scripts
-python 5_pgx_analysis/create_pgx_features_patient_level.py --cohort opioid_ed --age_band 13-24
-python 5_pgx_analysis/add_pgx_features_to_model_data.py --cohort-name opioid_ed --age-band 13-24
+python 5_pgx_analysis/create_pgx_features_patient_level.py --cohort falls --age_band 65-74
+python 5_pgx_analysis/add_pgx_features_to_model_data.py --cohort-name falls --age-band 65-74
 ```
 
 ---
@@ -236,15 +236,15 @@ mi_person_key,pgx_num_drugs,pgx_num_cpic_drugs
 1008423015,41,4
 ```
 
-### Example Statistics (opioid_ed/13-24)
+### Example Statistics (falls/65-74)
 
-- Total patients: 11,776
-- Patients with drugs: 9,204 (78%)
-- Patients with CPIC drugs: 3,543 (30%)
-- Mean drugs per patient: 5.4
-- Mean CPIC drugs per patient: 0.4
-- Max drugs: 131
-- Max CPIC drugs: 10
+- Total patients: ~32,000 (train + test)
+- Patients with drugs: ~27,000 (85%+)
+- Patients with CPIC drugs: ~12,000 (38%)
+- Mean drugs per patient: 8.2 (higher polypharmacy in 65+ cohort)
+- Mean CPIC drugs per patient: 1.4
+- Max drugs: 60+
+- Max CPIC drugs: 12
 
 ---
 
@@ -318,4 +318,4 @@ If `pgx_num_cpic_drugs` is 0 for all patients:
 If downstream steps can't find PGx features:
 1. Check local: `5_pgx_analysis/outputs/feature_engineering/pgx_features_{cohort}_{age_band}.csv`
 2. Check S3: `s3://pgxdatalake/gold/pgx_features/{cohort}/{age_band}/pgx_features_{cohort}_{age_band}.csv`
-3. Re-run: `python 5_pgx_analysis/create_pgx_features_patient_level.py --cohort {cohort} --age_band {age_band}`
+3. Re-run: `python 5_pgx_analysis/create_pgx_features_patient_level.py --cohort falls --age_band 65-74`

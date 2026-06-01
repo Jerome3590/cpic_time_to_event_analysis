@@ -199,11 +199,11 @@ See `final_model.ipynb` for the full Python workflow:
 
 - `final_model.ipynb`: MC-CV comparison, Optuna tuning, OOF Platt calibration, and final model export.
 - `build_final_cohort_model_features.py`: Builds the final feature table (n_events, item_*, PGx, etc.). Feature engineering never generates trajectory/sequence/itemset.
-  - For `non_opioid_ed` cohort: Filters to drug-only item features (excludes ICD/CPT codes for polypharmacy analysis)
+  - For `ed` cohort: Filters to drug-only item features (excludes ICD/CPT codes; focuses on medication patterns relevant to ED outcomes)
 - `remove_target_leakage.py`: Removes target leakage features; DTW and any trajectory/sequence/itemset removed defensively (we do not produce those columns).
   - Validates item_* features against event data to detect post-target leakage
   - Removes non-predictive markers (SUBOXONE, BUPRENORPHINE, F1123)
-  - For `non_opioid_ed` cohort: Removes any ICD/CPT features that may have slipped through
+  - For `ed` cohort: Removes any ICD/CPT features that may have slipped through
 - `prepare_train_test_s3.py`: Splits final feature table into train/test sets using temporal validation and uploads to S3.
 - `train_final_model.py`: Trains final model with MC-CV comparison across CatBoost, XGBoost, and XGBoost RF.
 - `analyze_trigger_features.py`: Analyzes trajectory and pre-event features for triggering/thresholding, calculates cohort-specific percentiles and suggested thresholds.
@@ -246,23 +246,23 @@ s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/
 **Usage:**
 ```bash
 # Prepare and upload train/test datasets
-python 6_final_model/prepare_train_test_s3.py --cohort-name opioid_ed --age-band 0-12
+python 6_final_model/prepare_train_test_s3.py --cohort-name falls --age-band 65-74
 
 # Load from local inputs folder (recommended)
 import pandas as pd
 
-train_df = pd.read_parquet('6_final_model/inputs/opioid_ed/0_12/model_train/final_features.parquet')
-test_df = pd.read_parquet('6_final_model/inputs/opioid_ed/0_12/model_test/final_features.parquet')
+train_df = pd.read_parquet('6_final_model/inputs/falls/65_74/model_train/final_features.parquet')
+test_df = pd.read_parquet('6_final_model/inputs/falls/65_74/model_test/final_features.parquet')
 
 # Or load from S3 inputs location (for distributed training)
 import s3fs
 s3 = s3fs.S3FileSystem()
-train_df = pd.read_parquet('s3://pgxdatalake/gold/final_model/opioid_ed/0-12/inputs/model_train/final_features.parquet', filesystem=s3)
-test_df = pd.read_parquet('s3://pgxdatalake/gold/final_model/opioid_ed/0-12/inputs/model_test/final_features.parquet', filesystem=s3)
+train_df = pd.read_parquet('s3://pgxdatalake/gold/final_model/falls/65-74/inputs/model_train/final_features.parquet', filesystem=s3)
+test_df = pd.read_parquet('s3://pgxdatalake/gold/final_model/falls/65-74/inputs/model_test/final_features.parquet', filesystem=s3)
 
 # Or load from local inputs folder
-train_df = pd.read_parquet('6_final_model/inputs/opioid_ed/0_12/model_train/final_features.parquet')
-test_df = pd.read_parquet('6_final_model/inputs/opioid_ed/0_12/model_test/final_features.parquet')
+train_df = pd.read_parquet('6_final_model/inputs/falls/65_74/model_train/final_features.parquet')
+test_df = pd.read_parquet('6_final_model/inputs/falls/65_74/model_test/final_features.parquet')
 ```
 
 ## Model Visualizations
@@ -276,8 +276,8 @@ After extracting feature importances with `extract_final_feature_importance.py`,
 ```bash
 # Create all visualization plots
 python 6_final_model/create_model_plots.py \
-    --cohort-name opioid_ed \
-    --age-band 0-12 \
+    --cohort-name falls \
+    --age-band 65-74 \
     --event-year 2019
 ```
 
@@ -306,17 +306,17 @@ The script creates **6 publication-quality plots** plus **2 mapping visualizatio
    - Categories: FP-Growth itemsets, BupaR features, PGx features, Pre-event counts, etc.
 
 5. **Drug Sequence Frequency Chart** (`*_drug_sequence_frequency.png`)
-   - Horizontal bar chart showing top 20 most frequent drug sequences (pre-F1120)
+   - Horizontal bar chart showing top 20 most frequent drug sequences (pre-target)
    - Extracted from BupaR traces
    - Shows drug sequences as "Drug1 → Drug2 → Drug3" format
    - Frequency represents number of patients with that sequence
 
 6. **Drug/CPT Sequence to Target Frequency Chart** (`*_drug_cpt_sequence_frequency.png`)
-   - Horizontal bar chart showing top 20 most frequent drug/CPT sequences leading to target (pre-F1120)
+   - Horizontal bar chart showing top 20 most frequent drug/CPT sequences leading to target (pre-target event)
    - Extracted from BupaR traces
    - Shows combined drug and CPT sequences as "DRUG: Drug1 → CPT: Code1 → DRUG: Drug2" format
    - Only includes sequences with both drugs and CPTs
-   - Frequency represents number of patients with that sequence before F1120
+   - Frequency represents number of patients with that sequence before target event
 
 7. **Sankey Diagram: Sequence & Itemset → Feature Mapping** (`*_sequence_feature_mapping_sankey.html`)
    - Interactive Sankey diagram showing **parallel feature engineering flows**:
@@ -350,10 +350,10 @@ The script creates **6 publication-quality plots** plus **2 mapping visualizatio
 from py_helpers.create_feature_importance_visualizations import create_feature_importance_plots
 
 plot_files = create_feature_importance_plots(
-    aggregated_file='6_final_model/outputs/opioid_ed/0_12/opioid_ed_0_12_final_feature_importance_aggregated_scaled.csv',
-    output_dir='6_final_model/outputs/opioid_ed/0_12',
-    cohort_name='opioid_ed',
-    age_band='0-12',
+    aggregated_file='6_final_model/outputs/falls/65_74/falls_65_74_final_feature_importance_aggregated_scaled.csv',
+    output_dir='6_final_model/outputs/falls/65_74',
+    cohort_name='falls',
+    age_band='65-74',
     event_year=2019,
     s3_upload=True
 )
@@ -418,17 +418,17 @@ The final model features can be used to create **predictive triggers** for real-
 
 *Note: Thresholds are cohort/age-band specific. Use `analyze_trigger_features.py` to calculate cohort-specific percentiles.*
 
-#### 2. Pre-Event Count Features (All Events Before F1120)
+#### 2. Pre-Event Count Features (All Events Before Target)
 
 **Features:**
-- `pre_n_events`: Total events before F1120 (**#1 feature, 100% importance**)
-- `pre_n_unique_activities`: Unique activities before F1120 (**#2 feature, 85% importance**)
-- `pre_n_icd_events`: ICD events before F1120 (#3 feature, 83% importance)
-- `pre_n_cpt_events`: CPT events before F1120 (#4 feature, 74% importance)
-- `pre_n_drug_events`: Drug events before F1120
+- `pre_n_events`: Total events before target (**#1 feature, 100% importance**)
+- `pre_n_unique_activities`: Unique activities before target (**#2 feature, 85% importance**)
+- `pre_n_icd_events`: ICD events before target (#3 feature, 83% importance)
+- `pre_n_cpt_events`: CPT events before target (#4 feature, 74% importance)
+- `pre_n_drug_events`: Drug events before target
 
 **Characteristics:**
-- **Source**: BupaR analysis (all pre-F1120 events)
+- **Source**: BupaR analysis (all pre-target events)
 - **Filtering**: Includes **ALL events** before target, not filtered
 - **Use Case**: Trigger on patients with **high overall healthcare utilization**
 - **Advantage**: Captures total event volume, not just important codes
@@ -446,7 +446,7 @@ The final model features can be used to create **predictive triggers** for real-
 | Feature Type | What It Measures | Best For | Correlation |
 |-------------|------------------|----------|-------------|
 | **Trajectory** | Events/codes filtered by FP-Growth (important only) | **Quality**: Patients with many important events | Low correlation with pre-event features |
-| **Pre-Event** | All events before F1120 | **Quantity**: Patients with high overall utilization | - |
+| **Pre-Event** | All events before target | **Quantity**: Patients with high overall utilization | - |
 
 **Important:** These features capture **different patterns** (negative correlation ~-0.30), so combining them provides complementary signals.
 
@@ -487,8 +487,8 @@ Use the provided analysis script to calculate cohort-specific thresholds:
 ```bash
 # Analyze trigger features for a specific cohort/age band
 python 6_final_model/analyze_trigger_features.py \
-    --cohort-name opioid_ed \
-    --age-band 0-12
+    --cohort-name falls \
+    --age-band 65-74
 ```
 
 **Output:**
@@ -530,7 +530,7 @@ def flag_high_risk_patients(df, cohort_name, age_band):
 
 # Usage
 feature_df = pd.read_csv('final_features_no_leakage.csv')
-high_risk_patients = flag_high_risk_patients(feature_df, 'opioid_ed', '0-12')
+high_risk_patients = flag_high_risk_patients(feature_df, 'falls', '65-74')
 ```
 
 ### Important Notes
@@ -553,19 +553,19 @@ high_risk_patients = flag_high_risk_patients(feature_df, 'opioid_ed', '0-12')
    - Post-event features
    - Time-to-target features
    - DTW features (DTW is for filtering, not features)
-   - F1120 code itself
+   - Target-defining codes themselves (`fall_injury_any`, `ed_event`)
    - Post-target drug/ICD/CPT events (validates against event data)
-   - Non-predictive markers (SUBOXONE, BUPRENORPHINE, F1123)
+   - Non-predictive markers (codes introduced at/after target encounter)
 
 6. **Drug name column exclusions**: The following values are excluded from the drug name feature set for model training (see `DRUG_NAMES_EXCLUDED_MODEL_TRAINING` in `py_helpers.constants` and `1b_apcd_event_filter/README_administrative_codes_lookup.md`): **Narcan**, **Unknown**, **Fentanyl**, **1036F**, **T401XA1**. 1036F is a CPT Category II tracking code (tobacco non-user), not a drug; T401XA1 is an ICD-10-CM poisoning diagnosis code (4-aminophenol/acetaminophen, initial encounter), not a drug.
 
 7. **Cohort-Specific Feature Filtering**:
-   - **non_opioid_ed (Polypharmacy) Cohort**: Only drug events are included as item features
+   - **ed Cohort**: Only drug events are included as item features
      - Excludes ICD codes (`item_icd_*`)
      - Excludes CPT codes (`item_cpt_*`)
      - Includes only drug features (`item_drug_*`)
-     - Rationale: Polypharmacy analysis focuses on drug interactions and medication patterns
-   - **opioid_ed Cohort**: Includes all event types (drugs, ICD codes, CPT codes)
+     - Rationale: ED outcome analysis focuses on medication patterns as primary exposure
+   - **falls Cohort**: Includes all event types (drugs, ICD codes, CPT codes)
 
 ## TODOs
 

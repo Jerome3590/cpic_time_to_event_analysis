@@ -27,7 +27,7 @@ Each file corresponds to a specific `(cohort_name, age_band)` cell:
     - `gold/medical/age_band={age_band}/event_year={year}/medical_data*.parquet`
     - `gold/pharmacy/age_band={age_band}/event_year={year}/pharmacy_data.parquet`
   - Control patients (`target = 0`) must satisfy:
-    - **No target ICD codes** (e.g., `F1120` and other configured target codes) in *any* diagnosis column across their medical events.
+    - **No target-qualifying codes** (e.g., no qualifying fall injury ICD + W00–W19 combination for falls, no ED POS/revenue code for ed) in their encounters.
     - Their `mi_person_key` **does not appear in the case set** for the same `(cohort, age_band, year)` (i.e., they are not a target patient in the cohort tables).
   - For selected control patients, **all available events** (medical + pharmacy) are retained:
     - controls are *not* filtered by feature importance.
@@ -40,9 +40,9 @@ This asymmetry is intentional and standard for classification problems:
 
 ### Target leakage removal (Step 4)
 
-Step 4 removes target leakage when building model data: for **case events**, only events **strictly before** the target date are kept. Model_events uses explicit target-date column names: **`first_f1120_date`** (opioid_ed; F11.20 = opioid use disorder) and **`first_o11_p_date`** (non_opioid_ed; O11_P = canonical ED identifier, includes P51b/O11/P33, 21-day drug window). See 2_create_cohort README § HCG-Based ED Visit Targets. Events on or after the target date are dropped.
+Step 4 removes target leakage when building model data: for **case events**, only events **strictly before** the target date are kept. Model_events uses explicit target-date column names: **`first_fall_date`** (falls; `fall_injury_any = 1` — injury ICD + W00–W19 external cause) and **`first_ed_date`** (ed; POS=23 or revenue code 045x/0981). Events on or after the target date are dropped.
 
-**Target-date column naming (`non_opioid_ed`):** The target date is taken from one cohort column (`first_ed_non_opioid_date` or `first_opioid_ed_date` depending on export). Semantics align; canonical model_events output uses **`first_o11_p_date`**. If an older parquet still has the alternate names, **rename** to `first_o11_p_date` rather than recomputing events.
+**Target-date column naming:** The target date is taken from `first_fall_date` (falls cohort) or `first_ed_date` (ed cohort). If an older parquet still has alternate names, **rename** rather than recomputing events.
 
 ### Feature-Importance Filtering
 
@@ -79,7 +79,7 @@ Refined feature-importance CSVs (from Step 3b) drive the case-side event filteri
 
 Before or after syncing from S3, you can verify that `gold/pharmacy` (and optionally `gold/medical`) on NVMe has all expected cells. Step 4 expects:
 
-- **Age bands:** 13-24, 25-44, 45-54, 55-64, 65-74, 75-84, 85-114 (full set for both cohorts)
+- **Age bands:** 65-74, 75-84 (the only age bands used in this project)
 - **Event years:** 2016, 2017, 2018, 2019  
 - **Layout:** `gold/pharmacy/age_band={band}/event_year={year}/*.parquet`
 

@@ -50,25 +50,25 @@ Run for each (age_band, event_year) after APCD input (Step 1a) produces gold med
 
 ```bash
 # Admin only
-python 1b_apcd_event_filter/filter_protocol_events.py --before-cohorts --age-band 13-24 --event-year 2016
+python 1b_apcd_event_filter/filter_protocol_events.py --before-cohorts --age-band 65-74 --event-year 2016
 
 # With baseline FI (precomputed) to reduce cohort processing — auto-resolve from cohort/age_band
-python 1b_apcd_event_filter/filter_protocol_events.py --before-cohorts --age-band 13-24 --event-year 2016 --cohort-name opioid_ed
+python 1b_apcd_event_filter/filter_protocol_events.py --before-cohorts --age-band 65-74 --event-year 2016 --cohort-name falls
 
 # Or pass baseline FI CSV path explicitly
-python 1b_apcd_event_filter/filter_protocol_events.py --before-cohorts --age-band 13-24 --event-year 2016 --aggregated-fi-csv path/to/opioid_ed_13_24_aggregated_feature_importance.csv
+python 1b_apcd_event_filter/filter_protocol_events.py --before-cohorts --age-band 65-74 --event-year 2016 --aggregated-fi-csv path/to/falls_65_74_aggregated_feature_importance.csv
 ```
 
 Then run Step 2 (create cohort). Step 2 will use filtered gold when present (`gold/medical_filtered/`, `gold/pharmacy_filtered/`).
 
-To cover all partitions, loop over age bands and event years (e.g. 2016–2019) and call the script for each.
+To cover all partitions, loop over age bands (`65-74`, `75-84`) and event years (2016–2019) and call the script for each.
 
 ### After cohorts (optional)
 
 If you also run the event filter on cohort data (FI + admin), use:
 
 ```bash
-python 1b_apcd_event_filter/filter_protocol_events.py --cohort-name opioid_ed --age-band 13-24
+python 1b_apcd_event_filter/filter_protocol_events.py --cohort-name falls --age-band 65-74
 ```
 
 Requires **baseline** aggregated feature importance (precomputed from Step 3a with `--baseline` once; does not need to be recomputed) and cohort parquets (Step 2).

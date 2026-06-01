@@ -3,7 +3,7 @@
 ## Overview
 
 Feature Importance EDA performs additional exploratory data analysis on **already processed aggregated feature importances** from Step 3, using:
-1. **BupaR post-target analysis** to identify pre/post target ICD/CPT events (target leakage detection; target = F1120 for opioid_ed, HCG for polypharmacy/non_opioid_ed)
+1. **BupaR post-target analysis** to identify pre/post target ICD/CPT events (target leakage detection; target = `fall_injury_any` for falls, `ed_event` for ed)
 2. **Code research and validation** (identify and validate non-informative ICD/CPT codes from lookup table - actual event-level filtering happens in Step 4b)
 3. **Interactive code review and filtering** to refine feature selection (filters post-target leakage features from feature importance list)
 
@@ -13,7 +13,7 @@ Based on this EDA, we filter and update the aggregated feature importances to pr
 
 ## Purpose
 
-- **Identify post-target leakage**: Use BupaR process mining to analyze sequences before and after the target event (F1120 for opioid_ed, HCG for polypharmacy) to identify features that may leak future information
+- **Identify post-target leakage**: Use BupaR process mining to analyze sequences before and after the target event (`fall_injury_any` for falls, `ed_event` for ed) to identify features that may leak future information
 - **Research and validate codes**: Identify and validate administrative, scheduling, and non-medical codes through code research (actual event-level filtering happens in Step 4b)
 - **Apply safe feature filtering**: Exclude post-target leakage features from aggregated feature importance list while keeping all pre-target features to maximize information available to the algorithm
 - **Refine feature importances**: Update already-processed aggregated feature importances based on BupaR and code research findings
@@ -69,7 +69,7 @@ All outputs are automatically uploaded to S3 for checkpointing and downstream co
 1. **Load aggregated feature importances** from Step 3 (already processed feature importance scores)
 2. **BupaR Post-Target Analysis** (`1_bupaR/`):
    - Build BupaR event logs from `model_events.parquet`
-   - Analyze sequences before and after target event (F1120 for opioid_ed, HCG for polypharmacy)
+   - Analyze sequences before and after target event (`fall_injury_any` for falls, `ed_event` for ed)
    - Calculate pre-target and post-target ratios for each feature
    - Identify features that appear primarily post-target (>=80% post-target ratio = potential leakage)
    - Generate comprehensive BupaR features and visualizations
@@ -84,7 +84,7 @@ All outputs are automatically uploaded to S3 for checkpointing and downstream co
 4. **Create Safe Feature Filter**:
    - Exclude features with >=80% post-target ratio (pure post-target leakage)
    - Keep ALL features with ANY pre-target presence (maximize information)
-   - For opioid_ed, explicitly include F1120 for target creation; polypharmacy uses first ED (HCG) within 21 days of drug event
+   - For falls: exclude target-defining ICD codes (injury S/T + W00–W19) post-target; for ed: exclude `ed_event` encounter codes post-target
    - Output: `{cohort}_{age_band}_safe_feature_filter.json`
 5. **Filter and Update Feature Importances**:
    - Apply safe feature filter (whitelist for cases, blacklist for controls)
@@ -112,11 +112,11 @@ All scripts require the **full path to the Python jupyter environment** to ensur
 /home/pgx3874/jupyter-env/bin/python3.11
 
 # Use full path when running scripts
-/home/pgx3874/jupyter-env/bin/python3.11 3b_feature_importance_eda/run_feature_importance_eda.py --cohort opioid_ed --age-band 13-24
+/home/pgx3874/jupyter-env/bin/python3.11 3b_feature_importance_eda/run_feature_importance_eda.py --cohort falls --age-band 65-74
 
 # Or set as environment variable
 export PYTHON_ENV="/home/pgx3874/jupyter-env/bin/python3.11"
-$PYTHON_ENV 3b_feature_importance_eda/run_feature_importance_eda.py --cohort opioid_ed --age-band 13-24
+$PYTHON_ENV 3b_feature_importance_eda/run_feature_importance_eda.py --cohort falls --age-band 65-74
 
 # To find your Python path (if different):
 which python  # or: which python3
@@ -128,7 +128,7 @@ which python  # or: which python3
 which Rscript
 
 # Use full path
-/usr/local/bin/Rscript 3b_feature_importance_eda/1_bupaR/create_bupar_outputs_opioid_ed.R 13-24
+/usr/local/bin/Rscript 3b_feature_importance_eda/1_bupaR/create_bupar_outputs_falls.R 65-74
 ```
 
 **For Jupyter notebooks (EC2 Environment):**
@@ -167,8 +167,8 @@ jupyter notebook --no-browser --port=8888
 - `0_icd_cpt_check/validate_icd_cpt_codes.py` - Interactive validation workflow
 
 ### R Scripts (BupaR Process Mining)
-- `1_bupaR/create_bupar_outputs_opioid_ed.R` - BupaR analysis for opioid_ed cohort
-- `1_bupaR/create_bupar_outputs_non_opioid_ed.R` - BupaR analysis for POLYPHARMACY COHORT (cohort_name="non_opioid_ed" in data partitions)
+- `1_bupaR/create_bupar_outputs_falls.R` - BupaR analysis for falls cohort
+- `1_bupaR/create_bupar_outputs_ed.R` - BupaR analysis for ed cohort (cohort_name="ed")
 - See `1_bupaR/README_bupaR.md` for complete BupaR documentation
 
 ## Usage
@@ -177,7 +177,7 @@ jupyter notebook --no-browser --port=8888
 
 ```bash
 # Run for a single cohort/age_band
-python 3b_feature_importance_eda/run_feature_importance_eda.py --cohort opioid_ed --age-band 13-24
+python 3b_feature_importance_eda/run_feature_importance_eda.py --cohort falls --age-band 65-74
 
 # Run for all cohorts
 python 3b_feature_importance_eda/run_feature_importance_eda.py --all-cohorts
@@ -194,7 +194,7 @@ You can run multiple Jupyter notebooks interactively at the same time! Each note
 
 1. **Start Jupyter** (if not already running):
    ```bash
-   cd /home/pgx3874/pgx-analysis
+   cd /home/pgx3874/cpic_time_to_event_analysis
    /home/pgx3874/jupyter-env/bin/jupyter notebook --no-browser --port=8888
    
    # Or if jupyter is in PATH:
@@ -202,9 +202,10 @@ You can run multiple Jupyter notebooks interactively at the same time! Each note
    ```
 
 2. **Open multiple notebooks** in separate browser tabs:
-   - `feature_importance_eda_interactive_analysis_cohort5.ipynb` (non_opioid_ed / 65-74)
-   - `feature_importance_eda_interactive_analysis_cohort6.ipynb` (non_opioid_ed / 75-84)
-   - `feature_importance_eda_interactive_analysis_cohort7.ipynb` (non_opioid_ed / 85-94)
+   - `feature_importance_eda_interactive_analysis_falls_65_74.ipynb` (falls / 65-74)
+   - `feature_importance_eda_interactive_analysis_falls_75_84.ipynb` (falls / 75-84)
+   - `feature_importance_eda_interactive_analysis_ed_65_74.ipynb` (ed / 65-74)
+   - `feature_importance_eda_interactive_analysis_ed_75_84.ipynb` (ed / 75-84)
 
 3. **Run cells independently** - Each notebook has its own kernel and can run cells independently.
 
@@ -217,9 +218,10 @@ You can run multiple Jupyter notebooks interactively at the same time! Each note
 
 **File Conflicts:**
 - **Output files**: Each notebook writes to cohort-specific directories:
-  - `outputs/non_opioid_ed/65_74/`
-  - `outputs/non_opioid_ed/75_84/`
-  - `outputs/non_opioid_ed/85_94/`
+  - `outputs/falls/65_74/`
+  - `outputs/falls/75_84/`
+  - `outputs/ed/65_74/`
+  - `outputs/ed/75_84/`
 - **No conflicts**: Different output directories prevent file conflicts
 - **S3 uploads**: May happen simultaneously, but AWS handles this
 
@@ -230,21 +232,21 @@ You can run multiple Jupyter notebooks interactively at the same time! Each note
 
 **Control Cohort Creation:**
 - ✅ **No conflicts**: Control cohorts are age-band specific
-  - POLYPHARMACY COHORT (Cohort 5, 6, 7):
-    - Cohort 5 (65-74) uses: `cohort_name=non_opioid_non_ed/age_band=65-74/model_events.parquet`
-    - Cohort 6 (75-84) uses: `cohort_name=non_opioid_non_ed/age_band=75-84/model_events.parquet`
-    - Cohort 7 (85-94) uses: `cohort_name=non_opioid_non_ed/age_band=85-94/model_events.parquet`
-- Each notebook creates/uses its own age-band-specific control cohort file
-- **Safe to run in parallel**: No file conflicts between different age bands
+  - falls cohort (65-74): `cohort_name=falls/age_band=65-74/model_events.parquet`
+  - falls cohort (75-84): `cohort_name=falls/age_band=75-84/model_events.parquet`
+  - ed cohort (65-74): `cohort_name=ed/age_band=65-74/model_events.parquet`
+  - ed cohort (75-84): `cohort_name=ed/age_band=75-84/model_events.parquet`
+- Each notebook creates/uses its own cohort/age-band-specific control cohort file
+- **Safe to run in parallel**: No file conflicts between different cohorts/age bands
 
 #### Best Practices
 
 **Option 1: Parallel Execution (Recommended)**
-✅ **Safe to run all 3 notebooks in parallel immediately** - Each uses its own age-band-specific control cohort:
-- POLYPHARMACY COHORT:
-  - Cohort 5 (65-74) → `cohort_name=non_opioid_non_ed/age_band=65-74/model_events.parquet`
-  - Cohort 6 (75-84) → `cohort_name=non_opioid_non_ed/age_band=75-84/model_events.parquet`
-  - Cohort 7 (85-94) → `cohort_name=non_opioid_non_ed/age_band=85-94/model_events.parquet`
+✅ **Safe to run all 4 notebooks in parallel** - Each uses its own cohort/age-band-specific input:
+- falls/65-74 → `cohort_name=falls/age_band=65-74/model_events.parquet`
+- falls/75-84 → `cohort_name=falls/age_band=75-84/model_events.parquet`
+- ed/65-74 → `cohort_name=ed/age_band=65-74/model_events.parquet`
+- ed/75-84 → `cohort_name=ed/age_band=75-84/model_events.parquet`
 
 **No conflicts**: Each notebook creates/uses a separate control cohort file.
 
@@ -304,7 +306,7 @@ htop
 iostat -x 1
 
 # Check output directories
-ls -lh /home/pgx3874/pgx-analysis/3b_feature_importance_eda/outputs/non_opioid_ed/
+ls -lh /home/pgx3874/cpic_time_to_event_analysis/3b_feature_importance_eda/outputs/ed/
 ```
 
 #### Troubleshooting
@@ -353,8 +355,8 @@ See `FEATURE_FILTERING_APPROACH.md` for detailed documentation.
 │   ├── administrative_codes_lookup.json
 │   └── README_icd_cpt_check.md   # Code validation documentation
 ├── 1_bupaR/                      # BupaR process mining analysis
-│   ├── create_bupar_outputs_opioid_ed.R
-│   ├── create_bupar_outputs_non_opioid_ed.R
+│   ├── create_bupar_outputs_falls.R
+│   ├── create_bupar_outputs_ed.R
 │   ├── create_plots.R
 │   └── README_bupaR.md           # BupaR process mining documentation
 ├── outputs/                      # All outputs organized by cohort/age_band

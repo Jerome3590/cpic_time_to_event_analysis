@@ -35,7 +35,7 @@ First, run the event filter with research outputs enabled:
 
 ```bash
 python 4b_event_filter/filter_protocol_events.py \
-    --cohort-name opioid_ed \
+    --cohort-name falls \
     --age-band 0-12 \
     --min-interval-days 1
 ```
@@ -103,7 +103,7 @@ After updating the lookup table, re-run the filter:
 
 ```bash
 python 4b_event_filter/filter_protocol_events.py \
-    --cohort-name opioid_ed \
+    --cohort-name falls \
     --age-band 0-12 \
     --use-lookup-table
 ```
@@ -113,8 +113,8 @@ python 4b_event_filter/filter_protocol_events.py \
 The filter automatically classifies the following as administrative (no lookup table needed):
 
 1. **Post-event leakage**: Events occurring on or after the target event date
-   - For `opioid_ed` cohort: events >= `first_opioid_ed_date`
-   - For `non_opioid_ed` cohort: events >= `first_ed_non_opioid_date`
+   - For `falls` cohort: events >= `first_falls_date`
+   - For `ed` cohort: events >= `first_ed_date`
 
 ## Using Research Outputs Instead
 
@@ -122,7 +122,7 @@ If you prefer to use research outputs instead of a manual lookup table:
 
 ```bash
 python 4b_event_filter/filter_protocol_events.py \
-    --cohort-name opioid_ed \
+    --cohort-name falls \
     --age-band 0-12 \
     --use-lookup-table false \
     --admin-code-threshold-pct 80.0
@@ -143,19 +143,19 @@ This will automatically classify codes with `protocol_pct >= 80.0` as administra
 ```bash
 # 1. Run research analysis
 python 4b_event_filter/filter_protocol_events.py \
-    --cohort-name opioid_ed \
+    --cohort-name falls \
     --age-band 0-12 \
     --min-interval-days 1
 
 # 2. Review research outputs
-# Open: 4b_event_filter/outputs/for_review/opioid_ed/0_12/code_analysis_protocol_vs_clinical_*.csv
+# Open: 4b_event_filter/outputs/for_review/falls/0_12/code_analysis_protocol_vs_clinical_*.csv
 
 # 3. Update lookup table
 # Edit: 4b_event_filter/administrative_codes_lookup.json
 
 # 4. Re-run with lookup table
 python 4b_event_filter/filter_protocol_events.py \
-    --cohort-name opioid_ed \
+    --cohort-name falls \
     --age-band 0-12 \
     --use-lookup-table
 ```

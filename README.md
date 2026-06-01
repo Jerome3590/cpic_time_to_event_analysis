@@ -46,7 +46,7 @@ Outcome label: **`fall_injury_any = 1`** when **both** criteria are present on t
 | `fall_injury_head` | `fall_injury_any = 1` AND any head injury code S00–S09 |
 
 ### 2. ED Visits
-Same logic as `pgx-analysis` event filter — emergency department claim classification via place of service (POS=23) and revenue codes.
+Same logic as `cpic_time_to_event_analysis` event filter — emergency department claim classification via place of service (POS=23) and revenue codes.
 
 ---
 
@@ -69,7 +69,7 @@ cpic_time_to_event_analysis/
 ├── 7_shap_analysis/           # Step 7:  SHAP analysis
 ├── 8_ffa_analysis/            # Step 8:  FFA + DTW + FP-Growth + BupaR
 │
-├── py_helpers/                # Shared Python utilities (adapted from pgx-analysis)
+├── py_helpers/                # Shared Python utilities (adapted from cpic_time_to_event_analysis)
 ├── r_helpers/                 # Shared R utilities (BupaR, DTW, MC-CV)
 │
 ├── docs/                      # Analysis documentation and methodology notes
@@ -137,14 +137,14 @@ flowchart LR
 ## ✅ TODO — Implementation Checklist
 
 ### Step 1a: APCD Input Data
-- [ ] Copy and adapt `1a_apcd_input_data/0_txt_to_parquet.py` from pgx-analysis
+- [ ] Copy and adapt `1a_apcd_input_data/0_txt_to_parquet.py` from cpic_time_to_event_analysis
 - [ ] Copy and adapt `1a_apcd_input_data/2_global_imputation.py`
 - [ ] Copy and adapt `1a_apcd_input_data/3_apcd_clean.py`, `3a_clean_pharmacy.py`, `3b_clean_medical.py`
 - [ ] Update S3 bucket/prefix paths in `py_helpers/constants.py`
 - [ ] Update `1a_apcd_input_data/6_target_frequency_analysis.py` for falls codes
 
 ### Step 1b: Event Filter
-- [ ] Copy `1b_apcd_event_filter/filter_protocol_events.py` from pgx-analysis
+- [ ] Copy `1b_apcd_event_filter/filter_protocol_events.py` from cpic_time_to_event_analysis
 - [ ] **Update target outcome logic**: implement two-criterion `fall_injury_any` label (injury S00–S99/T07/T14/T20–T34/T79 AND external cause W00–W19 on same encounter)
 - [ ] **Add exclusion filter**: remove events where ICD = `Z91.81` OR CPT = `1100F` OR ICD = `R29.6` (move R29.6 to feature)
 - [ ] **Compute auxiliary flags**: `fall_injury_serious` (+ fracture codes) and `fall_injury_head` (+ S00–S09)
@@ -153,36 +153,36 @@ flowchart LR
 - [ ] Update README with new code classification rationale
 
 ### Step 2: Cohort Creation
-- [ ] Copy `2_create_cohort/0_create_cohort.py` from pgx-analysis
+- [ ] Copy `2_create_cohort/0_create_cohort.py` from cpic_time_to_event_analysis
 - [ ] Update cohort definition: target = falls OR ED visit (binary per outcome)
 - [x] **Age band restriction: 65–74 and 75–84 only** (falls risk is clinically concentrated in the 65–85 population)
 - [ ] Copy and adapt QA scripts (`2_step2_data_quality_qa.py`, `3_cohort_final_metrics.py`)
 - [ ] Update `final_cohort_schema.json` for new target columns
-- [ ] Run cohort creation on EC2 (see `README_ec2_32core_1tb_cohort_runs.md` in pgx-analysis)
+- [ ] Run cohort creation on EC2 (see `README_ec2_32core_1tb_cohort_runs.md` in cpic_time_to_event_analysis)
 
 ### Step 3a: Feature Importance (Monte Carlo CV)
-- [ ] Copy `3a_feature_importance/run_mc_feature_importance.py` from pgx-analysis
+- [ ] Copy `3a_feature_importance/run_mc_feature_importance.py` from cpic_time_to_event_analysis
 - [ ] Copy cohort runner scripts (`run_cohort_*.py`) and update S3 paths
 - [ ] Update target variable references: `falls_event` / `ed_event`
 - [ ] Validate top feature sets for both outcomes separately
 
 ### Step 3b: Feature Importance EDA
-- [ ] Copy BupaR post-target analysis scripts from pgx-analysis `3b_feature_importance_eda/`
+- [ ] Copy BupaR post-target analysis scripts from cpic_time_to_event_analysis `3b_feature_importance_eda/`
 - [ ] Update target codes for falls-specific process sequences
 
 ### Step 4: Model Data
-- [ ] Copy `4_model_data/` build scripts from pgx-analysis
+- [ ] Copy `4_model_data/` build scripts from cpic_time_to_event_analysis
 - [ ] Build feature-engineered parquet datasets for falls and ED outcomes separately
 - [ ] Update `event_density_utils.py` thresholds for falls outcome (n_event_bin)
 
 ### Step 5: CPIC/PGx Analysis
-- [ ] Copy `5_pgx_analysis/` scripts from pgx-analysis
+- [ ] Copy `5_pgx_analysis/` scripts from cpic_time_to_event_analysis
 - [ ] Identify CPIC-relevant drugs for falls risk (CNS depressants, psychotropics, anticoagulants)
 - [ ] Update drug-CPIC mappings for falls-relevant pharmacogenomic categories
 - [ ] Cross-reference fall-risk medications with CPIC guidelines (CYP2D6, CYP3A4-metabolized drugs)
 
 ### Step 6: Final Model Training
-- [ ] Copy `6_final_model/run_final_model.py` from pgx-analysis
+- [ ] Copy `6_final_model/run_final_model.py` from cpic_time_to_event_analysis
 - [ ] Copy `6_final_model/build_final_cohort_model_features.py`
 - [ ] Train **per-bin models** (XGBoost + CatBoost) for falls outcome per age band
 - [ ] Train **per-bin models** for ED outcome per age band
@@ -190,7 +190,7 @@ flowchart LR
 - [ ] Update S3 output paths: `gold/final_model/falls/` and `gold/final_model/ed/`
 
 ### Step 7: SHAP Analysis
-- [ ] Copy `7_shap_analysis/` scripts from pgx-analysis
+- [ ] Copy `7_shap_analysis/` scripts from cpic_time_to_event_analysis
 - [ ] Generate SHAP values for falls models and ED models
 - [ ] Compare SHAP profiles: which features differ between falls vs. ED risk?
 
@@ -207,7 +207,7 @@ flowchart LR
 - [ ] Update `8_ffa_analysis/ffa_utils.py` target variable references
 
 ### py_helpers Adaptations
-- [ ] Copy all files from `pgx-analysis/py_helpers/` as baseline
+- [ ] Copy all files from `cpic_time_to_event_analysis/py_helpers/` as baseline
 - [ ] Update `constants.py`: new S3 paths, cohort names, target variables
 - [ ] Update `event_density_utils.py`: recalculate n_event_bin thresholds for falls population
 - [ ] Update `cohort_utils.py`: target column names
@@ -215,7 +215,7 @@ flowchart LR
 - [ ] Keep `aws_utils.py`, `s3_utils.py`, `logging_utils.py`, `checkpoint_utils.py` unchanged
 
 ### r_helpers Adaptations
-- [ ] Copy all files from `pgx-analysis/r_helpers/` as baseline
+- [ ] Copy all files from `cpic_time_to_event_analysis/r_helpers/` as baseline
 - [ ] Update `constants.R`: target variable names
 - [ ] Update `run_cohort_analysis.R`: falls/ED target columns
 - [ ] Keep MC-CV, BupaR, and DTW logic intact
@@ -227,7 +227,7 @@ flowchart LR
   - [x] Remove Docker / ECR / API Gateway cells
   - [x] Update S3 checkpoint bucket/prefix to cpic project values
 - [x] `1_cohort_workflow.ipynb`
-  - [x] Update cohort series markdown: OPIOID_ED → FALLS, POLYPHARMACY → ED
+  - [x] Update cohort series markdown: falls → FALLS, POLYPHARMACY → ED
   - [x] Update script references: `run_series_falls.py`, `run_series_ed.py`
   - [x] Update cohort table: target column `fall_injury_any` / `ed_event`
 - [x] `2_feature_importance.ipynb` — cohort names, targets, age bands 65-74/75-84, S3 bucket var
@@ -260,7 +260,7 @@ flowchart LR
 
 - **Compute**: AWS EC2 (cohort + model training)
 - **Storage**: AWS S3 (all intermediate and final outputs)
-- **Checkpointing**: S3-based idempotent pipeline (same as pgx-analysis)
+- **Checkpointing**: S3-based idempotent pipeline (same as cpic_time_to_event_analysis)
 - **Environment**: Python 3.11 + R 4.x
 
 ### S3 Paths (TODO — update in `py_helpers/constants.py`)
@@ -272,9 +272,9 @@ Gold:   s3://<bucket>/gold/cpic_falls/final_model/
 
 ---
 
-## 📦 Differences from pgx-analysis
+## 📦 Differences from cpic_time_to_event_analysis
 
-| Aspect | pgx-analysis | cpic_time_to_event_analysis |
+| Aspect | cpic_time_to_event_analysis | cpic_time_to_event_analysis |
 |--------|-------------|----------------------------|
 | Target 1 | Opioid-related ED visit | **Falls** (`fall_injury_any`: injury S00–S99/T07/T14/T20–T34/T79 + external cause W00–W19) |
 | Target 2 | Polypharmacy/geriatric ED visit | **ED visit** (same logic) |

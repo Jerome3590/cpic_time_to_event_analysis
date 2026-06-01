@@ -1,9 +1,10 @@
 # r_helpers — Shared R Utilities
 
-Adapted from `pgx-analysis/r_helpers/`. Copy and update the following:
+Adapted from `pgx-analysis/r_helpers/`. All files updated for the CPIC falls/ed workflow.
 
-## TODO
-- [ ] Copy all files from `pgx-analysis/r_helpers/` as baseline
-- [ ] **`constants.R`** — Update target variable names and cohort identifiers
-- [ ] **`run_cohort_analysis.R`** — Update target column references: `falls_event`, `ed_event`
-- [ ] Keep unchanged: MC-CV logic, BupaR process mining, DTW alignment code
+## Status: Complete
+
+- [x] All files copied and updated
+- [x] **`constants.R`** — Age bands: `65-74`, `75-84`; cohorts: `falls`, `ed`; target columns defined
+- [x] **`run_cohort_analysis.R`** — Target columns: `fall_injury_any` (falls), `ed_event` (ed); local data path: `/mnt/nvme/cohorts`
+- [x] MC-CV logic, BupaR process mining, DTW alignment code — unchanged
