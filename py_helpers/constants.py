@@ -131,9 +131,21 @@ MAX_PATTERN_COLUMNS = 15
 
 # AWS configuration
 S3_BUCKET = os.environ.get("CPIC_S3_BUCKET", "pgxdatalake")
-BASE_PATH_COHORT = f"s3://{S3_BUCKET}/gold/cohorts"
-BASE_PATH_FEATURES = f"s3://{S3_BUCKET}/gold/feature_importance"
+
+# Project slug — used to namespace S3 artifacts so multiple projects can share
+# the same bucket without path collisions.
+PROJECT_SLUG = os.environ.get("CPIC_PROJECT_SLUG", "cpic_time_to_event")
+
+# Existing pipeline paths (no slug — live data already written here; do not rename)
+BASE_PATH_COHORT      = f"s3://{S3_BUCKET}/gold/cohorts"
+BASE_PATH_FEATURES    = f"s3://{S3_BUCKET}/gold/feature_importance"
 BASE_PATH_FINAL_MODEL = f"s3://{S3_BUCKET}/gold/final_model"
+
+# New analysis artifact paths — project-scoped from the start
+BASE_PATH_ANALYSIS_VISUALS = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/analysis_visuals"
+BASE_PATH_SHAP_ANALYSIS    = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/shap_analysis"
+BASE_PATH_FFA_ANALYSIS     = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/ffa_analysis"
+
 MAX_RETRIES = 3
 RETRY_DELAY = 2
 AWS_REGION = "us-east-1"
