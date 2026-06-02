@@ -19,6 +19,11 @@ if sys.platform == "win32":
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+try:
+    from py_helpers.constants import PROJECT_SLUG
+except ImportError:
+    PROJECT_SLUG = "cpic_time_to_event"
+
 s3_client = boto3.client('s3')
 bucket = 'pgxdatalake'
 
@@ -32,7 +37,7 @@ print(f'Cohort: {cohort}, Age Band: {age_band}')
 print()
 
 # Load SHAP importance
-shap_key = f'gold/shap_analysis/{cohort}/{age_band}/{cohort}_{age_band_fname}_shap_global_importance_xgboost.csv'
+shap_key = f'gold/{PROJECT_SLUG}/shap_analysis/{cohort}/{age_band}/{cohort}_{age_band_fname}_shap_global_importance_xgboost.csv'
 print('Loading SHAP importance...')
 try:
     obj = s3_client.get_object(Bucket=bucket, Key=shap_key)
@@ -43,7 +48,7 @@ except Exception as e:
     shap_df = None
 
 # Load causal importance
-causal_key = f'gold/ffa_analysis/{cohort}/{age_band}/xgboost/causal_importance.parquet'
+causal_key = f'gold/{PROJECT_SLUG}/ffa_analysis/{cohort}/{age_band}/xgboost/causal_importance.parquet'
 print('Loading causal importance...')
 try:
     obj = s3_client.get_object(Bucket=bucket, Key=causal_key)

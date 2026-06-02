@@ -28,6 +28,11 @@ import ast
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+try:
+    from py_helpers.constants import PROJECT_SLUG
+except ImportError:
+    PROJECT_SLUG = "cpic_time_to_event"
+
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
@@ -59,7 +64,7 @@ else:
     FEATURE_LOOKUP_DF = None
 
 # Optional S3 base for visualizations
-S3_BASE = f"s3://pgxdatalake/gold/ffa_analysis/{COHORT_NAME}/{AGE_BAND}/visualizations"
+S3_BASE = f"s3://pgxdatalake/gold/{PROJECT_SLUG}/ffa_analysis/{COHORT_NAME}/{AGE_BAND}/visualizations"
 
 # Set style
 sns.set_style("whitegrid")

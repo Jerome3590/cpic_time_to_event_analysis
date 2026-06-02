@@ -32,15 +32,15 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from py_helpers.constants import REQUIRED_COHORTS  # noqa: E402
+from py_helpers.constants import REQUIRED_COHORTS, PROJECT_SLUG, CHECKPOINT_BUCKET  # noqa: E402
 
 _creds = REPO_ROOT.parent / "credentials"
 if _creds.exists() and not os.environ.get("AWS_SHARED_CREDENTIALS_FILE"):
     os.environ["AWS_SHARED_CREDENTIALS_FILE"] = str(_creds)
 
-REPO_BUCKET = os.environ.get("PGX_S3_BUCKET", "pgx-repository")
+REPO_BUCKET = CHECKPOINT_BUCKET
 DATALAKE_BUCKET = os.environ.get("PGX_DATALAKE_BUCKET", "pgxdatalake")
-PIPELINE_CHECKPOINTS_PREFIX = "pipeline_checkpoints"
+PIPELINE_CHECKPOINTS_PREFIX = f"gold/{PROJECT_SLUG}/pipeline_checkpoints"
 
 
 def _s3_list(s3_client, bucket: str, prefix: str, max_keys: int = 2000):
@@ -112,8 +112,8 @@ def run(profile: str | None, show_outputs: bool) -> None:
         print("2. Model data and final model outputs (s3://{}/)".format(DATALAKE_BUCKET))
         print("-" * 70)
         for prefix, label in [
-            ("gold/cohorts_model_data/", "Model data (Step 4)"),
-            ("gold/final_model/", "Final model (Step 6)"),
+            (f"gold/{PROJECT_SLUG}/cohorts_model_data/", "Model data (Step 4)"),
+            (f"gold/{PROJECT_SLUG}/final_model/", "Final model (Step 6)"),
         ]:
             objs = _s3_list(s3, DATALAKE_BUCKET, prefix, max_keys=500)
             if not objs:

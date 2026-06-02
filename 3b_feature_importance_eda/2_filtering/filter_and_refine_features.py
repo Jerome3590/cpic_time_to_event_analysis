@@ -34,7 +34,7 @@ else:
 
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from py_helpers.constants import age_band_to_fname, DRUG_NAMES_EXCLUDED_MODEL_TRAINING, FEATURE_SUBSTRINGS_EXCLUDED
+from py_helpers.constants import age_band_to_fname, DRUG_NAMES_EXCLUDED_MODEL_TRAINING, FEATURE_SUBSTRINGS_EXCLUDED, PROJECT_SLUG
 from py_helpers.feature_utils import (
     normalize_feature_name,
     normalize_feature_set,
@@ -415,7 +415,7 @@ def main():
     print(f"Features: {len(refined_fi)} (down from {filtering_summary['original_count']})")
     
     # Upload to S3
-    s3_path = f"s3://{S3_BUCKET}/gold/feature_importance/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname}_cohort_feature_importance.csv"
+    s3_path = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/feature_importance/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname}_cohort_feature_importance.csv"
     if upload_file_to_s3(output_path, s3_path, check_exists=True):
         print(f"[OK] Uploaded cohort_feature_importance to S3")
     else:
@@ -429,7 +429,7 @@ def main():
     print(f"Saved filtering summary to: {summary_path}")
     
     # Upload summary to S3
-    summary_s3_path = f"s3://{S3_BUCKET}/gold/feature_importance/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname}_feature_filtering_summary.json"
+    summary_s3_path = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/feature_importance/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname}_feature_filtering_summary.json"
     if upload_file_to_s3(summary_path, summary_s3_path, check_exists=True):
         print(f"[OK] Uploaded filtering summary to S3")
     else:

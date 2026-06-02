@@ -23,6 +23,10 @@ COHORT = "falls"
 AGE_BAND = "65-74"
 AGE_BAND_FNAME = AGE_BAND.replace("-", "_")
 S3_BUCKET = "pgxdatalake"
+try:
+    from py_helpers.constants import PROJECT_SLUG
+except ImportError:
+    PROJECT_SLUG = "cpic_time_to_event"
 
 # Try to import explainer
 try:
@@ -36,7 +40,7 @@ except ImportError:
 def load_causal_importance_from_s3():
     """Load causal importance results from S3."""
     s3_client = boto3.client('s3')
-    s3_key = f"gold/ffa_analysis/{COHORT}/{AGE_BAND}/xgboost/causal_importance.parquet"
+    s3_key = f"gold/{PROJECT_SLUG}/ffa_analysis/{COHORT}/{AGE_BAND}/xgboost/causal_importance.parquet"
     
     try:
         obj = s3_client.get_object(Bucket=S3_BUCKET, Key=s3_key)

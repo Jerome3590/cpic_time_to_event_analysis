@@ -25,7 +25,7 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 from py_helpers.common_imports import *
-from py_helpers.constants import AGE_BANDS, COHORT_NAMES, EVENT_YEARS, S3_BUCKET
+from py_helpers.constants import AGE_BANDS, COHORT_NAMES, EVENT_YEARS, S3_BUCKET, PROJECT_SLUG
 from py_helpers.logging_utils import setup_r_logging, save_logs_to_s3_r, check_memory_usage_r
 from py_helpers.model_utils import calculate_recall, calculate_logloss
 from py_helpers.mc_cv_utils import run_mc_cv_method
@@ -162,7 +162,7 @@ def run_cohort_analysis(
             f"{cohort_name}_{age_band_fname}_aggregated_feature_importance.csv",
         )
         s3_key_agg = (
-            f"gold/feature_importance/{cohort_name}/{age_band}/"
+            f"gold/{PROJECT_SLUG}/feature_importance/{cohort_name}/{age_band}/"
             f"{cohort_name}_{age_band_fname}_aggregated_feature_importance.csv"
         )
 
@@ -746,7 +746,7 @@ def run_cohort_analysis(
             constant_features = constant_features_df['feature'].tolist()
         else:
             # Try S3 before recomputing
-            s3_key_const = f"gold/feature_importance/{cohort_name}/{age_band}/{cohort_name}_{age_band_fname}_constant_features.csv"
+            s3_key_const = f"gold/{PROJECT_SLUG}/feature_importance/{cohort_name}/{age_band}/{cohort_name}_{age_band_fname}_constant_features.csv"
             try:
                 s3_client.head_object(Bucket=S3_BUCKET, Key=s3_key_const)
                 logger.info(
@@ -810,8 +810,8 @@ def run_cohort_analysis(
             logger.info("Saved constant features list: %s", constant_features_file)
             
             # Upload to S3 alongside other feature-importance artifacts
-            # Folder pattern: gold/feature_importance/{cohort_name}/{age_band}/{cohort_name}_{age_band_fname}_constant_features.csv
-            s3_key_const = f"gold/feature_importance/{cohort_name}/{age_band}/{cohort_name}_{age_band_fname}_constant_features.csv"
+            # Folder pattern: gold/{PROJECT_SLUG}/feature_importance/{cohort_name}/{age_band}/{cohort_name}_{age_band_fname}_constant_features.csv
+            s3_key_const = f"gold/{PROJECT_SLUG}/feature_importance/{cohort_name}/{age_band}/{cohort_name}_{age_band_fname}_constant_features.csv"
             if upload_csv_to_s3(constant_features_file, s3_key_const):
                 logger.info("Uploaded constant features to S3: s3://pgxdatalake/%s", s3_key_const)
             else:
@@ -919,7 +919,7 @@ def run_cohort_analysis(
             # Check local file first, then S3
             local_file = os.path.join(output_dir, f"{cohort_name}_{age_band_fname}_{method}_feature_importance.csv")
             # S3 key uses age_band in the folder name and age_band_fname (hyphens -> underscores) in the filename
-            s3_key_method = f"gold/feature_importance/{cohort_name}/{age_band}/{cohort_name}_{age_band_fname}_{method}_feature_importance.csv"
+            s3_key_method = f"gold/{PROJECT_SLUG}/feature_importance/{cohort_name}/{age_band}/{cohort_name}_{age_band_fname}_{method}_feature_importance.csv"
             
             # Check local file first
             if os.path.exists(local_file):
@@ -1016,8 +1016,8 @@ def run_cohort_analysis(
             logger.info("Saved locally: %s", output_file)
             
             # Upload to S3
-            # Folder pattern: gold/feature_importance/{cohort_name}/{age_band}/{cohort_name}_{age_band_fname}_{method}_feature_importance.csv
-            s3_key = f"gold/feature_importance/{cohort_name}/{age_band}/{cohort_name}_{age_band_fname}_{method}_feature_importance.csv"
+            # Folder pattern: gold/{PROJECT_SLUG}/feature_importance/{cohort_name}/{age_band}/{cohort_name}_{age_band_fname}_{method}_feature_importance.csv
+            s3_key = f"gold/{PROJECT_SLUG}/feature_importance/{cohort_name}/{age_band}/{cohort_name}_{age_band_fname}_{method}_feature_importance.csv"
             if upload_csv_to_s3(output_file, s3_key):
                 logger.info("Uploaded to S3: s3://pgxdatalake/%s", s3_key)
             else:
@@ -1154,7 +1154,7 @@ def run_cohort_analysis(
                         )
 
                         rare_s3_key_xgb = (
-                            f"gold/feature_importance/{cohort_name}/{age_band}/"
+                            f"gold/{PROJECT_SLUG}/feature_importance/{cohort_name}/{age_band}/"
                             f"{cohort_name}_{age_band_fname}_xgboost_rare_feature_importance.csv"
                         )
                         if upload_csv_to_s3(rare_output_file_xgb, rare_s3_key_xgb):
@@ -1240,7 +1240,7 @@ def run_cohort_analysis(
                         )
 
                         rare_s3_key_cat = (
-                            f"gold/feature_importance/{cohort_name}/{age_band}/"
+                            f"gold/{PROJECT_SLUG}/feature_importance/{cohort_name}/{age_band}/"
                             f"{cohort_name}_{age_band_fname}_catboost_rare_feature_importance.csv"
                         )
                         if upload_csv_to_s3(rare_output_file_cat, rare_s3_key_cat):
@@ -1297,8 +1297,8 @@ def run_cohort_analysis(
             logger.warning("Failed to remove checkpoint directories: %s", e)
         
         # Upload aggregated results to S3
-        # Folder pattern: gold/feature_importance/{cohort_name}/{age_band}/{cohort_name}_{age_band_fname}_aggregated_feature_importance.csv
-        s3_key_agg = f"gold/feature_importance/{cohort_name}/{age_band}/{cohort_name}_{age_band_fname}_aggregated_feature_importance.csv"
+        # Folder pattern: gold/{PROJECT_SLUG}/feature_importance/{cohort_name}/{age_band}/{cohort_name}_{age_band_fname}_aggregated_feature_importance.csv
+        s3_key_agg = f"gold/{PROJECT_SLUG}/feature_importance/{cohort_name}/{age_band}/{cohort_name}_{age_band_fname}_aggregated_feature_importance.csv"
         upload_ok = upload_csv_to_s3(output_file, s3_key_agg)
         if upload_ok:
             logger.info("Uploaded aggregated results to S3: s3://pgxdatalake/%s", s3_key_agg)

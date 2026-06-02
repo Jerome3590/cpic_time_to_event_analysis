@@ -25,6 +25,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))  # noqa: E402
 
 from py_helpers.env_utils import get_workflow_python_bin  # noqa: E402
+from py_helpers.constants import PROJECT_SLUG, S3_BUCKET  # noqa: E402
 from py_helpers.fe_monitor import (  # noqa: E402
     detect_runtime_environment,
     function_block,
@@ -215,7 +216,7 @@ def run_pgx_analysis(
 
             age_band_fname = age_band.replace("-", "_")
             s3_output_paths = [
-                f"s3://pgxdatalake/gold/pgx_features/{cohort_name}/{age_band}/pgx_added_features_{cohort_name}_{age_band_fname}.csv",
+                f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/pgx_features/{cohort_name}/{age_band}/pgx_added_features_{cohort_name}_{age_band_fname}.csv",
             ]
 
             if check_step_outputs_exist(s3_output_paths, logger) or check_step_checkpoint_exists("5_pgx_analysis", cohort_name, age_band, logger):
@@ -269,7 +270,7 @@ def run_pgx_analysis(
             / f"pgx_added_features_{cohort_name}_{age_band_fname}.csv"
         )
         if pgx_features_path.exists():
-            s3_pgx_path = f"s3://pgxdatalake/gold/pgx_features/{cohort_name}/{age_band}/pgx_added_features_{cohort_name}_{age_band_fname}.csv"
+            s3_pgx_path = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/pgx_features/{cohort_name}/{age_band}/pgx_added_features_{cohort_name}_{age_band_fname}.csv"
             if upload_file_to_s3(pgx_features_path, s3_pgx_path, logger):
                 s3_outputs.append(s3_pgx_path)
 

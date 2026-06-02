@@ -6,6 +6,14 @@ import sys
 import tempfile
 import os
 import pandas as pd
+from pathlib import Path
+
+_PROJECT_ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(_PROJECT_ROOT))
+try:
+    from py_helpers.constants import PROJECT_SLUG
+except ImportError:
+    PROJECT_SLUG = "cpic_time_to_event"
 
 def check_s3_cohort_file_controls(s3_path, profile='mushin'):
     """Check if an S3 cohort.parquet file has controls."""
@@ -54,7 +62,7 @@ def main():
     print('=== Checking cohort.parquet files in S3 for controls ===')
     print('')
     
-    s3_base = f's3://pgxdatalake/gold/cohorts/cohort_name={cohort}/event_year='
+    s3_base = f's3://pgxdatalake/gold/{PROJECT_SLUG}/cohorts/cohort_name={cohort}/event_year='
     
     results = {}
     for age_band in age_bands:

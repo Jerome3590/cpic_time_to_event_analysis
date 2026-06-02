@@ -15,9 +15,15 @@ import subprocess
 import sys
 from pathlib import Path
 
-BUCKET = "pgxdatalake"
-S3_PREFIX = "gold/cohorts_model_data"
 REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
+try:
+    from py_helpers.constants import PROJECT_SLUG
+except ImportError:
+    PROJECT_SLUG = "cpic_time_to_event"
+
+BUCKET = "pgxdatalake"
+S3_PREFIX = f"gold/{PROJECT_SLUG}/cohorts_model_data"
 
 
 def main() -> int:

@@ -314,7 +314,11 @@ if aggregated_fi is None:
             import boto3
             s3_client = boto3.client("s3")
             S3_BUCKET = "pgxdatalake"
-        _key = f"gold/feature_importance/{COHORT}/{AGE_BAND}/{COHORT}_{AGE_BAND_FNAME}_aggregated_feature_importance.csv"
+        try:
+            from py_helpers.constants import PROJECT_SLUG as _PS
+        except ImportError:
+            _PS = "cpic_time_to_event"
+        _key = f"gold/{_PS}/feature_importance/{COHORT}/{AGE_BAND}/{COHORT}_{AGE_BAND_FNAME}_aggregated_feature_importance.csv"
         _obj = s3_client.get_object(Bucket=S3_BUCKET, Key=_key)
         aggregated_fi = pd.read_csv(io.BytesIO(_obj["Body"].read()))
         print(f"✅ Loaded aggregated feature importance from S3: s3://{S3_BUCKET}/{_key}")
@@ -503,8 +507,12 @@ try:
     from py_helpers.workflow_sync_checkpoint import sync_s3_to_local
     _s3_bucket = os.environ.get("PGX_S3_BUCKET", "pgxdatalake")
     _data_root = get_data_root()
+    try:
+        from py_helpers.constants import PROJECT_SLUG as _SYNC_PS
+    except ImportError:
+        _SYNC_PS = "cpic_time_to_event"
     for _name, _prefix, _local in [
-        ("cohorts", f"s3://{_s3_bucket}/gold/cohorts/", _data_root / "gold" / "cohorts"),
+        ("cohorts", f"s3://{_s3_bucket}/gold/{_SYNC_PS}/cohorts/", _data_root / "gold" / "cohorts"),
         ("medical", f"s3://{_s3_bucket}/gold/medical/", _data_root / "gold" / "medical"),
         ("pharmacy", f"s3://{_s3_bucket}/gold/pharmacy/", _data_root / "gold" / "pharmacy"),
     ]:
@@ -1139,7 +1147,11 @@ import boto3
 
 s3_client = boto3.client('s3')
 s3_bucket = 'pgxdatalake'
-s3_key = f"gold/feature_importance/{COHORT}/{AGE_BAND}/{COHORT}_{AGE_BAND_FNAME}_cohort_feature_importance.csv"
+try:
+    from py_helpers.constants import PROJECT_SLUG as _VERIFY_PS
+except ImportError:
+    _VERIFY_PS = "cpic_time_to_event"
+s3_key = f"gold/{_VERIFY_PS}/feature_importance/{COHORT}/{AGE_BAND}/{COHORT}_{AGE_BAND_FNAME}_cohort_feature_importance.csv"
 
 try:
     s3_client.head_object(Bucket=s3_bucket, Key=s3_key)

@@ -73,10 +73,10 @@ class FileResolver:
                 "3b_feature_importance_eda/outputs/{cohort}/{age_band}",
             ],
             "data_root_paths": [
-                "gold/feature_importance/{cohort}/{age_band}",
-                "gold/feature_importance/{cohort}/{age_band_fname}",
+                "gold/{project_slug}/feature_importance/{cohort}/{age_band}",
+                "gold/{project_slug}/feature_importance/{cohort}/{age_band_fname}",
             ],
-            "s3_key": "gold/feature_importance/{cohort}/{age_band}/{filename}",
+            "s3_key": "gold/{project_slug}/feature_importance/{cohort}/{age_band}/{filename}",
             "cache_dir": "3b_feature_importance_eda/outputs/{cohort}",
         },
         "aggregated_feature_importance": {
@@ -89,9 +89,9 @@ class FileResolver:
                 "3a_feature_importance/from_s3/by_cohort/{cohort}/{age_band}",
             ],
             "data_root_paths": [
-                "gold/feature_importance/{cohort}/{age_band}",
+                "gold/{project_slug}/feature_importance/{cohort}/{age_band}",
             ],
-            "s3_key": "gold/feature_importance/{cohort}/{age_band}/{filename}",
+            "s3_key": "gold/{project_slug}/feature_importance/{cohort}/{age_band}/{filename}",
             "cache_dir": "3a_feature_importance/{cohort}",
         },
         "bupar_post_target_analysis": {
@@ -101,20 +101,20 @@ class FileResolver:
                 "3b_feature_importance_eda/outputs/{cohort}/{age_band}",
             ],
             "data_root_paths": [
-                "gold/feature_importance/{cohort}/{age_band}",
+                "gold/{project_slug}/feature_importance/{cohort}/{age_band}",
             ],
-            "s3_key": "gold/feature_importance/{cohort}/{age_band}/{filename}",
+            "s3_key": "gold/{project_slug}/feature_importance/{cohort}/{age_band}/{filename}",
             "cache_dir": "3b_feature_importance_eda/outputs/{cohort}",
         },
         "cohort_parquet": {
             "filename_pattern": "cohort.parquet",
             "local_paths": [
-                "data/gold/cohorts/cohort_name={cohort}/event_year={event_year}/age_band={age_band}",
+                "data/gold/{project_slug}/cohorts/cohort_name={cohort}/event_year={event_year}/age_band={age_band}",
             ],
             "data_root_paths": [
-                "gold/cohorts/cohort_name={cohort}/event_year={event_year}/age_band={age_band}",
+                "gold/{project_slug}/cohorts/cohort_name={cohort}/event_year={event_year}/age_band={age_band}",
             ],
-            "s3_key": "gold/cohorts/cohort_name={cohort}/event_year={event_year}/age_band={age_band}/{filename}",
+            "s3_key": "gold/{project_slug}/cohorts/cohort_name={cohort}/event_year={event_year}/age_band={age_band}/{filename}",
         },
         "model_data": {
             "filename_pattern": "model_events.parquet",
@@ -132,9 +132,9 @@ class FileResolver:
                 "6_final_model/outputs/{cohort}/{age_band}",
             ],
             "data_root_paths": [
-                "gold/models/{cohort}/{age_band}",
+                "gold/{project_slug}/final_model/{cohort}/{age_band}",
             ],
-            "s3_key": "gold/models/{cohort}/{age_band}/{filename}",
+            "s3_key": "gold/{project_slug}/final_model/{cohort}/{age_band}/{filename}",
         },
         "administrative_codes_lookup": {
             "filename_pattern": "administrative_codes_lookup.json",
@@ -221,6 +221,10 @@ class FileResolver:
         """Format a path template with current parameters.
         When include_filename is False, {filename} is not expanded (avoids recursion when formatting the filename pattern).
         """
+        try:
+            from py_helpers.constants import PROJECT_SLUG as _project_slug
+        except ImportError:
+            _project_slug = "cpic_time_to_event"
         kwargs = dict(
             cohort=self.cohort or "",
             age_band=self.age_band or "",
@@ -228,6 +232,7 @@ class FileResolver:
             event_year=self.event_year or "",
             model_type=self.model_type or "",
             extension=self.extension or "",
+            project_slug=_project_slug,
         )
         if include_filename:
             kwargs["filename"] = self._get_filename()

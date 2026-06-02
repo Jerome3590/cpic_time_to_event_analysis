@@ -20,7 +20,7 @@ from typing import Optional
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from py_helpers.constants import age_band_to_fname
+from py_helpers.constants import age_band_to_fname, PROJECT_SLUG
 
 try:
     from py_helpers.common_imports import s3_client, S3_BUCKET
@@ -188,7 +188,7 @@ def upload_visualizations_to_s3(cohort: str, age_band: str, plot_files: list[Pat
     
     for plot_file in plot_files:
         s3_path = (
-            f"s3://{S3_BUCKET}/gold/feature_importance/{cohort}/{age_band}/"
+            f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/feature_importance/{cohort}/{age_band}/"
             f"plots/{plot_file.name}"
         )
         upload_file_to_s3(plot_file, s3_path, check_exists=True)

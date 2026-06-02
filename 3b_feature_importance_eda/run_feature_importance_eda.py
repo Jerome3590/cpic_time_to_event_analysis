@@ -38,7 +38,7 @@ else:
 
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from py_helpers.constants import age_band_to_fname, REQUIRED_COHORTS
+from py_helpers.constants import age_band_to_fname, REQUIRED_COHORTS, PROJECT_SLUG, S3_BUCKET
 from py_helpers.env_utils import get_workflow_python_bin
 
 try:
@@ -228,8 +228,8 @@ def run_feature_importance_eda_for_cohort(cohort: str, age_band: str, script_dir
     # Save checkpoint to S3
     age_band_fname = age_band_to_fname(age_band)
     output_paths = [
-        f"s3://pgxdatalake/gold/feature_importance/{cohort}/{age_band}/{cohort}_{age_band_fname}_cohort_feature_importance.csv",
-        f"s3://pgxdatalake/gold/feature_importance/{cohort}/{age_band}/{cohort}_{age_band_fname}_feature_filtering_summary.json"
+        f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/feature_importance/{cohort}/{age_band}/{cohort}_{age_band_fname}_cohort_feature_importance.csv",
+        f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/feature_importance/{cohort}/{age_band}/{cohort}_{age_band_fname}_feature_filtering_summary.json"
     ]
     
     metadata = {

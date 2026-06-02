@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
 
 from py_helpers.checkpoint_utils import save_step_checkpoint, upload_file_to_s3
-from py_helpers.constants import age_band_to_fname
+from py_helpers.constants import age_band_to_fname, PROJECT_SLUG
 from py_helpers.event_density_utils import DENSITY_BINS, resolve_step6_cohort_age_dir
 
 
@@ -75,7 +75,7 @@ def build_step6_gold_upload_pairs(
     out_base = resolve_step6_cohort_age_dir(project_root, cohort, age_band)
     abf = age_band_to_fname(age_band)
     bucket = _s3_bucket()
-    s3_root = f"s3://{bucket}/gold/final_model/{cohort}/{age_band}"
+    s3_root = f"s3://{bucket}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}"
 
     pairs: List[Tuple[Path, str]] = []
 

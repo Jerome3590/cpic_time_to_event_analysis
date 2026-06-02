@@ -50,6 +50,12 @@ from typing import Any, Dict, Optional
 import numpy as np
 import pandas as pd
 
+try:
+    from py_helpers.constants import PROJECT_SLUG, S3_BUCKET
+except ImportError:
+    PROJECT_SLUG = "cpic_time_to_event"
+    S3_BUCKET = "pgxdatalake"
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -482,7 +488,7 @@ def validate_per_bin_outputs(
             f"--cohort {cohort} --age_band {ab_h} --train-mode per_bin",
             "",
             "Or sync all bin artifacts from S3:",
-            f"  aws s3 sync s3://pgxdatalake/gold/final_model/{cohort}/{ab_h}/bin_models/ \\",
+            f"  aws s3 sync s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{ab_h}/bin_models/ \\",
             f"         6_final_model/outputs/{cohort}/{abf}/bin_models/",
         ]
         raise FileNotFoundError("\n".join(lines))

@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
 """List available artifacts in S3 for testing."""
 
+import sys
 import boto3
+from pathlib import Path
 from botocore.exceptions import ClientError
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+try:
+    from py_helpers.constants import PROJECT_SLUG
+except ImportError:
+    PROJECT_SLUG = "cpic_time_to_event"
 
 s3_client = boto3.client('s3')
 bucket = 'pgxdatalake'
@@ -13,9 +21,9 @@ age_band_fname = age_band.replace('-', '_')
 
 # List prefixes to check
 prefixes = [
-    f"gold/final_model/{cohort}/",
-    f"gold/shap_analysis/{cohort}/",
-    f"gold/ffa_analysis/{cohort}/",
+    f"gold/{PROJECT_SLUG}/final_model/{cohort}/",
+    f"gold/{PROJECT_SLUG}/shap_analysis/{cohort}/",
+    f"gold/{PROJECT_SLUG}/ffa_analysis/{cohort}/",
     f"gold/model_outputs/{cohort}/",
 ]
 
@@ -53,8 +61,8 @@ print("Checking for model JSON files:")
 print("=" * 80)
 
 model_paths = [
-    f"gold/final_model/{cohort}/{age_band}/final_model_json/",
-    f"gold/final_model/{cohort}/{age_band}/",
+    f"gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/final_model_json/",
+    f"gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/",
 ]
 
 for model_path in model_paths:

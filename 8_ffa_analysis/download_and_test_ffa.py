@@ -23,6 +23,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+try:
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from py_helpers.constants import PROJECT_SLUG
+except ImportError:
+    PROJECT_SLUG = "cpic_time_to_event"
+
 S3_BUCKET = "pgxdatalake"
 s3_client = boto3.client('s3')
 
@@ -75,8 +81,8 @@ def download_model_artifacts():
     
     # Try multiple S3 locations - model files are directly in the age_band directory
     s3_prefixes = [
-        f"gold/final_model/{COHORT_NAME}/{AGE_BAND}/",  # Main location
-        f"gold/final_model/{COHORT_NAME}/{AGE_BAND}/final_model_json/",
+        f"gold/{PROJECT_SLUG}/final_model/{COHORT_NAME}/{AGE_BAND}/",
+        f"gold/{PROJECT_SLUG}/final_model/{COHORT_NAME}/{AGE_BAND}/final_model_json/",
         f"gold/model_outputs/{COHORT_NAME}/{AGE_BAND_FNAME}/",
     ]
     
@@ -89,8 +95,8 @@ def download_model_artifacts():
     
     # Also try direct file paths
     direct_paths = [
-        f"gold/final_model/{COHORT_NAME}/{AGE_BAND}/{COHORT_NAME}_{AGE_BAND_FNAME}_best_xgboost_model.json",
-        f"gold/final_model/{COHORT_NAME}/{AGE_BAND}/{COHORT_NAME}_{AGE_BAND_FNAME}_best_catboost_model.json",
+        f"gold/{PROJECT_SLUG}/final_model/{COHORT_NAME}/{AGE_BAND}/{COHORT_NAME}_{AGE_BAND_FNAME}_best_xgboost_model.json",
+        f"gold/{PROJECT_SLUG}/final_model/{COHORT_NAME}/{AGE_BAND}/{COHORT_NAME}_{AGE_BAND_FNAME}_best_catboost_model.json",
     ]
     
     downloaded = 0
@@ -125,12 +131,12 @@ def download_shap_artifacts():
     
     # Download SHAP global importance
     for model_type in ['xgboost', 'catboost']:
-        shap_key = f"gold/shap_analysis/{COHORT_NAME}/{AGE_BAND}/{COHORT_NAME}_{AGE_BAND_FNAME}_shap_global_importance_{model_type}.csv"
+        shap_key = f"gold/{PROJECT_SLUG}/shap_analysis/{COHORT_NAME}/{AGE_BAND}/{COHORT_NAME}_{AGE_BAND_FNAME}_shap_global_importance_{model_type}.csv"
         local_path = shap_base / f"{COHORT_NAME}_{AGE_BAND_FNAME}_shap_global_importance_{model_type}.csv"
         download_file_from_s3(shap_key, local_path)
         
         # Download SHAP sample values (individual SHAP values per instance)
-        shap_values_key = f"gold/shap_analysis/{COHORT_NAME}/{AGE_BAND}/{COHORT_NAME}_{AGE_BAND_FNAME}_shap_sample_values_{model_type}.parquet"
+        shap_values_key = f"gold/{PROJECT_SLUG}/shap_analysis/{COHORT_NAME}/{AGE_BAND}/{COHORT_NAME}_{AGE_BAND_FNAME}_shap_sample_values_{model_type}.parquet"
         local_path = shap_base / f"{COHORT_NAME}_{AGE_BAND_FNAME}_shap_sample_values_{model_type}.parquet"
         download_file_from_s3(shap_values_key, local_path)
 
@@ -206,25 +212,25 @@ def download_data_artifacts():
     # Try to download from S3 to primary location
     data_path_parquet = data_paths_to_check[0][0]
     data_path_parquet.parent.mkdir(parents=True, exist_ok=True)  # Ensure directory exists
-    data_key = f"gold/final_model/{COHORT_NAME}/{AGE_BAND}/inputs/model_train/final_features.parquet"
+    data_key = f"gold/{PROJECT_SLUG}/final_model/{COHORT_NAME}/{AGE_BAND}/inputs/model_train/final_features.parquet"
     if download_file_from_s3(data_key, data_path_parquet):
         return True
     
     # Try CSV alternative
     data_path_csv = data_paths_to_check[1][0]
     data_path_csv.parent.mkdir(parents=True, exist_ok=True)  # Ensure directory exists
-    data_key_csv = f"gold/final_model/{COHORT_NAME}/{AGE_BAND}/inputs/model_train/{COHORT_NAME}_{AGE_BAND_FNAME}_train_final_features_no_leakage.csv"
+    data_key_csv = f"gold/{PROJECT_SLUG}/final_model/{COHORT_NAME}/{AGE_BAND}/inputs/model_train/{COHORT_NAME}_{AGE_BAND_FNAME}_train_final_features_no_leakage.csv"
     if download_file_from_s3(data_key_csv, data_path_csv):
         return True
     
     # Try alternative S3 locations
     alt_s3_keys = [
-        f"gold/cohorts/{COHORT_NAME}/{AGE_BAND}/final_features.parquet",
-        f"gold/cohorts/{COHORT_NAME}/{AGE_BAND}/{COHORT_NAME}_{AGE_BAND_FNAME}_train_final_features_no_leakage.csv",
+        f"gold/{PROJECT_SLUG}/cohorts/{COHORT_NAME}/{AGE_BAND}/final_features.parquet",
+        f"gold/{PROJECT_SLUG}/cohorts/{COHORT_NAME}/{AGE_BAND}/{COHORT_NAME}_{AGE_BAND_FNAME}_train_final_features_no_leakage.csv",
         f"gold/gold_cohorts/{COHORT_NAME}/{AGE_BAND}/final_features.parquet",
         f"gold/gold_cohorts/{COHORT_NAME}/{AGE_BAND}/{COHORT_NAME}_{AGE_BAND_FNAME}_train_final_features_no_leakage.csv",
-        f"gold/cohorts_model_data/{COHORT_NAME}/{AGE_BAND}/final_features.parquet",
-        f"gold/cohorts_model_data/{COHORT_NAME}/{AGE_BAND}/{COHORT_NAME}_{AGE_BAND_FNAME}_train_final_features_no_leakage.csv",
+        f"gold/{PROJECT_SLUG}/cohorts_model_data/{COHORT_NAME}/{AGE_BAND}/final_features.parquet",
+        f"gold/{PROJECT_SLUG}/cohorts_model_data/{COHORT_NAME}/{AGE_BAND}/{COHORT_NAME}_{AGE_BAND_FNAME}_train_final_features_no_leakage.csv",
     ]
     for alt_key in alt_s3_keys:
         # Try downloading to gold_cohorts location
@@ -235,8 +241,8 @@ def download_data_artifacts():
     
     # Try pgx-repository bucket
     repo_keys = [
-        f"gold/final_model/{COHORT_NAME}/{AGE_BAND}/inputs/model_train/final_features.parquet",
-        f"gold/final_model/{COHORT_NAME}/{AGE_BAND}/inputs/model_train/{COHORT_NAME}_{AGE_BAND_FNAME}_train_final_features_no_leakage.csv",
+        f"gold/{PROJECT_SLUG}/final_model/{COHORT_NAME}/{AGE_BAND}/inputs/model_train/final_features.parquet",
+        f"gold/{PROJECT_SLUG}/final_model/{COHORT_NAME}/{AGE_BAND}/inputs/model_train/{COHORT_NAME}_{AGE_BAND_FNAME}_train_final_features_no_leakage.csv",
         f"final_model/{COHORT_NAME}/{AGE_BAND}/inputs/model_train/final_features.parquet",
         f"final_model/{COHORT_NAME}/{AGE_BAND}/inputs/model_train/{COHORT_NAME}_{AGE_BAND_FNAME}_train_final_features_no_leakage.csv",
     ]
@@ -272,17 +278,17 @@ def download_existing_ffa_artifacts():
         model_output_dir.mkdir(parents=True, exist_ok=True)
         
         # Download explanations
-        s3_key = f"gold/ffa_analysis/{COHORT_NAME}/{AGE_BAND}/{model_type}/axp_explanations.parquet"
+        s3_key = f"gold/{PROJECT_SLUG}/ffa_analysis/{COHORT_NAME}/{AGE_BAND}/{model_type}/axp_explanations.parquet"
         local_path = model_output_dir / "axp_explanations.parquet"
         download_file_from_s3(s3_key, local_path)
         
         # Download feature importance
-        s3_key = f"gold/ffa_analysis/{COHORT_NAME}/{AGE_BAND}/{model_type}/feature_importance_axp.parquet"
+        s3_key = f"gold/{PROJECT_SLUG}/ffa_analysis/{COHORT_NAME}/{AGE_BAND}/{model_type}/feature_importance_axp.parquet"
         local_path = model_output_dir / "feature_importance_axp.parquet"
         download_file_from_s3(s3_key, local_path)
         
         # Download causal importance (if exists)
-        s3_key = f"gold/ffa_analysis/{COHORT_NAME}/{AGE_BAND}/{model_type}/causal_importance.parquet"
+        s3_key = f"gold/{PROJECT_SLUG}/ffa_analysis/{COHORT_NAME}/{AGE_BAND}/{model_type}/causal_importance.parquet"
         local_path = model_output_dir / "causal_importance.parquet"
         download_file_from_s3(s3_key, local_path)
 

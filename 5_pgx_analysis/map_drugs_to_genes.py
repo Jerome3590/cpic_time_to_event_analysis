@@ -24,6 +24,11 @@ if str(PROJECT_ROOT) not in sys.path:
 if str(PROJECT_ROOT / "5_pgx_analysis") not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT / "5_pgx_analysis"))
 
+try:
+    from py_helpers.constants import PROJECT_SLUG
+except ImportError:
+    PROJECT_SLUG = "cpic_time_to_event"
+
 # Import PubMed search functionality
 try:
     from search_pubmed_drug_gene import find_genes_for_drug_via_pubmed  # noqa: F401
@@ -1192,8 +1197,8 @@ def main():
                 
                 # Try multiple S3 paths
                 s3_paths_to_try = [
-                    f"gold/feature_importance/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname}_aggregated_feature_importance.csv",
-                    f"gold/feature_importance/aggregated/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname}_aggregated_feature_importance.csv",
+                    f"gold/{PROJECT_SLUG}/feature_importance/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname}_aggregated_feature_importance.csv",
+                    f"gold/{PROJECT_SLUG}/feature_importance/aggregated/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname}_aggregated_feature_importance.csv",
                 ]
                 
                 for s3_key in s3_paths_to_try:

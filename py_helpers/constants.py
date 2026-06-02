@@ -136,10 +136,10 @@ S3_BUCKET = os.environ.get("CPIC_S3_BUCKET", "pgxdatalake")
 # the same bucket without path collisions.
 PROJECT_SLUG = os.environ.get("CPIC_PROJECT_SLUG", "cpic_time_to_event")
 
-# Existing pipeline paths (no slug — live data already written here; do not rename)
-BASE_PATH_COHORT      = f"s3://{S3_BUCKET}/gold/cohorts"
-BASE_PATH_FEATURES    = f"s3://{S3_BUCKET}/gold/feature_importance"
-BASE_PATH_FINAL_MODEL = f"s3://{S3_BUCKET}/gold/final_model"
+# All pipeline artifact paths — project-scoped under PROJECT_SLUG
+BASE_PATH_COHORT      = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/cohorts"
+BASE_PATH_FEATURES    = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/feature_importance"
+BASE_PATH_FINAL_MODEL = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model"
 
 # New analysis artifact paths — project-scoped from the start
 BASE_PATH_ANALYSIS_VISUALS = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/analysis_visuals"

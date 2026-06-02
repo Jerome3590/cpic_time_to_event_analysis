@@ -23,6 +23,11 @@ PROJECT_ROOT = Path(__file__).parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+try:
+    from py_helpers.constants import PROJECT_SLUG
+except ImportError:
+    PROJECT_SLUG = "cpic_time_to_event"
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -108,8 +113,8 @@ def create_patient_pgx_features(
         
         # Try filtered version first from S3
         s3_key_candidates = [
-            f"gold/dtw_filter/{cohort_name}/{age_band}/model_events_no_protocols.parquet",
-            f"gold/cohorts_model_data/cohort_name={cohort_name}/age_band={age_band}/model_events.parquet",
+            f"gold/{PROJECT_SLUG}/dtw_filter/{cohort_name}/{age_band}/model_events_no_protocols.parquet",
+            f"gold/{PROJECT_SLUG}/cohorts_model_data/cohort_name={cohort_name}/age_band={age_band}/model_events.parquet",
         ]
         
         download_dest = candidates_filtered[0]  # prefer filtered path for S3 download
@@ -234,7 +239,7 @@ def main():
     
     # Upload to S3 gold location (primary: gold/pgx_features/, also mirror to legacy location)
     age_band_fname = args.age_band.replace("-", "_")
-    s3_path_primary = f"s3://pgxdatalake/gold/pgx_features/{args.cohort}/{args.age_band}/pgx_features_{args.cohort}_{age_band_fname}.csv"
+    s3_path_primary = f"s3://pgxdatalake/gold/{PROJECT_SLUG}/pgx_features/{args.cohort}/{args.age_band}/pgx_features_{args.cohort}_{age_band_fname}.csv"
     s3_path_legacy = f"s3://pgxdatalake/gold/feature_engineering/7_pgx/{args.cohort}/{args.age_band}/pgx_features_{args.cohort}_{age_band_fname}.csv"
     
     # Check for AWS CLI

@@ -34,6 +34,11 @@ else:
 sys.path.insert(0, str(project_root))
 
 from py_helpers.create_feature_importance_visualizations import create_feature_importance_plots
+try:
+    from py_helpers.constants import PROJECT_SLUG, S3_BUCKET
+except ImportError:
+    PROJECT_SLUG = "cpic_time_to_event"
+    S3_BUCKET = "pgxdatalake"
 
 if __name__ == "__main__":
     import argparse
@@ -151,7 +156,7 @@ if __name__ == "__main__":
         if aws_cmd:
             age_band_fname = args.age_band.replace("-", "_")
             s3_base = (
-                f"s3://pgxdatalake/gold/final_model/"
+                f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/"
                 f"{args.cohort_name}/{args.age_band}/plots"
             )
             

@@ -29,7 +29,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from py_helpers.constants import DEFAULT_SAMPLE_RATIO, get_cohort_slug_by_cohort
+from py_helpers.constants import DEFAULT_SAMPLE_RATIO, get_cohort_slug_by_cohort, PROJECT_SLUG
 from py_helpers.env_utils import get_model_data_root
 
 try:
@@ -65,7 +65,7 @@ def download_control_cohort_from_s3(control_cohort: str, age_band: str, local_pa
     
     cohort_slug = get_cohort_slug_by_cohort(control_cohort)
     # S3 path: s3://pgxdatalake/gold/cohorts/input_model_data/cohort_name={slug}/
-    s3_path = f"s3://pgxdatalake/gold/cohorts/input_model_data/cohort_name={cohort_slug}/age_band={age_band}/model_events.parquet"
+    s3_path = f"s3://pgxdatalake/gold/{PROJECT_SLUG}/cohorts/input_model_data/cohort_name={cohort_slug}/age_band={age_band}/model_events.parquet"
     
     # Check if exists in S3
     if not check_s3_output_exists(s3_path):

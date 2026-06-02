@@ -42,7 +42,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 import duckdb
 import pandas as pd
 
-from py_helpers.constants import ALL_ICD_DIAGNOSIS_COLUMNS, S3_BUCKET
+from py_helpers.constants import ALL_ICD_DIAGNOSIS_COLUMNS, S3_BUCKET, PROJECT_SLUG
 
 try:
     # Prefer shared s3_client if available
@@ -89,7 +89,7 @@ def upload_parquet_to_s3(local_path: Path, cohort_name: str, age_band: str) -> N
         return
 
     s3_key = (
-        f"gold/cohorts_model_data/"
+        f"gold/{PROJECT_SLUG}/cohorts_model_data/"
         f"cohort_name={cohort_name}/age_band={age_band}/model_events.parquet"
     )
     try:

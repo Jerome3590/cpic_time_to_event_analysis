@@ -73,6 +73,7 @@ from py_helpers.constants import (
     DRUG_NAMES_EXCLUDED_MODEL_TRAINING,
     FEATURE_SUBSTRINGS_EXCLUDED,
     DEFAULT_SAMPLE_RATIO,
+    PROJECT_SLUG,
     get_physical_age_bands_for_gold,
     get_physical_age_bands_for_medical_pharmacy,
     age_band_partition_candidates,
@@ -623,7 +624,7 @@ def filter_cohort_events_for_items(
 
     # S3 path aligned with Step 6 download candidates (gold/cohorts_model_data/...)
     s3_output_path = (
-        f"s3://pgxdatalake/gold/cohorts_model_data/"
+        f"s3://pgxdatalake/gold/{PROJECT_SLUG}/cohorts_model_data/"
         f"cohort_name={cohort_name}/age_band={age_band}/model_events.parquet"
     )
 
@@ -1091,7 +1092,7 @@ def _sync_model_events_to_s3(parquet_path: Path, cohort_name: str, age_band: str
         return
 
     s3_path = (
-        f"s3://pgxdatalake/gold/cohorts_model_data/"
+        f"s3://pgxdatalake/gold/{PROJECT_SLUG}/cohorts_model_data/"
         f"cohort_name={cohort_name}/age_band={age_band}/"
     )
     
@@ -1142,7 +1143,7 @@ def download_cohort_feature_importance_from_s3(cohort: Optional[str] = None, age
         # Download specific file
         age_band_fname = age_band.replace("-", "_")
         s3_key = (
-            f"gold/feature_importance/{cohort}/{age_band}/"
+            f"gold/{PROJECT_SLUG}/feature_importance/{cohort}/{age_band}/"
             f"{cohort}_{age_band_fname}_cohort_feature_importance.csv"
         )
         local_path = download_root / cohort / age_band_fname / f"{cohort}_{age_band_fname}_cohort_feature_importance.csv"
@@ -1160,7 +1161,7 @@ def download_cohort_feature_importance_from_s3(cohort: Optional[str] = None, age
             print(f"[WARN] Could not download {s3_key}: {e}")
     else:
         # List all cohorts and age bands from S3
-        prefix = "gold/feature_importance/"
+        prefix = f"gold/{PROJECT_SLUG}/feature_importance/"
         try:
             paginator = s3_client.get_paginator("list_objects_v2")
             for page in paginator.paginate(Bucket=S3_BUCKET, Prefix=prefix, Delimiter="/"):
@@ -1257,7 +1258,7 @@ def main() -> None:
                 print(f"[ERROR] Step 3b refined feature importance not found locally or in S3")
                 expected_path = STEP3B_OUTPUTS_DIR / args.cohort / age_band_fname / fname
                 print(f"[ERROR] Expected (check NVMe and project): {expected_path}")
-                print(f"[ERROR] S3 path: s3://{S3_BUCKET}/gold/feature_importance/{args.cohort}/{args.age_band}/{fname}")
+                print(f"[ERROR] S3 path: s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/feature_importance/{args.cohort}/{args.age_band}/{fname}")
                 print(f"[ERROR] Step 3b must run before Step 4a to produce cohort_feature_importance files")
                 print(f"[ERROR] Run: python 3b_feature_importance_eda/run_feature_importance_eda.py --cohort {args.cohort} --age-band {args.age_band}")
                 sys.exit(1)

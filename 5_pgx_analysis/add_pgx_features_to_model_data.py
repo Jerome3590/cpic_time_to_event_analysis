@@ -22,6 +22,10 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))  # noqa: E402
 
 from py_helpers.fe_monitor import mirror_checkpoint_to_s3  # noqa: E402
+try:
+    from py_helpers.constants import PROJECT_SLUG
+except ImportError:
+    PROJECT_SLUG = "cpic_time_to_event"
 
 
 def add_pgx_features(
@@ -104,7 +108,7 @@ def add_pgx_features(
     pgx_df.to_csv(out_path, index=False)
     
     # Upload to S3 gold location (primary: gold/pgx_features/, also mirror to legacy location)
-    s3_path_primary = f"s3://pgxdatalake/gold/pgx_features/{cohort_name}/{age_band}/pgx_added_features_{cohort_name}_{age_band_fname}.csv"
+    s3_path_primary = f"s3://pgxdatalake/gold/{PROJECT_SLUG}/pgx_features/{cohort_name}/{age_band}/pgx_added_features_{cohort_name}_{age_band_fname}.csv"
     s3_path_legacy = f"s3://pgxdatalake/gold/feature_engineering/7_pgx/{cohort_name}/{age_band}/pgx_added_features_{cohort_name}_{age_band_fname}.csv"
     
     aws_cli = shutil.which("aws")

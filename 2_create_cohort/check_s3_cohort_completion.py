@@ -31,16 +31,22 @@ project_root = Path(__file__).resolve().parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
+try:
+    from py_helpers.constants import PROJECT_SLUG, CHECKPOINT_BUCKET
+except ImportError:
+    PROJECT_SLUG = "cpic_time_to_event"
+    CHECKPOINT_BUCKET = "pgxdatalake"
+
 # Use C:\Projects\credentials when present (local runs)
 _creds_file = project_root.parent / "credentials"
 if _creds_file.exists() and not os.environ.get("AWS_SHARED_CREDENTIALS_FILE"):
     os.environ["AWS_SHARED_CREDENTIALS_FILE"] = str(_creds_file)
 
-STATE_BUCKET = os.environ.get("PGX_S3_BUCKET", "pgx-repository")
-STATE_PREFIX = "pgx-pipeline-status/create_cohort"
+STATE_BUCKET = CHECKPOINT_BUCKET
+STATE_PREFIX = f"gold/{PROJECT_SLUG}/pipeline_checkpoints/create_cohort"
 COHORT_BUCKET = os.environ.get("PGX_DATALAKE_BUCKET", "pgxdatalake")
-COHORT_PREFIX = "gold/cohorts"
-BUILD_LOGS_PREFIX = "build_logs/create_cohort"
+COHORT_PREFIX = f"gold/{PROJECT_SLUG}/cohorts"
+BUILD_LOGS_PREFIX = f"gold/{PROJECT_SLUG}/logs/create_cohort"
 
 
 def _parse_iso(s):

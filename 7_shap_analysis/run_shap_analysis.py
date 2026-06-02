@@ -29,7 +29,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from py_helpers.constants import age_band_to_fname  # type: ignore
+from py_helpers.constants import age_band_to_fname, PROJECT_SLUG, S3_BUCKET  # type: ignore
 from py_helpers.event_density_utils import (  # type: ignore
     DENSITY_BINS,
     cohort_aggregate_final_model_has_artifacts,
@@ -546,12 +546,12 @@ def _load_best_models(cohort: str, age_band: str, bin_name: str | None = None):
     if bin_name:
         lines.append(
             f"Or sync per-bin artifact from S3: aws s3 cp "
-            f"s3://pgxdatalake/gold/final_model/{cohort}/{age_band_h}/bin_models/{bin_name}/catboost_model.cbm "
+            f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band_h}/bin_models/{bin_name}/catboost_model.cbm "
             f"{_bin_base / 'models' / 'catboost_model.cbm'}"
         )
     else:
         lines.append(
-            f"Or sync from S3: aws s3 cp s3://pgxdatalake/gold/final_model/{cohort}/{age_band_h}/catboost_model.cbm "
+            f"Or sync from S3: aws s3 cp s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band_h}/catboost_model.cbm "
             f"{PROJECT_ROOT / '6_final_model' / 'outputs' / cohort / age_band_fname / 'models' / 'catboost_model.cbm'}"
         )
     raise FileNotFoundError("\n".join(lines))
@@ -600,7 +600,7 @@ def _load_best_xgboost_model(cohort: str, age_band: str, bin_name: str | None = 
         ]
         if bin_name:
             lines.append(
-                f"Or sync: aws s3 cp s3://pgxdatalake/gold/final_model/{cohort}/{age_band_h}/bin_models/{bin_name}/xgboost_model.ubj "
+                f"Or sync: aws s3 cp s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band_h}/bin_models/{bin_name}/xgboost_model.ubj "
                 f"{_bin_base / 'models' / 'xgboost_model.ubj'}"
             )
         raise FileNotFoundError("\n".join(lines))
@@ -910,11 +910,11 @@ def run_shap_analysis(
         try:
             from py_helpers.checkpoint_utils import upload_file_to_s3
             if xgb_imp_path.exists():
-                s3_xgb_imp = f"s3://pgxdatalake/gold/shap_analysis/{cohort}/{age_band}/{cohort}_{age_band_fname}_shap_global_importance_xgboost.csv"
+                s3_xgb_imp = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/shap_analysis/{cohort}/{age_band}/{cohort}_{age_band_fname}_shap_global_importance_xgboost.csv"
                 if upload_file_to_s3(xgb_imp_path, s3_xgb_imp):
                     s3_outputs.append(s3_xgb_imp)
             if xgb_shap_sample_path.exists():
-                s3_xgb_sample = f"s3://pgxdatalake/gold/shap_analysis/{cohort}/{age_band}/{cohort}_{age_band_fname}_shap_sample_values_xgboost.parquet"
+                s3_xgb_sample = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/shap_analysis/{cohort}/{age_band}/{cohort}_{age_band_fname}_shap_sample_values_xgboost.parquet"
                 if upload_file_to_s3(xgb_shap_sample_path, s3_xgb_sample):
                     s3_outputs.append(s3_xgb_sample)
         except ImportError:
@@ -1054,11 +1054,11 @@ def run_shap_analysis(
                 from py_helpers.checkpoint_utils import upload_file_to_s3
 
                 if cb_imp_path.exists():
-                    s3_cb_imp = f"s3://pgxdatalake/gold/shap_analysis/{cohort}/{age_band}/{cohort}_{age_band_fname}_shap_global_importance_catboost.csv"
+                    s3_cb_imp = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/shap_analysis/{cohort}/{age_band}/{cohort}_{age_band_fname}_shap_global_importance_catboost.csv"
                     if upload_file_to_s3(cb_imp_path, s3_cb_imp):
                         s3_outputs.append(s3_cb_imp)
                 if cb_shap_sample_path.exists():
-                    s3_cb_sample = f"s3://pgxdatalake/gold/shap_analysis/{cohort}/{age_band}/{cohort}_{age_band_fname}_shap_sample_values_catboost.parquet"
+                    s3_cb_sample = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/shap_analysis/{cohort}/{age_band}/{cohort}_{age_band_fname}_shap_sample_values_catboost.parquet"
                     if upload_file_to_s3(cb_shap_sample_path, s3_cb_sample):
                         s3_outputs.append(s3_cb_sample)
             except ImportError:
@@ -1221,9 +1221,9 @@ def main() -> None:
                 local_path = out_dir / fname
                 if local_path.exists():
                     if fname.endswith('.csv'):
-                        s3_path = f"s3://pgxdatalake/gold/shap_analysis/{args.cohort}/{args.age_band}/{fname}"
+                        s3_path = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/shap_analysis/{args.cohort}/{args.age_band}/{fname}"
                     elif fname.endswith('.parquet'):
-                        s3_path = f"s3://pgxdatalake/gold/shap_analysis/{args.cohort}/{args.age_band}/{fname}"
+                        s3_path = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/shap_analysis/{args.cohort}/{args.age_band}/{fname}"
                     else:
                         continue  # Skip PNG files for S3 upload (they're large and optional)
                     
@@ -1249,8 +1249,8 @@ def main() -> None:
         from py_helpers.checkpoint_utils import check_step_outputs_exist, check_step_checkpoint_exists
 
         s3_output_paths = [
-            f"s3://pgxdatalake/gold/shap_analysis/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname}_shap_global_importance_xgboost.csv",
-            f"s3://pgxdatalake/gold/shap_analysis/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname}_shap_sample_values_xgboost.parquet",
+            f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/shap_analysis/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname}_shap_global_importance_xgboost.csv",
+            f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/shap_analysis/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname}_shap_sample_values_xgboost.parquet",
         ]
 
         # Only skip if outputs actually exist (not just checkpoint)
@@ -1264,14 +1264,13 @@ def main() -> None:
             try:
                 import boto3
                 s3_client = boto3.client("s3")
-                S3_BUCKET = "pgxdatalake"
                 
                 out_dir.mkdir(parents=True, exist_ok=True)
                 
                 downloaded_files = []
                 # Download XGBoost outputs (required)
                 for fname in expected_outputs:
-                    s3_key = f"gold/shap_analysis/{args.cohort}/{args.age_band}/{fname}"
+                    s3_key = f"gold/{PROJECT_SLUG}/shap_analysis/{args.cohort}/{args.age_band}/{fname}"
                     local_path = out_dir / fname
                     try:
                         s3_client.download_file(S3_BUCKET, s3_key, str(local_path))
@@ -1282,7 +1281,7 @@ def main() -> None:
                 
                 # Try to download CatBoost outputs (optional)
                 for fname in optional_outputs:
-                    s3_key = f"gold/shap_analysis/{args.cohort}/{args.age_band}/{fname}"
+                    s3_key = f"gold/{PROJECT_SLUG}/shap_analysis/{args.cohort}/{args.age_band}/{fname}"
                     local_path = out_dir / fname
                     try:
                         s3_client.download_file(S3_BUCKET, s3_key, str(local_path))

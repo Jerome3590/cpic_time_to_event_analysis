@@ -36,6 +36,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from py_helpers.constants import (  # noqa: E402
     AGE_BANDS,
     age_band_to_fname,
+    PROJECT_SLUG,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -80,7 +81,7 @@ def delete_s3_prefix(cohort: str, age_band: str, dry_run: bool) -> int:
     except ImportError:
         logger.warning("S3 client not available; skipping S3 delete")
         return 0
-    prefix = f"gold/feature_importance/{cohort}/{age_band}/"
+    prefix = f"gold/{PROJECT_SLUG}/feature_importance/{cohort}/{age_band}/"
     try:
         paginator = s3_client.get_paginator("list_objects_v2")
         n = 0
@@ -94,7 +95,7 @@ def delete_s3_prefix(cohort: str, age_band: str, dry_run: bool) -> int:
                     logger.info("  [S3 deleted] s3://%s/%s", S3_BUCKET, key)
                 n += 1
         # Also _baseline subprefix
-        baseline_prefix = f"gold/feature_importance/{cohort}/{age_band}/_baseline/"
+        baseline_prefix = f"gold/{PROJECT_SLUG}/feature_importance/{cohort}/{age_band}/_baseline/"
         for page in paginator.paginate(Bucket=S3_BUCKET, Prefix=baseline_prefix):
             for obj in page.get("Contents") or []:
                 key = obj["Key"]

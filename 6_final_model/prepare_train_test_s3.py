@@ -35,6 +35,11 @@ warnings.filterwarnings("ignore")
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+try:
+    from py_helpers.constants import PROJECT_SLUG
+except ImportError:
+    PROJECT_SLUG = "cpic_time_to_event"
+
 
 def prepare_train_test_s3(
     project_root: Path,
@@ -120,7 +125,7 @@ def prepare_train_test_s3(
             
             s3_client = boto3.client("s3")
             S3_BUCKET = "pgxdatalake"
-            s3_key = f"gold/cohorts_model_data/cohort_name={cohort_name}/age_band={age_band}/model_events.parquet"
+            s3_key = f"gold/{PROJECT_SLUG}/cohorts_model_data/cohort_name={cohort_name}/age_band={age_band}/model_events.parquet"
             
             # Download to canonical location
             local_download_path = canonical_path
@@ -266,7 +271,7 @@ def prepare_train_test_s3(
     
     # Upload to S3 (CRITICAL: Training data must be in S3 for FFA analysis)
     # S3 structure: inputs folder (replicating local structure)
-    s3_base = f"s3://pgxdatalake/gold/final_model/{cohort_name}/{age_band}"
+    s3_base = f"s3://pgxdatalake/gold/{PROJECT_SLUG}/final_model/{cohort_name}/{age_band}"
     s3_train_path = f"{s3_base}/inputs/model_train/final_features.parquet"
     s3_test_path = f"{s3_base}/inputs/model_test/final_features.parquet"
     
@@ -298,7 +303,7 @@ def prepare_train_test_s3(
             import boto3
             s3_client = boto3.client('s3')
             bucket = 'pgxdatalake'
-            s3_key_train = f"gold/final_model/{cohort_name}/{age_band}/inputs/model_train/final_features.parquet"
+            s3_key_train = f"gold/{PROJECT_SLUG}/final_model/{cohort_name}/{age_band}/inputs/model_train/final_features.parquet"
             
             print(f"\n[INFO] Uploading train dataset to S3 using boto3: s3://{bucket}/{s3_key_train}")
             s3_client.upload_file(str(train_path), bucket, s3_key_train)
@@ -333,7 +338,7 @@ def prepare_train_test_s3(
                 import boto3
                 s3_client = boto3.client('s3')
                 bucket = 'pgxdatalake'
-                s3_key_test = f"gold/final_model/{cohort_name}/{age_band}/inputs/model_test/final_features.parquet"
+                s3_key_test = f"gold/{PROJECT_SLUG}/final_model/{cohort_name}/{age_band}/inputs/model_test/final_features.parquet"
                 
                 print(f"[INFO] Uploading test dataset to S3 using boto3: s3://{bucket}/{s3_key_test}")
                 s3_client.upload_file(str(test_path), bucket, s3_key_test)

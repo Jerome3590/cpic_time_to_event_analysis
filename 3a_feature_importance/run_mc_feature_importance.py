@@ -43,7 +43,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from py_helpers.constants import age_band_to_fname  # noqa: E402
+from py_helpers.constants import age_band_to_fname, PROJECT_SLUG  # noqa: E402
 from py_helpers.env_utils import get_xgb_cpu_nthread, get_data_root, is_linux  # noqa: E402
 from py_helpers.feature_utils import filter_fi_to_drug_only  # noqa: E402
 from py_helpers.s3_utils import normalize_cohort_name, get_cohort_parquet_path  # noqa: E402
@@ -622,7 +622,7 @@ def run_mc_feature_importance(
     if not force:
         s3_suffix = "_baseline/" if baseline else ""
         s3_key_agg = (
-            f"gold/feature_importance/{cohort}/{age_band}/{s3_suffix}"
+            f"gold/{PROJECT_SLUG}/feature_importance/{cohort}/{age_band}/{s3_suffix}"
             f"{cohort}_{age_band_fname}_aggregated_feature_importance.csv"
         )
         try:
@@ -1064,7 +1064,7 @@ def run_mc_feature_importance(
             import io
             per_model_bytes = fi_df.to_csv(index=False).encode("utf-8")
             s3_suffix = "_baseline/" if baseline else ""
-            s3_key_per = f"gold/feature_importance/{cohort}/{age_band}/{s3_suffix}{out_path.name}"
+            s3_key_per = f"gold/{PROJECT_SLUG}/feature_importance/{cohort}/{age_band}/{s3_suffix}{out_path.name}"
             s3_client.put_object(
                 Bucket=S3_BUCKET,
                 Key=s3_key_per,
@@ -1170,7 +1170,7 @@ def run_mc_feature_importance(
             obj_bytes = agg_df.to_csv(index=False).encode('utf-8')
             s3_suffix = "_baseline/" if baseline else ""
             filename_agg = f"{cohort}_{age_band_fname}_aggregated_feature_importance.csv"
-            s3_key_agg = f"gold/feature_importance/{cohort}/{age_band}/{s3_suffix}{filename_agg}"
+            s3_key_agg = f"gold/{PROJECT_SLUG}/feature_importance/{cohort}/{age_band}/{s3_suffix}{filename_agg}"
             try:
                 s3_client.put_object(
                     Bucket=S3_BUCKET,

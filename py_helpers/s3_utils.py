@@ -26,7 +26,7 @@ if project_root not in sys.path:
 
 from py_helpers.common_imports import s3_client
 from py_helpers.data_utils import convert_json_serializable
-from py_helpers.constants import S3_BUCKET
+from py_helpers.constants import S3_BUCKET, PROJECT_SLUG
 from botocore.config import Config
 
 
@@ -1086,7 +1086,7 @@ def get_output_paths(cohort_name, age_band, event_year, bucket_name="pgxdatalake
         # Curated cohort parquet lives under GOLD cohorts; use normalized name so skip-check matches phase4 write path
         cohort_slug = normalize_cohort_name(cohort_name)
         gold_cohorts_partitions = f"cohort_name={cohort_slug}/event_year={event_year}/age_band={age_band}"
-        gold_cohorts_base = f"s3://{bucket_name}/gold/cohorts/{gold_cohorts_partitions}"
+        gold_cohorts_base = f"s3://{bucket_name}/gold/{PROJECT_SLUG}/cohorts/{gold_cohorts_partitions}"
 
         paths = {
             "fpgrowth_features_parquet": f"{cohort_base}/fpgrowth_features.parquet",
@@ -1219,8 +1219,7 @@ def get_cohort_parquet_path(
     The function uses the standard cohorts directory regardless of target configuration.
     """
     cohort_slug = normalize_cohort_name(cohort_name)
-    # New format: s3://pgxdatalake/gold/cohorts/ (target slug no longer needed in path)
-    base_dir = f"s3://{bucket_name}/gold/cohorts/"
+    base_dir = f"s3://{bucket_name}/gold/{PROJECT_SLUG}/cohorts/"
     return (
         f"{base_dir}"
         f"cohort_name={cohort_slug}/event_year={event_year}/age_band={age_band}/cohort.parquet"
@@ -2375,7 +2374,7 @@ def check_feature_importance_results_exist(cohort_name: str, age_band: str, even
     Returns:
         True if results exist, False otherwise
     """
-    s3_base = "s3://pgxdatalake/gold/feature_importance"
+    s3_base = f"s3://pgxdatalake/gold/{PROJECT_SLUG}/feature_importance"
     s3_key = f"cohort_name={cohort_name}/age_band={age_band}/event_year={event_year}/{cohort_name}_{age_band}_{event_year}_feature_importance_aggregated.csv"
     
     try:

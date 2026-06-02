@@ -56,7 +56,7 @@ from py_helpers.fe_monitor import (  # noqa: E402
     step_block,
     mirror_log_to_s3,
 )
-from py_helpers.constants import age_band_to_fname, DRUG_NAMES_EXCLUDED_MODEL_TRAINING, FEATURE_SUBSTRINGS_EXCLUDED
+from py_helpers.constants import age_band_to_fname, DRUG_NAMES_EXCLUDED_MODEL_TRAINING, FEATURE_SUBSTRINGS_EXCLUDED, PROJECT_SLUG, S3_BUCKET
 from py_helpers.env_utils import get_mc_cv_n_runs, get_data_root, get_model_data_root, get_workflow_python_bin, is_linux
 from py_helpers.event_density_utils import (
     DENSITY_BINS as _DENSITY_BINS,
@@ -492,7 +492,7 @@ def _resolve_model_events_path(cohort: str, age_band: str) -> Path:
 
     # If not found locally, try downloading from S3
     s3_key_candidates = [
-        f"gold/cohorts_model_data/cohort_name={cohort}/age_band={age_band}/model_events.parquet",
+        f"gold/{PROJECT_SLUG}/cohorts_model_data/cohort_name={cohort}/age_band={age_band}/model_events.parquet",
         f"gold/model_data/cohort_name={cohort}/age_band={age_band}/model_events.parquet",
         f"gold/model_data/{cohort}/{age_band}/model_events.parquet",
     ]
@@ -603,7 +603,7 @@ def _create_aggregated_feature_importance_visualizations(
     if agg_csv_path is None:
         # Local sync location (workflow syncs S3 gold/feature_importance here)
         data_root = get_data_root()
-        gold_fi = data_root / "gold" / "feature_importance" / cohort / age_band / filename
+        gold_fi = data_root / "gold" / PROJECT_SLUG / "feature_importance" / cohort / age_band / filename
         if gold_fi.exists():
             agg_csv_path = gold_fi
     if agg_csv_path is None:
@@ -741,7 +741,7 @@ def _create_aggregated_feature_importance_visualizations(
             import shutil
             aws_cmd = shutil.which("aws")
             if aws_cmd:
-                s3_plots_base = f"s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/plots/"
+                s3_plots_base = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/plots/"
                 for plot_file in [bar_chart_path, heatmap_path]:
                     s3_path = f"{s3_plots_base}{plot_file.name}"
                     result = subprocess.run(
@@ -796,7 +796,7 @@ def _load_aggregated_feature_importance_codes(cohort: str, age_band: str, top_n:
     if not refined_csv_path.exists():
         age_band_fname_s3 = age_band.replace("-", "_")
         s3_key = (
-            f"gold/feature_importance/{cohort}/{age_band}/"
+            f"gold/{PROJECT_SLUG}/feature_importance/{cohort}/{age_band}/"
             f"{cohort}_{age_band_fname_s3}_cohort_feature_importance.csv"
         )
         s3_path = f"s3://{S3_BUCKET}/{s3_key}"
@@ -827,7 +827,7 @@ def _load_aggregated_feature_importance_codes(cohort: str, age_band: str, top_n:
         raise FileNotFoundError(
             f"Step 3b refined feature importance CSV is REQUIRED (removes target leakage) but not found for {cohort}/{age_band}.\n"
             f"Expected location: {refined_csv_path}\n"
-            f"S3 location: s3://{S3_BUCKET}/gold/feature_importance/{cohort}/{age_band}/{cohort}_{age_band_fname}_cohort_feature_importance.csv\n"
+            f"S3 location: s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/feature_importance/{cohort}/{age_band}/{cohort}_{age_band_fname}_cohort_feature_importance.csv\n"
             f"Step 3b must run before Step 6 to produce refined features with leakage filtering.\n"
             f"Run: python 3b_feature_importance_eda/run_feature_importance_eda.py --cohort {cohort} --age-band {age_band}"
         )
@@ -1899,7 +1899,7 @@ def train_and_evaluate(
     # ------------------------------------------------------------------
     summary_csv_path = out_base / f"{cohort}_{age_band_fname}_model_metrics_summary.csv"
     _s3_bin_infix = f"bin_models/{bin_name}/" if bin_name else ""
-    s3_summary_csv = f"s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/{_s3_bin_infix}{cohort}_{age_band_fname}_model_metrics_summary.csv"
+    s3_summary_csv = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/{_s3_bin_infix}{cohort}_{age_band_fname}_model_metrics_summary.csv"
     model_json_dir = out_base / "final_model_json"
     xgb_json_path = model_json_dir / f"{cohort}_{age_band_fname}_best_xgboost_model.json"
     cb_cbm_path = model_json_dir / f"{cohort}_{age_band_fname}_best_catboost_model.cbm"
@@ -1941,7 +1941,7 @@ def train_and_evaluate(
         except Exception:
             pass
         metadata_path = out_base / f"{cohort}_{age_band_fname}_model_selection_metadata.json"
-        s3_metadata = f"s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/{_s3_bin_infix}{cohort}_{age_band_fname}_model_selection_metadata.json"
+        s3_metadata = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/{_s3_bin_infix}{cohort}_{age_band_fname}_model_selection_metadata.json"
         selection_metadata = {
             "selected_model": selected_model,
             "best_xgb_variant": best_xgb_variant,
@@ -2563,7 +2563,7 @@ def train_and_evaluate(
         selection_metadata["optuna_used"] = False
 
     metadata_path = out_base / f"{cohort}_{age_band_fname}_model_selection_metadata.json"
-    s3_metadata = f"s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/{_s3_bin_infix}{cohort}_{age_band_fname}_model_selection_metadata.json"
+    s3_metadata = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/{_s3_bin_infix}{cohort}_{age_band_fname}_model_selection_metadata.json"
     
     # Helper function for idempotent model saving with S3 upload
     def save_model_idempotent(local_path: Path, s3_path: str, save_func, *save_args, **save_kwargs):
@@ -2664,7 +2664,7 @@ def train_and_evaluate(
     
     # Save MC CV results CSV
     mc_cv_csv_path = out_base / f"{cohort}_{age_band_fname}_mc_cv_results.csv"
-    s3_mc_cv_csv = f"s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/{_s3_bin_infix}{cohort}_{age_band_fname}_mc_cv_results.csv"
+    s3_mc_cv_csv = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/{_s3_bin_infix}{cohort}_{age_band_fname}_mc_cv_results.csv"
     
     def save_mc_cv_csv():
         mc_cv_df = pd.DataFrame(mc_cv_results)
@@ -2731,7 +2731,7 @@ def train_and_evaluate(
     # Create DataFrame and save to CSV
     summary_df = pd.DataFrame(summary_data)
     summary_csv_path = out_base / f"{cohort}_{age_band_fname}_model_metrics_summary.csv"
-    s3_summary_csv = f"s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/{_s3_bin_infix}{cohort}_{age_band_fname}_model_metrics_summary.csv"
+    s3_summary_csv = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/{_s3_bin_infix}{cohort}_{age_band_fname}_model_metrics_summary.csv"
     
     def save_summary_csv():
         summary_df.to_csv(summary_csv_path, index=False)
@@ -2848,7 +2848,7 @@ def train_and_evaluate(
         model_json_dir
         / f"{cohort}_{age_band_fname}_best_xgboost_model.json"
     )
-    s3_xgb_json = f"s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/{_s3_bin_infix}{cohort}_{age_band_fname}_best_xgboost_model.json"
+    s3_xgb_json = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/{_s3_bin_infix}{cohort}_{age_band_fname}_best_xgboost_model.json"
     
     booster = xgb_final.get_booster()
     # Use text dump format so the existing XGBoostSymbolicExplainer parser
@@ -2884,7 +2884,7 @@ def train_and_evaluate(
 
         fi_path = out_base / f"{cohort}_{age_band_fname}_xgboost_feature_importance.csv"
         _bin_s3_infix = f"bin_models/{bin_name}/" if bin_name else ""
-        s3_fi_path = f"s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/{_bin_s3_infix}{cohort}_{age_band_fname}_xgboost_feature_importance.csv"
+        s3_fi_path = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/{_bin_s3_infix}{cohort}_{age_band_fname}_xgboost_feature_importance.csv"
         
         def save_fi():
             fi_df.to_csv(fi_path, index=False)
@@ -2918,7 +2918,7 @@ def train_and_evaluate(
             model_json_dir
             / f"{cohort}_{age_band_fname}_best_catboost_model.cbm"
         )
-        s3_cb_cbm = f"s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/{_s3_bin_infix}{cohort}_{age_band_fname}_best_catboost_model.cbm"
+        s3_cb_cbm = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/{_s3_bin_infix}{cohort}_{age_band_fname}_best_catboost_model.cbm"
         
         def save_cb_cbm():
             cb_final.save_model(str(cb_binary_path), format="cbm")
@@ -2931,7 +2931,7 @@ def train_and_evaluate(
             model_json_dir
             / f"{cohort}_{age_band_fname}_best_catboost_model.json"
         )
-        s3_cb_json = f"s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/{_s3_bin_infix}{cohort}_{age_band_fname}_best_catboost_model.json"
+        s3_cb_json = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/{_s3_bin_infix}{cohort}_{age_band_fname}_best_catboost_model.json"
         
         def save_cb_json():
             cb_final.save_model(str(cb_json_path), format="json")
@@ -2952,7 +2952,7 @@ def train_and_evaluate(
                 cb_fi_df = cb_fi_df.sort_values("importance", ascending=False)
                 cb_fi_path = out_base / f"{cohort}_{age_band_fname}_catboost_feature_importance.csv"
                 _bin_s3_infix_cb = f"bin_models/{bin_name}/" if bin_name else ""
-                s3_cb_fi_path = f"s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/{_bin_s3_infix_cb}{cohort}_{age_band_fname}_catboost_feature_importance.csv"
+                s3_cb_fi_path = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/{_bin_s3_infix_cb}{cohort}_{age_band_fname}_catboost_feature_importance.csv"
                 def save_cb_fi():
                     cb_fi_df.to_csv(cb_fi_path, index=False)
                 save_model_idempotent(cb_fi_path, s3_cb_fi_path, save_cb_fi)
@@ -2967,8 +2967,8 @@ def train_and_evaluate(
         xgb_joblib_path = models_dir / "xgboost.joblib"
         cb_joblib_path = models_dir / "catboost.joblib"
         
-        s3_xgb_joblib = f"s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/{_s3_bin_infix}xgboost.joblib"
-        s3_cb_joblib = f"s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/{_s3_bin_infix}catboost.joblib"
+        s3_xgb_joblib = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/{_s3_bin_infix}xgboost.joblib"
+        s3_cb_joblib = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/{_s3_bin_infix}catboost.joblib"
         
         def save_xgb_joblib():
             # Fix base_score before saving to ensure SHAP compatibility
@@ -3031,7 +3031,7 @@ def train_and_evaluate(
         
         # Also save native XGBoost booster binary model for SHAP (more reliable than joblib)
         xgb_binary_model_path = models_dir / "xgboost_model.ubj"
-        s3_xgb_binary_model = f"s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/{_s3_bin_infix}xgboost_model.ubj"
+        s3_xgb_binary_model = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/{_s3_bin_infix}xgboost_model.ubj"
         
         def save_xgb_binary_model():
             # Use XGBoost final model's booster to save native binary format (UBJ)
@@ -3051,7 +3051,7 @@ def train_and_evaluate(
         
         # Also save native CatBoost binary model for SHAP (consistent with XGBoost)
         cb_binary_model_path = models_dir / "catboost_model.cbm"
-        s3_cb_binary_model = f"s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/{_s3_bin_infix}catboost_model.cbm"
+        s3_cb_binary_model = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/{_s3_bin_infix}catboost_model.cbm"
         
         def save_cb_binary_model():
             # Save CatBoost in native binary format (.cbm) for SHAP
@@ -3327,16 +3327,16 @@ def main() -> None:
             s3_output_paths = []
             for b in _CHECK_DENSITY_BINS:
                 s3_output_paths.append(
-                    f"s3://pgxdatalake/gold/final_model/{args.cohort}/{args.age_band}/bin_models/{b}/xgboost.joblib"
+                    f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{args.cohort}/{args.age_band}/bin_models/{b}/xgboost.joblib"
                 )
                 s3_output_paths.append(
-                    f"s3://pgxdatalake/gold/final_model/{args.cohort}/{args.age_band}/bin_models/{b}/catboost.joblib"
+                    f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{args.cohort}/{args.age_band}/bin_models/{b}/catboost.joblib"
                 )
         else:
             s3_output_paths = [
-                f"s3://pgxdatalake/gold/final_model/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname_check}_best_xgboost_model.json",
-                f"s3://pgxdatalake/gold/final_model/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname_check}_best_catboost_model.cbm",
-                f"s3://pgxdatalake/gold/final_model/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname_check}_model_selection_metadata.json",
+                f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname_check}_best_xgboost_model.json",
+                f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname_check}_best_catboost_model.cbm",
+                f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname_check}_model_selection_metadata.json",
             ]
 
         # Per-bin mode: require every per-bin artifact on S3 (checkpoint alone is not enough — missing bins must rerun).

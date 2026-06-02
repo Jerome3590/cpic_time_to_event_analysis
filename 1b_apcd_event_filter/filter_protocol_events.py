@@ -41,6 +41,11 @@ except ImportError:
     s3_client = boto3.client("s3")
     S3_BUCKET = "pgxdatalake"
 
+try:
+    from py_helpers.constants import PROJECT_SLUG  # noqa: E402
+except ImportError:
+    PROJECT_SLUG = "cpic_time_to_event"
+
 # Historical bucket for aggregated FI (read from here; never cleared by cleanup)
 PGX_REPO_BUCKET = "pgx-repository"
 PGX_REPO_FI_PREFIX = "cpic_time_to_event_analysis/3_feature_importance/outputs"
@@ -293,7 +298,7 @@ def _validate_and_filter_aggregated_feature_importance(
     if agg_csv_path is None:
         for s3_suffix, subdir in [("_baseline/", "_baseline"), ("", "")]:
             s3_key = (
-                f"gold/feature_importance/{cohort}/{age_band}/{s3_suffix}{filename}"
+                f"gold/{PROJECT_SLUG}/feature_importance/{cohort}/{age_band}/{s3_suffix}{filename}"
             )
             try:
                 s3_client.head_object(Bucket=S3_BUCKET, Key=s3_key)
