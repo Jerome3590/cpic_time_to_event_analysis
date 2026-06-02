@@ -26,9 +26,9 @@ logger = logging.getLogger(__name__)
 S3_BUCKET = "pgxdatalake"
 s3_client = boto3.client('s3')
 
-# Test cohort - using falls/13-24 as it's commonly used
+# Test cohort
 COHORT_NAME = "falls"
-AGE_BAND = "13-24"
+AGE_BAND = "65-74"
 AGE_BAND_FNAME = AGE_BAND.replace("-", "_")
 
 

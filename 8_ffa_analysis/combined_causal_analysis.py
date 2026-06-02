@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 # Configuration
 COHORT_NAME = "falls"
-AGE_BAND = "13-24"
+AGE_BAND = "65-74"
 AGE_BAND_FNAME = AGE_BAND.replace("-", "_")
 
 # Paths (updated to use 6_final_model outputs)

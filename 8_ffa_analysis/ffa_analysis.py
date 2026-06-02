@@ -1117,8 +1117,8 @@ def load_feature_manifest(cohort_name, age_band, event_year):
     """Load feature manifest from S3.
     
     Args:
-        cohort_name: Name of the cohort (e.g., 'ed_non_opioid')
-        age_band: Age band (e.g., '0-12')
+        cohort_name: Name of the cohort (e.g., 'falls' or 'ed')
+        age_band: Age band (e.g., '65-74')
         event_year: Event year (e.g., '2016')
         
     Returns:

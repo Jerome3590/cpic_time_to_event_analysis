@@ -23,7 +23,7 @@ s3_client = boto3.client('s3')
 bucket = 'pgxdatalake'
 
 cohort = 'falls'
-age_band = '13-24'
+age_band = '65-74'
 age_band_fname = age_band.replace('-', '_')
 
 print('Comparing SHAP vs Causal Importance')

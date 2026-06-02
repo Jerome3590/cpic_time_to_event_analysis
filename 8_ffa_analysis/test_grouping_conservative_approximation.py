@@ -20,7 +20,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 # Configuration
 COHORT = "falls"
-AGE_BAND = "13-24"
+AGE_BAND = "65-74"
 AGE_BAND_FNAME = AGE_BAND.replace("-", "_")
 S3_BUCKET = "pgxdatalake"
 

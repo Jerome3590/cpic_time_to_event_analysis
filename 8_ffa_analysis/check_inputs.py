@@ -10,7 +10,7 @@ if sys.platform == 'win32':
 
 PROJECT_ROOT = Path('.')
 cohort = 'falls'
-age_band = '13-24'
+age_band = '65-74'
 age_band_fname = age_band.replace('-', '_')
 
 print('Checking required inputs for Step 8...')

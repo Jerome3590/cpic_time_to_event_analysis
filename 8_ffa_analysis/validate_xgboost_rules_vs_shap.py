@@ -9,7 +9,7 @@ SHAP-guided rule filtering (as used in the three-set union approach) produces
 meaningful results for causal analysis.
 
 Usage:
-    python validate_xgboost_rules_vs_shap.py --cohort falls --age-band 13-24
+    python validate_xgboost_rules_vs_shap.py --cohort falls --age-band 65-74
 """
 
 import sys
@@ -242,7 +242,7 @@ def main():
         description='Validate that SHAP values can accurately filter/build rule sets for causal analysis'
     )
     parser.add_argument('--cohort', type=str, required=True, help='Cohort name (e.g., falls)')
-    parser.add_argument('--age-band', type=str, required=True, help='Age band (e.g., 13-24)')
+    parser.add_argument('--age-band', type=str, required=True, help='Age band (e.g., 65-74)')
     parser.add_argument('--model-type', type=str, default='xgboost', help='Model type (default: xgboost)')
     parser.add_argument('--output-dir', type=Path, default=None, help='Output directory (default: 8_ffa_analysis/outputs/{cohort}/{age_band}/validation)')
     

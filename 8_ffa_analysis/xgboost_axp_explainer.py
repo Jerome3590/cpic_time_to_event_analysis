@@ -71,7 +71,7 @@ class PathConfig:
             data_dir: Base directory containing datasets in S3
             output_dir: Directory for saving outputs in S3
             tree_rules_path: Path to the tree rules JSON file
-            age_band: Age band for the cohort (e.g., "0-12", "13-24", etc.)
+            age_band: Age band for the cohort (e.g., "65-74", "75-84")
             cohort: Cohort name (e.g., "falls", "ed")
             density_bin: Optional n_event_bin label (low|medium|high|extreme) for per-bin FFA logging paths
         """

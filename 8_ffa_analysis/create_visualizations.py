@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 # Configuration (cohort/age-band currently under analysis)
 COHORT_NAME = "falls"
-AGE_BAND = "0-12"
+AGE_BAND = "65-74"
 AGE_BAND_FNAME = AGE_BAND.replace("-", "_")
 OUTPUT_DIR = PROJECT_ROOT / "7_ffa_analysis" / "outputs" / COHORT_NAME / AGE_BAND_FNAME
 VISUALIZATION_DIR = OUTPUT_DIR / 'visualizations'
