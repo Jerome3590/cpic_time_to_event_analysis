@@ -51,7 +51,7 @@ if __name__ == "__main__":
         '--age-band',
         type=str,
         required=True,
-        help='Age band (e.g., 0-12)'
+        help='Age band (e.g., 65-74)'
     )
     parser.add_argument(
         '--feature-file',

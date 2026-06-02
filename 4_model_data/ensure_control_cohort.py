@@ -172,7 +172,7 @@ def ensure_control_cohort_with_ratio(
     
     Args:
         control_cohort: Name of control cohort (e.g., "non_opioid_non_ed")
-        age_band: Age band (e.g., "13-24")
+        age_band: Age band (e.g., "65-74")
         target_cohort_path: Path to target cohort model_events.parquet
         expected_ratio: Expected control:case ratio (default: 5.0)
         tolerance: Tolerance for ratio validation (default: 0.2 = 20%)
@@ -291,7 +291,7 @@ def main():
         "--age-band",
         type=str,
         required=True,
-        help="Age band (e.g., 13-24)",
+        help="Age band (e.g., 65-74)",
     )
     parser.add_argument(
         "--target-cohort-path",

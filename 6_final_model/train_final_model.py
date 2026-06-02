@@ -11,7 +11,7 @@ This script:
 6. Saves model artifacts
 
 Usage:
-    python train_final_model.py --cohort-name falls --age-band 0-12 --n-splits 200
+    python train_final_model.py --cohort-name falls --age-band 65-74 --n-splits 200
 """
 
 import argparse

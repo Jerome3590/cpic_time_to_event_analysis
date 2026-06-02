@@ -60,10 +60,10 @@ def create_top_sequences_from_traces(cohort_name: str, age_band: str, train_labe
         create_top_from_traces(overall_traces_path, overall_top_path, "overall")
     
     if pre_traces_path.exists():
-        create_top_from_traces(pre_traces_path, pre_top_path, "pre-F1120")
+        create_top_from_traces(pre_traces_path, pre_top_path, "pre-target")
     
     if post_traces_path.exists():
-        create_top_from_traces(post_traces_path, post_top_path, "post-F1120")
+        create_top_from_traces(post_traces_path, post_top_path, "post-target")
 
 if __name__ == "__main__":
     import argparse

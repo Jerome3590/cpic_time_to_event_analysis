@@ -175,7 +175,7 @@ def main() -> None:
         "--age-band",
         type=str,
         required=True,
-        help="Age band (e.g., 0-12)",
+        help="Age band (e.g., 65-74)",
     )
 
     args = parser.parse_args()

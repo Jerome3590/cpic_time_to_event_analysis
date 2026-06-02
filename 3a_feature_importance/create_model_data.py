@@ -26,7 +26,7 @@ This output can then be used as input for:
 
 Local data path resolution mirrors the feature-importance utilities:
  - Use LOCAL_DATA_PATH env var if set
- - Otherwise, try project-root-relative `data/cohorts_F1120`
+ - Otherwise, try project-root-relative `data/cohorts`
  - Finally, fall back to EC2 path `/mnt/nvme/cohorts`
 """
 
@@ -65,7 +65,7 @@ def resolve_local_data_path() -> Path:
         return Path(env_path)
 
     # Project-relative default (Windows/Linux dev)
-    project_data = PROJECT_ROOT / "data" / "cohorts_F1120"
+    project_data = PROJECT_ROOT / "data" / "cohorts"
     if project_data.exists():
         return project_data
 
@@ -108,27 +108,27 @@ def parse_aggregated_filename(path: Path) -> Tuple[str, str]:
         {cohort_name}_{age_band_fname}_aggregated_feature_importance.csv
 
     Example:
-        falls_0_12_aggregated_feature_importance.csv
+        falls_65_74_aggregated_feature_importance.csv
         -> cohort_name = falls
-        -> age_band    = 0-12
+        -> age_band    = 65-74
     """
-    stem = path.stem  # e.g. falls_0_12_aggregated_feature_importance
+    stem = path.stem  # e.g. falls_65_74_aggregated_feature_importance
     parts = stem.split("_")
 
     # Expect pattern: {cohort_name}_{age_band_fname}_aggregated_feature_importance
-    # where age_band_fname is something like "0_12" or "13_24".
+    # where age_band_fname is something like "65_74" or "75_84".
     # Suffix has exactly 3 tokens: "aggregated", "feature", "importance".
     if len(parts) < 5:
         raise ValueError(f"Unexpected aggregated filename format: {path.name}")
     # cohort_name may contain underscores; everything before the last 5 tokens
     # (age_band_fname + 3-word suffix) belongs to cohort_name.
-    cohort_name_tokens = parts[:-5]  # e.g. ['opioid', 'ed']
-    age_band_tokens = parts[-5:-3]  # e.g. ['0', '12']
+    cohort_name_tokens = parts[:-5]  # e.g. ['falls']
+    age_band_tokens = parts[-5:-3]  # e.g. ['65', '74']
 
     cohort_name = "_".join(cohort_name_tokens)
     age_band_fname = "_".join(age_band_tokens)
 
-    # Convert age_band_fname (e.g., 13_24) back to canonical age_band (13-24)
+    # Convert age_band_fname (e.g., 65_74) back to canonical age_band (65-74)
     age_band = age_band_fname.replace("_", "-")
     return cohort_name, age_band
 

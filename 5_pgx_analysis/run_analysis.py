@@ -11,7 +11,7 @@ Features created:
 - pgx_num_cpic_drugs: Number of CPIC drugs per patient
 
 Usage:
-    python 5_pgx_analysis/run_analysis.py --cohort-name falls --age-band 0-12
+    python 5_pgx_analysis/run_analysis.py --cohort-name falls --age-band 65-74
 """
 
 import argparse
@@ -303,7 +303,7 @@ if __name__ == "__main__":
         "--age-band",
         type=str,
         required=True,
-        help="Age band (e.g., 0-12)",
+        help="Age band (e.g., 65-74)",
     )
     parser.add_argument(
         "--skip-feature-engineering",

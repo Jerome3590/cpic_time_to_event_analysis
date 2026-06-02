@@ -6,7 +6,7 @@ S3 path: s3://pgxdatalake/gold/cohorts_model_data/cohort_name={cohort}/age_band=
 Local:   4_model_data/cohort_name={cohort}/age_band={age_band}/model_events.parquet
 
 Usage (from repo root):
-  python 4_model_data/download_one_age_band_from_s3.py --cohort falls --age-band 0-12
+  python 4_model_data/download_one_age_band_from_s3.py --cohort falls --age-band 65-74
   python 4_model_data/download_one_age_band_from_s3.py --cohort ed --age-band 65-74 --profile mushin
 """
 
@@ -23,7 +23,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 def main() -> int:
     parser = argparse.ArgumentParser(description="Download one age band of model_events from S3")
     parser.add_argument("--cohort", required=True, help="e.g. falls or ed")
-    parser.add_argument("--age-band", required=True, help="e.g. 0-12 or 65-74")
+    parser.add_argument("--age-band", required=True, help="e.g. 65-74 or 75-84")
     parser.add_argument("--profile", default=None, help="AWS CLI profile (e.g. mushin)")
     parser.add_argument("--project-root", type=Path, default=REPO_ROOT, help="Repo root (default: parent of 4_model_data)")
     args = parser.parse_args()

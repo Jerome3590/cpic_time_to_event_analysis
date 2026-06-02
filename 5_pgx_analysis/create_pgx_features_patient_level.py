@@ -193,7 +193,7 @@ def main():
     
     parser = argparse.ArgumentParser(description="Create patient-level PGx features")
     parser.add_argument("--cohort", required=True, help="Cohort name (e.g., falls)")
-    parser.add_argument("--age_band", required=True, help="Age band (e.g., 0-12)")
+    parser.add_argument("--age_band", required=True, help="Age band (e.g., 65-74)")
     parser.add_argument("--output", help="Output CSV path (optional)")
     
     args = parser.parse_args()

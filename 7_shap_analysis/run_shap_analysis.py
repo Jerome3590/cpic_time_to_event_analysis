@@ -1092,7 +1092,7 @@ def main() -> None:
         description="Run SHAP analysis for final models for a given cohort/age_band."
     )
     parser.add_argument("--cohort", required=True, help="Cohort name, e.g. falls")
-    parser.add_argument("--age_band", required=True, help="Age band, e.g. 13-24")
+    parser.add_argument("--age_band", required=True, help="Age band, e.g. 65-74")
     parser.add_argument(
         "--bin",
         default=None,

@@ -199,7 +199,7 @@ def main() -> None:
         description="Create a numeric feature index→name lookup table for the final model."
     )
     parser.add_argument("--cohort", required=True, help="Cohort name, e.g. falls")
-    parser.add_argument("--age_band", required=True, help="Age band, e.g. 13-24")
+    parser.add_argument("--age_band", required=True, help="Age band, e.g. 65-74")
     args = parser.parse_args()
 
     lookup_df = build_feature_lookup(args.cohort, args.age_band)

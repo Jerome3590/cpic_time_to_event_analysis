@@ -48,13 +48,13 @@ def check_s3_cohort_file_controls(s3_path, profile='mushin'):
 
 def main():
     cohort = 'falls'
-    age_bands = ['13-24', '25-44', '45-54', '55-64', '65-74', '75-84', '85-114']
+    age_bands = ['65-74', '75-84']
     event_years = [2016, 2017, 2018, 2019]
     
     print('=== Checking cohort.parquet files in S3 for controls ===')
     print('')
     
-    s3_base = f's3://pgxdatalake/gold/cohorts_F1120/cohort_name={cohort}/event_year='
+    s3_base = f's3://pgxdatalake/gold/cohorts/cohort_name={cohort}/event_year='
     
     results = {}
     for age_band in age_bands:

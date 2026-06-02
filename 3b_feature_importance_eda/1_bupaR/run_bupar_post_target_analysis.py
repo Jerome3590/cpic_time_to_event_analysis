@@ -4,7 +4,7 @@ BupaR Post-Target Event Analysis
 
 Calls the working BupaR R scripts to perform comprehensive BupaR analysis:
 1. Builds BupaR event logs from model_events.parquet
-2. Runs pre- and post-F1120 sequence analyses
+2. Runs pre- and post-target sequence analyses
 3. Generates comprehensive BupaR features
 4. Merges features into final output ready for model training
 
@@ -50,7 +50,7 @@ def run_bupar_analysis(
     
     Args:
         cohort: Cohort name (e.g., 'falls')
-        age_band: Age band (e.g., '13-24')
+        age_band: Age band (e.g., '65-74')
         project_root: Project root directory
     
     Returns:

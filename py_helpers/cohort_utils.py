@@ -533,7 +533,7 @@ def run_cohort(job, script_path, python_bin=sys.executable, target_icd=None, con
     if python_bin is None:
         python_bin = get_workflow_python_bin()
     python_bin = str(python_bin)
-    target_icd = target_icd or os.environ.get("PGX_TARGET_ICD_CODES", "F1120")
+    target_icd = target_icd or os.environ.get("PGX_TARGET_ICD_CODES") or None
     
     # Detect concurrent workers if not provided
     if concurrent_workers is None:
