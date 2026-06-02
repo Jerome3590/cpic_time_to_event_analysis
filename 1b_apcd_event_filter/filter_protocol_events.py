@@ -1883,15 +1883,15 @@ if __name__ == "__main__":
                 from py_helpers.checkpoint_utils import upload_file_to_s3, save_step_checkpoint
                 
                 s3_outputs = []
-                s3_output_path = f"s3://pgxdatalake/gold/event_filter/{args.cohort_name}/{args.age_band}/model_events_no_protocols.parquet"
+                s3_output_path = f"s3://pgxdatalake/gold/{PROJECT_SLUG}/dtw_filter/{args.cohort_name}/{args.age_band}/model_events_no_protocols.parquet"
                 if upload_file_to_s3(output_path, s3_output_path, logger):
                     s3_outputs.append(s3_output_path)
                 
-                s3_summary_path = f"s3://pgxdatalake/gold/event_filter/{args.cohort_name}/{args.age_band}/protocol_summary_{args.cohort_name}_{age_band_fname}.csv"
+                s3_summary_path = f"s3://pgxdatalake/gold/{PROJECT_SLUG}/dtw_filter/{args.cohort_name}/{args.age_band}/protocol_summary_{args.cohort_name}_{age_band_fname}.csv"
                 if upload_file_to_s3(summary_path, s3_summary_path, logger):
                     s3_outputs.append(s3_summary_path)
                 
-                s3_intervals_path = f"s3://pgxdatalake/gold/event_filter/{args.cohort_name}/{args.age_band}/event_intervals_{args.cohort_name}_{age_band_fname}.parquet"
+                s3_intervals_path = f"s3://pgxdatalake/gold/{PROJECT_SLUG}/dtw_filter/{args.cohort_name}/{args.age_band}/event_intervals_{args.cohort_name}_{age_band_fname}.parquet"
                 if upload_file_to_s3(intervals_path, s3_intervals_path, logger):
                     s3_outputs.append(s3_intervals_path)
                 
@@ -1923,9 +1923,9 @@ if __name__ == "__main__":
 
         # Define expected S3 output paths
         s3_output_paths = [
-            f"s3://pgxdatalake/gold/event_filter/{args.cohort_name}/{args.age_band}/model_events_no_protocols.parquet",
-            f"s3://pgxdatalake/gold/event_filter/{args.cohort_name}/{args.age_band}/protocol_summary_{args.cohort_name}_{age_band_fname}.csv",
-            f"s3://pgxdatalake/gold/event_filter/{args.cohort_name}/{args.age_band}/event_intervals_{args.cohort_name}_{age_band_fname}.parquet",
+            f"s3://pgxdatalake/gold/{PROJECT_SLUG}/dtw_filter/{args.cohort_name}/{args.age_band}/model_events_no_protocols.parquet",
+            f"s3://pgxdatalake/gold/{PROJECT_SLUG}/dtw_filter/{args.cohort_name}/{args.age_band}/protocol_summary_{args.cohort_name}_{age_band_fname}.csv",
+            f"s3://pgxdatalake/gold/{PROJECT_SLUG}/dtw_filter/{args.cohort_name}/{args.age_band}/event_intervals_{args.cohort_name}_{age_band_fname}.parquet",
         ]
 
         if check_step_outputs_exist(s3_output_paths, logger) or check_step_checkpoint_exists("1b_apcd_event_filter", args.cohort_name, args.age_band, logger):
@@ -1938,19 +1938,19 @@ if __name__ == "__main__":
                 S3_BUCKET = "pgxdatalake"
                 
                 # Download main output
-                s3_key = f"gold/event_filter/{args.cohort_name}/{args.age_band}/model_events_no_protocols.parquet"
+                s3_key = f"gold/{PROJECT_SLUG}/dtw_filter/{args.cohort_name}/{args.age_band}/model_events_no_protocols.parquet"
                 output_path.parent.mkdir(parents=True, exist_ok=True)
                 s3_client.download_file(S3_BUCKET, s3_key, str(output_path))
                 logger.info(f"Downloaded {output_path} from S3")
                 
                 # Download summary
-                s3_key = f"gold/event_filter/{args.cohort_name}/{args.age_band}/protocol_summary_{args.cohort_name}_{age_band_fname}.csv"
+                s3_key = f"gold/{PROJECT_SLUG}/dtw_filter/{args.cohort_name}/{args.age_band}/protocol_summary_{args.cohort_name}_{age_band_fname}.csv"
                 audit_dir.mkdir(parents=True, exist_ok=True)
                 s3_client.download_file(S3_BUCKET, s3_key, str(summary_path))
                 logger.info(f"Downloaded {summary_path} from S3")
                 
                 # Download intervals
-                s3_key = f"gold/event_filter/{args.cohort_name}/{args.age_band}/event_intervals_{args.cohort_name}_{age_band_fname}.parquet"
+                s3_key = f"gold/{PROJECT_SLUG}/dtw_filter/{args.cohort_name}/{args.age_band}/event_intervals_{args.cohort_name}_{age_band_fname}.parquet"
                 s3_client.download_file(S3_BUCKET, s3_key, str(intervals_path))
                 logger.info(f"Downloaded {intervals_path} from S3")
                 
@@ -2034,17 +2034,17 @@ if __name__ == "__main__":
         # Upload main outputs
         s3_outputs = []
         if output_path.exists():
-            s3_output_path = f"s3://pgxdatalake/gold/event_filter/{args.cohort_name}/{args.age_band}/model_events_no_protocols.parquet"
+            s3_output_path = f"s3://pgxdatalake/gold/{PROJECT_SLUG}/dtw_filter/{args.cohort_name}/{args.age_band}/model_events_no_protocols.parquet"
             if upload_file_to_s3(output_path, s3_output_path, logger):
                 s3_outputs.append(s3_output_path)
 
         if summary_path.exists():
-            s3_summary_path = f"s3://pgxdatalake/gold/event_filter/{args.cohort_name}/{args.age_band}/protocol_summary_{args.cohort_name}_{age_band_fname}.csv"
+            s3_summary_path = f"s3://pgxdatalake/gold/{PROJECT_SLUG}/dtw_filter/{args.cohort_name}/{args.age_band}/protocol_summary_{args.cohort_name}_{age_band_fname}.csv"
             if upload_file_to_s3(summary_path, s3_summary_path, logger):
                 s3_outputs.append(s3_summary_path)
 
         if intervals_path.exists():
-            s3_intervals_path = f"s3://pgxdatalake/gold/event_filter/{args.cohort_name}/{args.age_band}/event_intervals_{args.cohort_name}_{age_band_fname}.parquet"
+            s3_intervals_path = f"s3://pgxdatalake/gold/{PROJECT_SLUG}/dtw_filter/{args.cohort_name}/{args.age_band}/event_intervals_{args.cohort_name}_{age_band_fname}.parquet"
             if upload_file_to_s3(intervals_path, s3_intervals_path, logger):
                 s3_outputs.append(s3_intervals_path)
 
