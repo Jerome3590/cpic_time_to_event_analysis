@@ -410,3 +410,369 @@ CANONICAL_AGE_BAND_ORDER = AGE_BANDS   # always matches registry order
 3. Run the pipeline — every script picks up the new cohort automatically via
    `REQUIRED_COHORTS`.
 4. **No other file changes required.**
+
+---
+
+## 10. Plan Extension: Dynamic Target Event Definition (ICD / CPT / HCG / POS / Revenue Codes)
+
+The plan above covers *naming* the target. This section covers making the *clinical
+detection logic* (the codes that define what counts as a target event) fully dynamic.
+
+---
+
+### Current State
+
+Target detection codes are currently split across three places:
+
+**`py_helpers/constants.py` — hardcoded detection constants:**
+```python
+FALL_INJURY_ICD_PREFIXES = ('S', 'T07', 'T14', 'T20', ..., 'T79')
+FALL_EXTERNAL_CAUSE_PREFIXES = ('W00', 'W01', ..., 'W19')
+ED_PLACE_OF_SERVICE_CODES = {'23'}
+ED_REVENUE_CODE_PREFIXES = ('045',)
+ED_REVENUE_CODES_EXACT = {'0981'}
+```
+
+**`2_create_cohort/0_create_cohort.py` — partial env var override system:**
+```python
+# These env vars override target detection at cohort-creation time only:
+PGX_TARGET_NAME          # cohort display name
+PGX_TARGET_ICD_CODES     # exact ICD match
+PGX_TARGET_CPT_CODES     # exact CPT match
+PGX_TARGET_ICD_PREFIXES  # ICD prefix match
+PGX_TARGET_CPT_PREFIXES  # CPT prefix match
+```
+
+**`2_create_cohort/check_hcg_drug_dates.py` — HCG codes used for ED identification:**
+```python
+hcg_condition = """
+    (hcg_line = 'P51 - ER Visits and Observation Care' AND hcg_detail = 'P51b - ...')
+    OR hcg_line = 'O11 - Emergency Room'
+    OR hcg_line = 'P33 - Urgent Care Visits'
+"""
+```
+
+**Gaps:**
+- `PGX_TARGET_*` env vars are only wired into `0_create_cohort.py` — not into
+  `constants.py`, `1b_apcd_event_filter/`, or downstream steps
+- HCG codes have no env var override path at all
+- Revenue codes and POS codes have no env var override path
+- The env var system silently ignores unknown var names (no validation)
+- There is no single function that returns "the SQL WHERE clause for this cohort's target"
+
+---
+
+### Phase 8A — Unified Target Definition Struct in `constants.py`
+
+Add a `COHORT_TARGET_DEFINITION` dict that captures **all** code types for each cohort:
+
+```python
+# py_helpers/constants.py
+
+from dataclasses import dataclass, field
+from typing import FrozenSet, Tuple
+
+@dataclass(frozen=True)
+class TargetDefinition:
+    """Complete clinical definition of a binary target event."""
+    target_column: str               # Binary column name in model_events parquet
+    target_date_column: str          # Date column (first occurrence)
+    display_name: str                # Human-readable label
+
+    # ICD-10 detection (applied across all 10 diagnosis code columns)
+    icd_prefixes: Tuple[str, ...] = ()        # startswith match (e.g. 'S', 'T07')
+    icd_exact: FrozenSet[str] = field(default_factory=frozenset)  # exact match
+    external_cause_prefixes: Tuple[str, ...] = ()  # for fall: W00-W19
+    require_external_cause: bool = False       # True: BOTH injury + cause required
+
+    # CPT detection
+    cpt_exact: FrozenSet[str] = field(default_factory=frozenset)
+    cpt_prefixes: Tuple[str, ...] = ()
+
+    # Place of Service (POS) codes
+    pos_codes: FrozenSet[str] = field(default_factory=frozenset)
+
+    # Revenue codes (UB-04)
+    revenue_code_prefixes: Tuple[str, ...] = ()
+    revenue_codes_exact: FrozenSet[str] = field(default_factory=frozenset)
+
+    # HCG (Milliman Healthcare Cost Group) line values
+    hcg_line_values: FrozenSet[str] = field(default_factory=frozenset)
+    hcg_detail_values: FrozenSet[str] = field(default_factory=frozenset)
+
+
+COHORT_TARGET_DEFINITIONS: dict[str, TargetDefinition] = {
+
+    "falls": TargetDefinition(
+        target_column="fall_injury_any",
+        target_date_column="first_fall_date",
+        display_name="Falls",
+        icd_prefixes=(
+            'S', 'T07', 'T14',
+            'T20', 'T21', 'T22', 'T23', 'T24', 'T25', 'T26', 'T27', 'T28', 'T29',
+            'T30', 'T31', 'T32', 'T33', 'T34', 'T79',
+        ),
+        external_cause_prefixes=(
+            'W00', 'W01', 'W02', 'W03', 'W04', 'W05', 'W06', 'W07',
+            'W08', 'W09', 'W10', 'W11', 'W12', 'W13', 'W14', 'W15',
+            'W16', 'W17', 'W18', 'W19',
+        ),
+        require_external_cause=True,   # injury code AND external cause on same encounter
+    ),
+
+    "ed": TargetDefinition(
+        target_column="ed_event",
+        target_date_column="first_ed_date",
+        display_name="Emergency Department",
+        pos_codes=frozenset({'23'}),                  # CMS POS 23 = Emergency Room
+        revenue_code_prefixes=('045',),               # 045x = Emergency room
+        revenue_codes_exact=frozenset({'0981'}),       # 0981 = Emergency room services
+        hcg_line_values=frozenset({
+            'O11 - Emergency Room',
+            'P51 - ER Visits and Observation Care',
+            'P33 - Urgent Care Visits',
+        }),
+        hcg_detail_values=frozenset({
+            'P51b - PHY ED Visits and Observation Care - ED Visits',
+        }),
+    ),
+}
+
+# Backward-compat accessors — existing code uses these
+COHORT_TARGET_COLUMN = {k: v.target_column for k, v in COHORT_TARGET_DEFINITIONS.items()}
+COHORT_TARGET_DATE_COLUMN = {k: v.target_date_column for k, v in COHORT_TARGET_DEFINITIONS.items()}
+
+def get_target_definition(cohort: str) -> TargetDefinition:
+    defn = COHORT_TARGET_DEFINITIONS.get((cohort or "").strip().lower())
+    if defn is None:
+        raise ValueError(f"No target definition for cohort '{cohort}'. "
+                         f"Valid: {sorted(COHORT_TARGET_DEFINITIONS)}")
+    return defn
+```
+
+**Result:** `get_target_definition("falls")` is the single authoritative source for all
+fall-related detection codes, usable anywhere in the pipeline.
+
+---
+
+### Phase 8B — SQL Generator Helper
+
+Add a function that converts a `TargetDefinition` into a SQL WHERE clause, so every
+step that queries APCD data uses identical detection logic:
+
+```python
+# py_helpers/constants.py
+
+def get_target_event_sql(cohort: str, icd_col: str = "primary_icd_diagnosis_code",
+                         pos_col: str = "place_of_service_code",
+                         revenue_col: str = "revenue_code",
+                         hcg_line_col: str = "hcg_line",
+                         hcg_detail_col: str = "hcg_detail",
+                         all_icd_cols: list = None) -> str:
+    """Return a SQL WHERE clause that identifies target events for the given cohort.
+
+    Example:
+        sql = get_target_event_sql("ed")
+        # Returns: "(place_of_service_code IN ('23') OR revenue_code LIKE '045%' OR ...)"
+    """
+    defn = get_target_definition(cohort)
+    clauses = []
+    icd_cols = all_icd_cols or ALL_ICD_DIAGNOSIS_COLUMNS
+
+    # ICD prefix match (across all diagnosis columns)
+    if defn.icd_prefixes:
+        prefix_conds = [
+            " OR ".join(f"{c} LIKE '{p}%'" for c in icd_cols)
+            for p in defn.icd_prefixes
+        ]
+        icd_clause = "(" + " OR ".join(f"({c})" for c in prefix_conds) + ")"
+
+        if defn.require_external_cause and defn.external_cause_prefixes:
+            ext_conds = [
+                " OR ".join(f"{c} LIKE '{p}%'" for c in icd_cols)
+                for p in defn.external_cause_prefixes
+            ]
+            ext_clause = "(" + " OR ".join(f"({c})" for c in ext_conds) + ")"
+            clauses.append(f"({icd_clause} AND {ext_clause})")
+        else:
+            clauses.append(icd_clause)
+
+    # POS codes
+    if defn.pos_codes:
+        vals = ", ".join(f"'{v}'" for v in sorted(defn.pos_codes))
+        clauses.append(f"({pos_col} IN ({vals}))")
+
+    # Revenue code prefixes
+    for prefix in defn.revenue_code_prefixes:
+        clauses.append(f"({revenue_col} LIKE '{prefix}%')")
+
+    # Revenue codes exact
+    if defn.revenue_codes_exact:
+        vals = ", ".join(f"'{v}'" for v in sorted(defn.revenue_codes_exact))
+        clauses.append(f"({revenue_col} IN ({vals}))")
+
+    # HCG line values
+    if defn.hcg_line_values:
+        vals = ", ".join(f"'{v}'" for v in sorted(defn.hcg_line_values))
+        clauses.append(f"({hcg_line_col} IN ({vals}))")
+
+    if not clauses:
+        raise ValueError(f"Target definition for '{cohort}' produced no SQL conditions.")
+
+    return "(" + "\n   OR ".join(clauses) + ")"
+```
+
+**Usage in any pipeline script:**
+```python
+from py_helpers.constants import get_target_event_sql
+
+target_sql = get_target_event_sql("ed")
+query = f"SELECT * FROM medical WHERE {target_sql}"
+```
+
+---
+
+### Phase 8C — Wire Into `pipeline_config.yaml`
+
+Extend the YAML schema to carry code definitions, so a user can define a new cohort
+entirely in config without editing Python:
+
+```yaml
+# pipeline_config.yaml
+cohorts:
+  falls:
+    age_bands: ["65-74", "75-84"]
+    target_column: fall_injury_any
+    target_date_column: first_fall_date
+    display_name: Falls
+    detection:
+      icd_prefixes: ["S", "T07", "T14", "T20", "T21", "T22", "T23", "T24",
+                     "T25", "T26", "T27", "T28", "T29", "T30", "T31", "T32",
+                     "T33", "T34", "T79"]
+      external_cause_prefixes: ["W00", "W01", "W02", "W03", "W04", "W05",
+                                 "W06", "W07", "W08", "W09", "W10", "W11",
+                                 "W12", "W13", "W14", "W15", "W16", "W17",
+                                 "W18", "W19"]
+      require_external_cause: true
+
+  ed:
+    age_bands: ["65-74", "75-84"]
+    target_column: ed_event
+    target_date_column: first_ed_date
+    display_name: Emergency Department
+    detection:
+      pos_codes: ["23"]
+      revenue_code_prefixes: ["045"]
+      revenue_codes_exact: ["0981"]
+      hcg_line_values:
+        - "O11 - Emergency Room"
+        - "P51 - ER Visits and Observation Care"
+        - "P33 - Urgent Care Visits"
+      hcg_detail_values:
+        - "P51b - PHY ED Visits and Observation Care - ED Visits"
+
+  # Example: new cohort requires only adding this block
+  hip_fracture:
+    age_bands: ["65-74", "75-84"]
+    target_column: hip_fracture_event
+    target_date_column: first_hip_fracture_date
+    display_name: Hip Fracture
+    detection:
+      icd_prefixes: ["S72", "S32", "M84.4", "M80"]
+      external_cause_prefixes: ["W00", "W01", "W02", "W03", "W04", "W05",
+                                 "W06", "W07", "W08", "W09", "W10", "W11",
+                                 "W12", "W13", "W14", "W15", "W16", "W17",
+                                 "W18", "W19"]
+      require_external_cause: false
+```
+
+The `_load_pipeline_config()` loader (Phase 2) converts the YAML `detection` block into
+a `TargetDefinition` dataclass at import time.
+
+---
+
+### Phase 8D — Connect to Existing `PGX_TARGET_*` Env Vars
+
+The existing env var system in `0_create_cohort.py` is retained for ad-hoc overrides,
+but the *default values* are now populated from `COHORT_TARGET_DEFINITIONS` rather than
+being absent:
+
+```python
+# py_helpers/cohort_utils.py — run_cohort()
+from py_helpers.constants import get_target_definition
+
+defn = get_target_definition(job["cohort"])
+
+# Build env vars from the registry — no hardcoded defaults
+target_env = {
+    "PGX_TARGET_NAME":         defn.target_column,
+    "PGX_TARGET_ICD_PREFIXES": ",".join(defn.icd_prefixes),
+    "PGX_TARGET_CPT_CODES":    ",".join(defn.cpt_exact),
+    # Pass HCG/POS/revenue as new env vars:
+    "PGX_TARGET_POS_CODES":       ",".join(defn.pos_codes),
+    "PGX_TARGET_REVENUE_PREFIXES":  ",".join(defn.revenue_code_prefixes),
+    "PGX_TARGET_HCG_LINE_VALUES": "|".join(defn.hcg_line_values),
+}
+# Merge into subprocess env
+```
+
+Add the corresponding `--target-pos-codes`, `--target-revenue-prefixes`,
+`--target-hcg-line-values` arguments to `0_create_cohort.py` to accept these.
+
+---
+
+### Phase 8E — Use `get_target_event_sql()` in Filter Steps
+
+Replace hardcoded detection blocks in:
+
+| File | Current approach | After |
+|---|---|---|
+| `1b_apcd_event_filter/filter_protocol_events.py` | Hardcoded ICD prefix checks | `get_target_event_sql(cohort)` |
+| `2_create_cohort/0_create_cohort.py` | Env var driven, partial | `get_target_definition(cohort)` |
+| `2_create_cohort/check_hcg_drug_dates.py` | Hardcoded `hcg_condition` string | `get_target_definition("ed").hcg_line_values` |
+| `4_model_data/create_model_data.py` | Ad-hoc target column checks | `get_target_definition(cohort).target_column` |
+| `py_helpers/feature_importance_filters.py` | Hardcoded `fall_injury`/`ed_event` strings | `get_target_definition(cohort).target_column` |
+
+---
+
+### Updated Implementation Order (Full Plan)
+
+| Phase | What | Effort | Risk |
+|---|---|---|---|
+| **1** | Add `COHORT_TARGET_DATE_COLUMN` + `COHORT_DISPLAY_NAME` to `constants.py` | Low | None |
+| **4** | `validate_cohort_age_band()` helper | Low | None |
+| **8A** | `TargetDefinition` dataclass + `COHORT_TARGET_DEFINITIONS` dict | Medium | Low |
+| **8B** | `get_target_event_sql()` helper | Medium | Low |
+| **5** | Dynamic `argparse choices=` from registry | Medium | Low |
+| **2** | `pipeline_config.yaml` + loader | Medium | Low |
+| **8C** | YAML `detection:` block → `TargetDefinition` | Medium | Low |
+| **6** | Orchestrators loop over `REQUIRED_COHORTS` | Medium | Medium |
+| **8D** | `run_cohort()` builds env vars from registry | Medium | Medium |
+| **8E** | Replace hardcoded detection blocks with `get_target_event_sql()` | High | Medium |
+| **3** | Eliminate all module-level `AGE_BAND = "..."` constants | High | Low |
+| **7** | `CANONICAL_AGE_BAND_ORDER` derived from `AGE_BANDS` | Low | None |
+
+---
+
+### End State: Adding a Completely New Cohort
+
+```yaml
+# pipeline_config.yaml — the only file that changes
+cohorts:
+  hip_fracture:
+    age_bands: ["65-74", "75-84"]
+    target_column: hip_fracture_event
+    target_date_column: first_hip_fracture_date
+    display_name: Hip Fracture
+    detection:
+      icd_prefixes: ["S72"]
+      external_cause_prefixes: ["W00", "W01", "W18", "W19"]
+      require_external_cause: false
+```
+
+```bash
+# Run the full pipeline for the new cohort — no code changes
+python 2_create_cohort/0_create_cohort.py --cohort hip_fracture --age-band 65-74
+python 3a_feature_importance/run_mc_feature_importance.py --cohort hip_fracture --age-band 65-74
+# ... all downstream steps work automatically
+```
