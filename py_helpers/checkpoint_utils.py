@@ -20,6 +20,15 @@ except ImportError:
     s3_client = boto3.client("s3")
     S3_BUCKET = "pgxdatalake"
 
+try:
+    from py_helpers.constants import CHECKPOINT_BUCKET, PROJECT_SLUG
+except ImportError:
+    CHECKPOINT_BUCKET = "pgxdatalake"
+    PROJECT_SLUG = "cpic_time_to_event"
+
+# Checkpoint key prefix: gold/{PROJECT_SLUG}/pipeline_checkpoints/...
+_CHECKPOINT_PREFIX = f"gold/{PROJECT_SLUG}/pipeline_checkpoints"
+
 
 def check_s3_output_exists(s3_path: str) -> bool:
     """
@@ -212,20 +221,19 @@ def save_step_checkpoint(
         "output_paths": output_paths or [],
     }
     
-    # S3 checkpoint path: s3://pgx-repository/pipeline_checkpoints/{step_name}/{cohort}/{age_band}/checkpoint.json
     checkpoint_key = (
-        f"pipeline_checkpoints/{step_name}/{cohort}/{age_band.replace('-', '_')}/checkpoint.json"
+        f"{_CHECKPOINT_PREFIX}/{step_name}/{cohort}/{age_band.replace('-', '_')}/checkpoint.json"
     )
-    
+
     try:
         s3_client.put_object(
-            Bucket="pgx-repository",
+            Bucket=CHECKPOINT_BUCKET,
             Key=checkpoint_key,
             Body=json.dumps(checkpoint_data, indent=2),
             ContentType="application/json"
         )
         if logger:
-            logger.info(f"[OK] Saved checkpoint to s3://pgx-repository/{checkpoint_key}")
+            logger.info(f"[OK] Saved checkpoint to s3://{CHECKPOINT_BUCKET}/{checkpoint_key}")
         return True
     except Exception as e:
         if logger:
@@ -252,13 +260,13 @@ def check_step_checkpoint_exists(
         True if checkpoint exists, False otherwise
     """
     checkpoint_key = (
-        f"pipeline_checkpoints/{step_name}/{cohort}/{age_band.replace('-', '_')}/checkpoint.json"
+        f"{_CHECKPOINT_PREFIX}/{step_name}/{cohort}/{age_band.replace('-', '_')}/checkpoint.json"
     )
 
     try:
-        s3_client.head_object(Bucket="pgx-repository", Key=checkpoint_key)
+        s3_client.head_object(Bucket=CHECKPOINT_BUCKET, Key=checkpoint_key)
         if logger:
-            logger.info(f"[OK] Checkpoint exists: s3://pgx-repository/{checkpoint_key}")
+            logger.info(f"[OK] Checkpoint exists: s3://{CHECKPOINT_BUCKET}/{checkpoint_key}")
         return True
     except s3_client.exceptions.ClientError as e:
         if e.response["Error"]["Code"] in ["404", "NoSuchKey"]:
@@ -287,17 +295,17 @@ def delete_step_checkpoint(
         True if deleted or already missing, False on error
     """
     checkpoint_key = (
-        f"pipeline_checkpoints/{step_name}/{cohort}/{age_band.replace('-', '_')}/checkpoint.json"
+        f"{_CHECKPOINT_PREFIX}/{step_name}/{cohort}/{age_band.replace('-', '_')}/checkpoint.json"
     )
     try:
-        s3_client.delete_object(Bucket="pgx-repository", Key=checkpoint_key)
+        s3_client.delete_object(Bucket=CHECKPOINT_BUCKET, Key=checkpoint_key)
         if logger:
-            logger.info(f"[OK] Deleted checkpoint: s3://pgx-repository/{checkpoint_key}")
+            logger.info(f"[OK] Deleted checkpoint: s3://{CHECKPOINT_BUCKET}/{checkpoint_key}")
         return True
     except s3_client.exceptions.ClientError as e:
         if e.response["Error"]["Code"] in ["404", "NoSuchKey"]:
             if logger:
-                logger.info(f"Checkpoint already missing: s3://pgx-repository/{checkpoint_key}")
+                logger.info(f"Checkpoint already missing: s3://{CHECKPOINT_BUCKET}/{checkpoint_key}")
             return True
         if logger:
             logger.warning(f"Failed to delete checkpoint: {e}")

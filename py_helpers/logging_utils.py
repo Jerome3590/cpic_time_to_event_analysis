@@ -22,6 +22,15 @@ except ImportError:
     import boto3
     s3_client = boto3.client('s3')
 
+try:
+    from py_helpers.constants import CHECKPOINT_BUCKET, PROJECT_SLUG
+except ImportError:
+    CHECKPOINT_BUCKET = "pgxdatalake"
+    PROJECT_SLUG = "cpic_time_to_event"
+
+# Log key prefix: gold/{PROJECT_SLUG}/logs/...
+_LOG_PREFIX = f"gold/{PROJECT_SLUG}/logs"
+
 
 class AutoFlushHandler(logging.StreamHandler):
     def emit(self, record):
@@ -149,9 +158,9 @@ def save_logs_to_s3(log_buffer, cohort_name, band, year, pipeline_phase="apcd_in
 
         # Create checkpoint-specific filename if provided
         if checkpoint_name:
-            log_path = f"s3://pgx-repository/build_logs/{pipeline_phase}/{cohort_name}/{band}/{year}/log_{timestamp}_{checkpoint_name}.txt"
+            log_path = f"s3://{CHECKPOINT_BUCKET}/{_LOG_PREFIX}/{pipeline_phase}/{cohort_name}/{band}/{year}/log_{timestamp}_{checkpoint_name}.txt"
         else:
-            log_path = f"s3://pgx-repository/build_logs/{pipeline_phase}/{cohort_name}/{band}/{year}/log_{timestamp}.txt"
+            log_path = f"s3://{CHECKPOINT_BUCKET}/{_LOG_PREFIX}/{pipeline_phase}/{cohort_name}/{band}/{year}/log_{timestamp}.txt"
 
         log_content = log_buffer.getvalue()
         save_to_s3_text(log_content, log_path, logger=logger)
@@ -212,7 +221,7 @@ def save_logs_checkpoint(log_buffer, cohort_name, band, year, step_name, pipelin
             description = description.strip('_')
 
         checkpoint_name = f"step{step_num}_{description}"
-        log_path = f"s3://pgx-repository/build_logs/{pipeline_phase}/{cohort_name}/{band}/{year}/log_{timestamp}_{checkpoint_name}.txt"
+        log_path = f"s3://{CHECKPOINT_BUCKET}/{_LOG_PREFIX}/{pipeline_phase}/{cohort_name}/{band}/{year}/log_{timestamp}_{checkpoint_name}.txt"
 
         log_content = log_buffer.getvalue()
         save_to_s3_text(log_content, log_path, logger=logger)
@@ -287,7 +296,7 @@ def save_logs_immediate(log_buffer, cohort_name, band, year, pipeline_phase="apc
             year = year.replace('event_year=', '')
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        log_path = f"s3://pgx-repository/build_logs/{pipeline_phase}/{cohort_name}/{band}/{year}/log_{timestamp}_{reason}.txt"
+        log_path = f"s3://{CHECKPOINT_BUCKET}/{_LOG_PREFIX}/{pipeline_phase}/{cohort_name}/{band}/{year}/log_{timestamp}_{reason}.txt"
 
         log_content = log_buffer.getvalue()
         save_to_s3_text(log_content, log_path, logger=logger)
@@ -519,7 +528,7 @@ def save_logs_to_s3_r(log_file_path: str, cohort_name: str, age_band: str, event
     
     try:
         from py_helpers.constants import S3_BUCKET
-        s3_key = f"logs/feature_importance/cohort_name={cohort_name}/age_band={age_band}/event_year={event_year}/{os.path.basename(log_file_path)}"
+        s3_key = f"{_LOG_PREFIX}/feature_importance/cohort_name={cohort_name}/age_band={age_band}/event_year={event_year}/{os.path.basename(log_file_path)}"
         
         with open(log_file_path, 'rb') as f:
             s3_client.put_object(
