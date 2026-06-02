@@ -38,12 +38,12 @@ def find_r_script(cohort: str) -> Optional[Path]:
     r_scripts_dir = PROJECT_ROOT / "3b_feature_importance_eda" / "1_bupaR"
     
     if cohort == "falls":
-        r_script = r_scripts_dir / "create_bupar_outputs_falls.R"
+        r_script = r_scripts_dir / "create_bupar_outputs_opioid_ed.R"
     elif cohort == "ed":  # POLYPHARMACY COHORT
-        r_script = r_scripts_dir / "create_bupar_outputs_ed.R"
+        r_script = r_scripts_dir / "create_bupar_outputs_non_opioid_ed.R"
     else:
         # Try falls script as fallback
-        r_script = r_scripts_dir / "create_bupar_outputs_falls.R"
+        r_script = r_scripts_dir / "create_bupar_outputs_opioid_ed.R"
     
     if r_script.exists():
         return r_script
