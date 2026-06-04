@@ -1770,6 +1770,7 @@ def train_and_evaluate(
     age_band: str,
     n_runs: int | None = None,
     bin_name: str | None = None,
+    force_retrain: bool = False,
 ) -> None:
     """
     Train XGBoost (CPU on Linux, GPU on Windows if available) and CatBoost on the assembled feature table,
@@ -1927,7 +1928,7 @@ def train_and_evaluate(
         and xgb_json_path.exists()
         and (has_catboost_artifact if has_catboost_in_summary else True)
     )
-    if skip_retrain:
+    if skip_retrain and not force_retrain:
         selected_model, best_xgb_variant, best_pr_auc, best_recall, selection_reason = _recompute_selection_from_summary_df(existing_summary)
         _names = {"xgb": "XGBoost", "xgb_rf": "XGBoost RF", "catboost": "CatBoost", "ensemble": "Ensemble"}
         # Update "selected" column in summary to match
@@ -3159,6 +3160,7 @@ def train_per_bin(
     n_runs: int | None = None,
     min_total: int = 50,
     min_per_class: int = 10,
+    force_retrain: bool = False,
 ) -> None:
     """
     Train a separate model for each n_event_bin (low / medium / high / extreme).
@@ -3212,12 +3214,71 @@ def train_per_bin(
                 print(f"  [ERROR] Fallback copy failed for bin={bin_name}: {e}")
             continue
 
-        train_and_evaluate(bin_df, cohort, age_band, n_runs=n_runs, bin_name=bin_name)
+        train_and_evaluate(bin_df, cohort, age_band, n_runs=n_runs, bin_name=bin_name, force_retrain=force_retrain)
 
     print(f"\n{'='*60}")
     print(f"Per-bin training complete: {cohort} / {age_band}")
     print(f"{'='*60}\n")
 
+
+def evaluate_temporal_holdout(
+    df_holdout: pd.DataFrame,
+    cohort: str,
+    age_band: str,
+) -> None:
+    """Evaluate saved models on the 2019 temporal holdout; save metrics JSON and upload to S3."""
+    import json, boto3
+    from sklearn.metrics import roc_auc_score, average_precision_score
+    from py_helpers.model_utils import load_model as _load_model
+
+    age_band_fname = age_band_to_fname(age_band)
+    out_dir = PROJECT_ROOT / "6_final_model" / "outputs" / cohort / age_band_fname
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "holdout_2019_metrics.json"
+
+    try:
+        target_col = "target"
+        if target_col not in df_holdout.columns:
+            print("[WARN] evaluate_temporal_holdout: no 'target' column in holdout — skipping.")
+            return
+        y_true = df_holdout[target_col].values
+        drop_cols = [c for c in df_holdout.columns if c in (
+            "mi_person_key", "target", "target_time", "first_time",
+            "first_f1120_date", "first_o11_p_date",
+            "first_opioid_ed_date", "first_ed_non_opioid_date",
+        )]
+        X_holdout = df_holdout.drop(columns=drop_cols, errors="ignore")
+
+        xgb_path = out_dir / "final_model_json" / f"{cohort}_{age_band_fname}_best_xgboost_model.json"
+        if not xgb_path.exists():
+            print(f"[WARN] evaluate_temporal_holdout: model not found at {xgb_path} — skipping.")
+            return
+
+        model = _load_model(xgb_path)
+        y_prob = model.predict_proba(X_holdout)[:, 1]
+        metrics = {
+            "cohort": cohort,
+            "age_band": age_band,
+            "holdout_year": 2019,
+            "n_holdout": int(len(y_true)),
+            "n_positive": int(y_true.sum()),
+            "auroc": float(roc_auc_score(y_true, y_prob)),
+            "pr_auc": float(average_precision_score(y_true, y_prob)),
+        }
+        with open(out_path, "w") as f:
+            json.dump(metrics, f, indent=2)
+        print(f"[INFO] Temporal holdout metrics → {out_path}")
+        print(f"       AUROC={metrics['auroc']:.4f}  PR-AUC={metrics['pr_auc']:.4f}  n={metrics['n_holdout']}")
+
+        try:
+            s3 = boto3.client("s3")
+            s3_key = f"gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/holdout_2019_metrics.json"
+            s3.upload_file(str(out_path), S3_BUCKET, s3_key)
+            print(f"[INFO] Uploaded holdout metrics to s3://{S3_BUCKET}/{s3_key}")
+        except Exception as _s3e:
+            print(f"[WARN] S3 upload of holdout metrics failed: {_s3e}")
+    except Exception as e:
+        print(f"[WARN] evaluate_temporal_holdout failed: {e}")
 
 def main() -> None:
     import logging
@@ -3239,6 +3300,13 @@ def main() -> None:
         default="per_bin",
         help="per_bin (default): train density-bin models only; mirror one bin to aggregate outputs for deploy. "
         "aggregate: single cohort-wide model only (legacy). both: cohort-wide then per-bin subdirs.",
+    )
+    parser.add_argument(
+        "--force-retrain",
+        action="store_true",
+        default=False,
+        help="Force retraining even if model artifacts already exist (bypasses idempotency check). "
+        "Required when rerunning after a temporal-split correction.",
     )
     args = parser.parse_args()
 
@@ -3297,7 +3365,7 @@ def main() -> None:
     else:
         all_local_exist = all(path.exists() for path in local_outputs.values())
 
-    if all_local_exist:
+    if all_local_exist and not args.force_retrain:
         logger.info(f"Step 6 outputs already exist locally for {args.cohort}/{args.age_band}; skipping regeneration.")
         logger.info(f"  Found {len(local_outputs)} output files")
         
@@ -3347,7 +3415,7 @@ def main() -> None:
         else:
             should_fetch_s3 = _s3_ok or _checkpoint_ok
 
-        if should_fetch_s3:
+        if should_fetch_s3 and not args.force_retrain:
             logger.info(f"Step 6 outputs exist in S3 for {args.cohort}/{args.age_band}; downloading to local.")
             
             # Download from S3 to local
@@ -3481,6 +3549,30 @@ def main() -> None:
             features_dir
             / f"{args.cohort}_{age_band_fname}_train_final_features_no_leakage.csv"
         )
+        # --- Temporal holdout split: train on <=2018, evaluate on 2019 ---
+        df_holdout_2019: pd.DataFrame = pd.DataFrame()
+        try:
+            _events_path = _resolve_model_events_path(args.cohort, args.age_band)
+            _ep = str(_events_path).replace("\\", "/")
+            _con = duckdb.connect()
+            _year_df = _con.execute(
+                f"SELECT CAST(mi_person_key AS VARCHAR) AS mi_person_key, "
+                f"MAX(event_year) AS patient_year "
+                f"FROM read_parquet('{_ep}') GROUP BY mi_person_key"
+            ).df()
+            _con.close()
+            df["mi_person_key"] = df["mi_person_key"].astype(str)
+            df = df.merge(_year_df, on="mi_person_key", how="left")
+            df["patient_year"] = df["patient_year"].fillna(2018).astype(int)
+            df_holdout_2019 = df[df["patient_year"] == 2019].drop(columns=["patient_year"]).copy()
+            df = df[df["patient_year"] <= 2018].drop(columns=["patient_year"]).copy()
+            logger.info(
+                "Temporal split: train (2016-2018) = %d patients | holdout (2019) = %d patients",
+                len(df), len(df_holdout_2019),
+            )
+        except Exception as _te:
+            logger.warning("Temporal split failed (%s) — training on all years (no holdout).", _te)
+
         df.to_csv(features_path, index=False)
         logger.info("Saved final features (no leakage) to %s", features_path)
 
@@ -3497,14 +3589,19 @@ def main() -> None:
 
         if args.train_mode in ("aggregate", "both"):
             with step_block("final_model", "train_and_evaluate", logger=logger):
-                train_and_evaluate(df, args.cohort, args.age_band, n_runs=n_runs)
+                train_and_evaluate(df, args.cohort, args.age_band, n_runs=n_runs, force_retrain=args.force_retrain)
 
         if args.train_mode in ("per_bin", "both"):
             with step_block("final_model", "train_per_bin", logger=logger):
-                train_per_bin(df, args.cohort, args.age_band, n_runs=n_runs)
+                train_per_bin(df, args.cohort, args.age_band, n_runs=n_runs, force_retrain=args.force_retrain)
 
         if args.train_mode == "per_bin":
             mirror_bin_artifacts_to_aggregate_root(args.cohort, args.age_band)
+
+        # --- Evaluate on 2019 temporal holdout (true out-of-time validation) ---
+        if not df_holdout_2019.empty:
+            with step_block("final_model", "evaluate_temporal_holdout", logger=logger):
+                evaluate_temporal_holdout(df_holdout_2019, args.cohort, args.age_band)
 
         # Upload train/test to S3 (required for SHAP and FFA analysis; not optional)
         prepare_script = PROJECT_ROOT / "6_final_model" / "prepare_train_test_s3.py"

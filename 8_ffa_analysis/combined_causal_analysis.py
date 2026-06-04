@@ -511,7 +511,7 @@ def causal_analysis_explainer_method(X: pd.DataFrame, y: pd.Series,
         
         causal_results.append({
             'feature': feat_name,
-            'causal_importance': overall_importance,
+            'scenario_importance': overall_importance,
             'remove_effect': intervention_results.get('remove', 0.0),
             'median_effect': intervention_results.get('median', 0.0),
             'zero_effect': intervention_results.get('zero', 0.0),
@@ -519,7 +519,7 @@ def causal_analysis_explainer_method(X: pd.DataFrame, y: pd.Series,
         })
     
     causal_df = pd.DataFrame(causal_results)
-    causal_df = causal_df.sort_values('causal_importance', ascending=False)
+    causal_df = causal_df.sort_values('scenario_importance', ascending=False)
     
     logger.info(f"Explainer-based analysis completed for {len(causal_df)} features")
     return causal_df
@@ -622,7 +622,7 @@ def causal_analysis_probability_method(X: pd.DataFrame, y: pd.Series,
         
         causal_results.append({
             'feature': feat_name,
-            'causal_importance': overall_importance,
+            'scenario_importance': overall_importance,
             'remove_effect': intervention_results.get('remove', 0.0),
             'median_effect': intervention_results.get('median', 0.0),
             'zero_effect': intervention_results.get('zero', 0.0),
@@ -630,7 +630,7 @@ def causal_analysis_probability_method(X: pd.DataFrame, y: pd.Series,
         })
     
     causal_df = pd.DataFrame(causal_results)
-    causal_df = causal_df.sort_values('causal_importance', ascending=False)
+    causal_df = causal_df.sort_values('scenario_importance', ascending=False)
     
     logger.info(f"Probability-based analysis completed for {len(causal_df)} features")
     return causal_df
@@ -646,20 +646,20 @@ def combine_results(explainer_df: pd.DataFrame, probability_df: pd.DataFrame) ->
     if explainer_df.empty:
         # Only probability method - use it as combined
         probability_df = probability_df.copy()
-        probability_df['combined_importance'] = probability_df['causal_importance']
+        probability_df['combined_importance'] = probability_df['scenario_importance']
         probability_df['method'] = 'probability'
         return probability_df
     
     if probability_df.empty:
         # Only explainer method - use it as combined
         explainer_df = explainer_df.copy()
-        explainer_df['combined_importance'] = explainer_df['causal_importance']
+        explainer_df['combined_importance'] = explainer_df['scenario_importance']
         explainer_df['method'] = 'explainer'
         return explainer_df
     
     # Combine both methods
     explainer_df = explainer_df.rename(columns={
-        'causal_importance': 'explainer_importance',
+        'scenario_importance': 'explainer_importance',
         'remove_effect': 'explainer_remove',
         'median_effect': 'explainer_median',
         'zero_effect': 'explainer_zero',
@@ -667,7 +667,7 @@ def combine_results(explainer_df: pd.DataFrame, probability_df: pd.DataFrame) ->
     })
     
     probability_df = probability_df.rename(columns={
-        'causal_importance': 'probability_importance',
+        'scenario_importance': 'probability_importance',
         'remove_effect': 'probability_remove',
         'median_effect': 'probability_median',
         'zero_effect': 'probability_zero',
@@ -906,7 +906,7 @@ def create_visualizations(explainer_df: pd.DataFrame, probability_df: pd.DataFra
         fig1a = plt.figure(figsize=(14, 10))
         top_prob = probability_df.head(15)
         y_pos = np.arange(len(top_prob))
-        bars = plt.barh(y_pos, top_prob['causal_importance'].values, color='coral', alpha=0.7, edgecolor='black')
+        bars = plt.barh(y_pos, top_prob['scenario_importance'].values, color='coral', alpha=0.7, edgecolor='black')
         plt.yticks(y_pos, top_prob['feature'].values, fontsize=10)
         plt.xlabel('Causal Importance', fontsize=12, fontweight='bold')
         plt.title('Probability-Based Method: Top 15 Features by Causal Importance', fontsize=16, fontweight='bold')
@@ -914,7 +914,7 @@ def create_visualizations(explainer_df: pd.DataFrame, probability_df: pd.DataFra
         plt.grid(axis='x', linestyle='--', alpha=0.3)
         
         # Add value labels
-        for i, (bar, val) in enumerate(zip(bars, top_prob['causal_importance'].values)):
+        for i, (bar, val) in enumerate(zip(bars, top_prob['scenario_importance'].values)):
             plt.text(val, i, f' {val:.4f}', va='center', fontsize=9)
         
         plt.tight_layout()
@@ -942,7 +942,7 @@ def create_visualizations(explainer_df: pd.DataFrame, probability_df: pd.DataFra
         plt.grid(axis='y', linestyle='--', alpha=0.3)
         
         plt.tight_layout()
-        save_path1b = OUTPUT_DIR / 'causal_analysis_probability_method_intervention_effects.png'
+        save_path1b = OUTPUT_DIR / 'scenario_analysis_probability_method_intervention_effects.png'
         plt.savefig(save_path1b, bbox_inches='tight', facecolor='white', dpi=300)
         plt.close()
         logger.info(f"Saved: {save_path1b}")
@@ -956,7 +956,7 @@ def create_visualizations(explainer_df: pd.DataFrame, probability_df: pd.DataFra
         ax1 = axes2[0]
         top_explainer = explainer_df.head(15)
         y_pos = np.arange(len(top_explainer))
-        bars = ax1.barh(y_pos, top_explainer['causal_importance'].values, color='steelblue', alpha=0.7, edgecolor='black')
+        bars = ax1.barh(y_pos, top_explainer['scenario_importance'].values, color='steelblue', alpha=0.7, edgecolor='black')
         ax1.set_yticks(y_pos)
         ax1.set_yticklabels(top_explainer['feature'].values, fontsize=10)
         ax1.set_xlabel('Causal Importance', fontsize=12, fontweight='bold')
@@ -965,7 +965,7 @@ def create_visualizations(explainer_df: pd.DataFrame, probability_df: pd.DataFra
         ax1.grid(axis='x', linestyle='--', alpha=0.3)
         
         # Add value labels
-        for i, (bar, val) in enumerate(zip(bars, top_explainer['causal_importance'].values)):
+        for i, (bar, val) in enumerate(zip(bars, top_explainer['scenario_importance'].values)):
             ax1.text(val, i, f' {val:.4f}', va='center', fontsize=9)
         
         # Intervention effects
@@ -987,7 +987,7 @@ def create_visualizations(explainer_df: pd.DataFrame, probability_df: pd.DataFra
         ax2.grid(axis='y', linestyle='--', alpha=0.3)
         
         plt.tight_layout()
-        save_path2 = OUTPUT_DIR / 'causal_analysis_explainer_method.png'
+        save_path2 = OUTPUT_DIR / 'scenario_analysis_explainer_method.png'
         plt.savefig(save_path2, bbox_inches='tight', facecolor='white', dpi=300)
         plt.close()
         logger.info(f"Saved: {save_path2}")
@@ -1009,7 +1009,7 @@ def create_visualizations(explainer_df: pd.DataFrame, probability_df: pd.DataFra
             plt.text(val, i, f' {val:.4f}', va='center', fontsize=9)
         
         plt.tight_layout()
-        save_path3a = OUTPUT_DIR / 'causal_analysis_combined_top_features.png'
+        save_path3a = OUTPUT_DIR / 'scenario_analysis_combined_top_features.png'
         plt.savefig(save_path3a, bbox_inches='tight', facecolor='white', dpi=300)
         plt.close()
         logger.info(f"Saved: {save_path3a}")
@@ -1017,21 +1017,21 @@ def create_visualizations(explainer_df: pd.DataFrame, probability_df: pd.DataFra
     # Chart 3b: Combined Results - Method Comparison Scatter Plot
     if not explainer_df.empty and not probability_df.empty:
         fig3b = plt.figure(figsize=(12, 10))
-        merged = explainer_df[['feature', 'causal_importance']].merge(
-            probability_df[['feature', 'causal_importance']], 
+        merged = explainer_df[['feature', 'scenario_importance']].merge(
+            probability_df[['feature', 'scenario_importance']], 
             on='feature', 
             suffixes=('_explainer', '_prob')
         )
         
-        scatter = plt.scatter(merged['causal_importance_explainer'], 
-                     merged['causal_importance_prob'],
+        scatter = plt.scatter(merged['scenario_importance_explainer'], 
+                     merged['scenario_importance_prob'],
                      alpha=0.7, s=150, edgecolors='black', linewidth=1.5,
                      c=merged.index, cmap='viridis')
         
         # Add feature labels
         for idx, row in merged.iterrows():
             plt.annotate(row['feature'], 
-                       (row['causal_importance_explainer'], row['causal_importance_prob']),
+                       (row['scenario_importance_explainer'], row['scenario_importance_prob']),
                        fontsize=8, alpha=0.7,
                        xytext=(5, 5), textcoords='offset points')
         
@@ -1041,14 +1041,14 @@ def create_visualizations(explainer_df: pd.DataFrame, probability_df: pd.DataFra
         plt.grid(True, linestyle='--', alpha=0.3)
         
         # Add diagonal line
-        max_val = max(merged['causal_importance_explainer'].max(), 
-                     merged['causal_importance_prob'].max())
+        max_val = max(merged['scenario_importance_explainer'].max(), 
+                     merged['scenario_importance_prob'].max())
         plt.plot([0, max_val], [0, max_val], 'r--', alpha=0.5, linewidth=2, label='y=x')
         plt.legend(fontsize=10)
         plt.colorbar(scatter, label='Feature Index')
         
         plt.tight_layout()
-        save_path3b = OUTPUT_DIR / 'causal_analysis_combined_method_comparison.png'
+        save_path3b = OUTPUT_DIR / 'scenario_analysis_combined_method_comparison.png'
         plt.savefig(save_path3b, bbox_inches='tight', facecolor='white', dpi=300)
         plt.close()
         logger.info(f"Saved: {save_path3b}")
@@ -1090,7 +1090,7 @@ def main():
                     X, y, feature_importance_features, model_weights
                 )
                 if not explainer_df.empty:
-                    explainer_df.to_csv(OUTPUT_DIR / 'causal_importance_explainer_method.csv', index=False)
+                    explainer_df.to_csv(OUTPUT_DIR / 'scenario_importance_explainer_method.csv', index=False)
                     logger.info(f"Saved explainer-based results: {len(explainer_df)} features")
             except Exception as e:
                 logger.error(f"Explainer-based analysis failed: {e}")
@@ -1127,7 +1127,7 @@ def main():
                     X, y, feature_importance_features, model_weights, models
                 )
                 if not probability_df.empty:
-                    probability_df.to_csv(OUTPUT_DIR / 'causal_importance_probability_method.csv', index=False)
+                    probability_df.to_csv(OUTPUT_DIR / 'scenario_importance_probability_method.csv', index=False)
                     logger.info(f"Saved probability-based results: {len(probability_df)} features")
             except Exception as e:
                 logger.error(f"Probability-based analysis failed: {e}", exc_info=True)
@@ -1137,7 +1137,7 @@ def main():
         # Combine results
         combined_df = combine_results(explainer_df, probability_df)
         if not combined_df.empty:
-            combined_df.to_csv(OUTPUT_DIR / 'causal_importance_combined.csv', index=False)
+            combined_df.to_csv(OUTPUT_DIR / 'scenario_importance_combined.csv', index=False)
             logger.info(f"Saved combined results: {len(combined_df)} features")
         
         # Create visualizations
@@ -1150,11 +1150,11 @@ def main():
         
         if not explainer_df.empty:
             print(f"\nTop 10 Features (Explainer-Based):")
-            print(explainer_df.head(10)[['feature', 'causal_importance']].to_string(index=False))
+            print(explainer_df.head(10)[['feature', 'scenario_importance']].to_string(index=False))
         
         if not probability_df.empty:
             print(f"\nTop 10 Features (Probability-Based):")
-            print(probability_df.head(10)[['feature', 'causal_importance']].to_string(index=False))
+            print(probability_df.head(10)[['feature', 'scenario_importance']].to_string(index=False))
         
         if not combined_df.empty:
             print(f"\nTop 10 Features (Combined):")
