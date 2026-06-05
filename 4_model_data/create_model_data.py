@@ -419,6 +419,7 @@ def filter_cohort_events_for_items(
     control_exclusions: Optional[List[str]] = None,
     time_window_days: Optional[int] = None,  # Deprecated - time window now handled in Step 2
     skip_s3_download: bool = False,  # When True (e.g. 3b BupaR input), build locally only, no S3
+    force_rebuild: bool = False,
     logger: Optional[logging.Logger] = None,
 ) -> None:
     """
@@ -631,7 +632,7 @@ def filter_cohort_events_for_items(
     # Idempotency / Windows-friendly: if the file already exists locally, validate it
     # is readable and non-empty before skipping. A partial/interrupted write could leave
     # a corrupt file that passes an existence check but fails at read time.
-    if out_path.exists():
+    if out_path.exists() and not force_rebuild:
         try:
             _chk = duckdb.connect()
             n_rows = _chk.execute(f"SELECT COUNT(*) FROM read_parquet('{str(out_path).replace(chr(92), '/')}')").fetchone()[0]
@@ -657,7 +658,9 @@ def filter_cohort_events_for_items(
                 pass
 
     # Check S3 and download if exists there but not locally (skip when building 3b BupaR input)
-    if not skip_s3_download:
+    if force_rebuild:
+        print(f"[INFO] Force rebuild requested; skipping local/S3 reuse for {cohort_name}/{age_band}.")
+    if not skip_s3_download and not force_rebuild:
         try:
             from py_helpers.checkpoint_utils import check_s3_output_exists
             import subprocess
@@ -733,6 +736,13 @@ def filter_cohort_events_for_items(
     is_falls = _is_falls_cohort(cohort_name)
     output_col = TARGET_DATE_FALLS if is_falls else TARGET_DATE_ED
     source_col = COHORT_SOURCE_FALLS if is_falls else COHORT_SOURCE_ED
+    target_col_msg = (
+        f"[INFO] Target date column mapping for {cohort_name}/{age_band}: "
+        f"cohort source '{source_col}' -> model_events output '{output_col}'"
+    )
+    print(target_col_msg)
+    if logger:
+        logger.info(target_col_msg)
     if source_col not in cohort_cols:
         msg = (
             f"[ERROR] Cohort schema missing required target date column '{source_col}' for {cohort_name}/{age_band}. "
@@ -744,6 +754,30 @@ def filter_cohort_events_for_items(
             logger.error(msg)
         con.close()
         return
+    source_non_null = con.execute(
+        f"""
+        SELECT COUNT(*)::BIGINT
+        FROM read_parquet([{cohort_paths_literal}], union_by_name=True)
+        WHERE is_target_case = 1 AND "{source_col}" IS NOT NULL
+        """
+    ).fetchone()[0]
+    source_count_msg = (
+        f"[INFO] Target date source check for {cohort_name}/{age_band}: "
+        f"{source_non_null} target-case rows have non-null '{source_col}'"
+    )
+    print(source_count_msg)
+    if logger:
+        logger.info(source_count_msg)
+    if int(source_non_null or 0) == 0:
+        msg = (
+            f"[ERROR] Cohort target cases have no non-null '{source_col}' for {cohort_name}/{age_band}. "
+            f"Cannot populate '{output_col}' in model_events."
+        )
+        print(msg)
+        if logger:
+            logger.error(msg)
+        con.close()
+        sys.exit(1)
     if source_col not in common_cols:
         common_cols = list(common_cols) + [source_col]
         print(f"[INFO] Including cohort-only column in model_events for target date (output: {output_col}).")
@@ -954,25 +988,6 @@ def filter_cohort_events_for_items(
         """
     )
 
-    # 4. Construct case and control events and write to Parquet
-    # Target leakage removal (Step 4): keep only events strictly before target date for cases.
-    # Use source_col (cohort column name) for the filter since we read from cohort.
-    leakage_condition = "TRUE"
-    if "event_date" in common_cols and source_col in common_cols:
-        leakage_condition = (
-            f"(event_date IS NULL OR \"{source_col}\" IS NULL OR "
-            f"CAST(event_date AS DATE) < CAST(\"{source_col}\" AS DATE))"
-        )
-        print(f"[INFO] Applying target leakage removal: keep only events before {source_col}")
-    case_events_query = f"""
-        SELECT
-            {case_cols_sql},
-            1 AS target
-        FROM read_parquet([{cohort_paths_literal}], union_by_name=True)
-        WHERE
-            is_target_case = 1 AND {item_filter_condition} AND {leakage_condition}
-    """
-
     # Build control exclusion filter (blacklist approach)
     # Controls keep all features EXCEPT post-target leakage features
     control_exclusion_condition = "TRUE"  # Default: no exclusions
@@ -988,16 +1003,171 @@ def filter_cohort_events_for_items(
             procedure_code IN ({exclusion_list_literal})
         )"""
         print(f"[INFO] Applying control exclusions: excluding {len(control_exclusions)} post-target leakage features")
-    
-    control_events_query = f"""
-        SELECT
-            {common_cols_sql_control},
-            0 AS target
-        FROM read_parquet([{all_control_paths_literal}], union_by_name=True) c
-        JOIN control_patients cp
-            ON c.mi_person_key = cp.mi_person_key
-        WHERE {control_exclusion_condition}
-    """
+
+    # 4. Construct case and control events and write to Parquet
+    # Target leakage removal (Step 4): keep only events strictly before target date for cases.
+    # Use source_col (cohort column name) for the filter since we read from cohort.
+    leakage_condition = "TRUE"
+    if "event_date" in common_cols and source_col in common_cols:
+        leakage_condition = (
+            f"(event_date IS NULL OR \"{source_col}\" IS NULL OR "
+            f"CAST(event_date AS DATE) < CAST(\"{source_col}\" AS DATE))"
+        )
+        print(f"[INFO] Applying target leakage removal: keep only events before {source_col}")
+    if is_falls:
+        case_events_query = f"""
+            SELECT
+                {case_cols_sql},
+                1 AS target
+            FROM read_parquet([{cohort_paths_literal}], union_by_name=True)
+            WHERE
+                is_target_case = 1 AND {item_filter_condition} AND {leakage_condition}
+        """
+        control_events_query = f"""
+            SELECT
+                {common_cols_sql_control},
+                0 AS target
+            FROM read_parquet([{all_control_paths_literal}], union_by_name=True) c
+            JOIN control_patients cp
+                ON c.mi_person_key = cp.mi_person_key
+            WHERE {control_exclusion_condition}
+        """
+    else:
+        lookback_days = 365
+        con.execute(
+            f"""
+            CREATE TEMP TABLE case_index_dates AS
+            SELECT
+                CAST(mi_person_key AS VARCHAR) AS mi_person_key,
+                MIN(CAST("{source_col}" AS DATE)) AS case_index_date
+            FROM read_parquet([{cohort_paths_literal}], union_by_name=True)
+            WHERE is_target_case = 1 AND "{source_col}" IS NOT NULL
+            GROUP BY mi_person_key
+            """
+        )
+        case_index_stats = con.execute(
+            """
+            SELECT
+                COUNT(*)::BIGINT AS case_patients_with_index,
+                MIN(case_index_date) AS min_case_index_date,
+                MAX(case_index_date) AS max_case_index_date
+            FROM case_index_dates
+            """
+        ).fetchone()
+        case_index_msg = (
+            f"[INFO] Case index-date QA for {cohort_name}/{age_band}: "
+            f"patients={int(case_index_stats[0] or 0):,}, "
+            f"min={case_index_stats[1]}, max={case_index_stats[2]}"
+        )
+        print(case_index_msg)
+        if logger:
+            logger.info(case_index_msg)
+        case_gold_join_stats = con.execute(
+            f"""
+            WITH joined AS (
+                SELECT
+                    c.mi_person_key,
+                    c.event_date,
+                    ci.case_index_date,
+                    CASE WHEN {control_exclusion_condition} THEN 1 ELSE 0 END AS passes_exclusion_filter,
+                    CASE
+                        WHEN c.event_date IS NOT NULL
+                         AND CAST(c.event_date AS DATE) >= ci.case_index_date - INTERVAL {lookback_days} DAY
+                         AND CAST(c.event_date AS DATE) < ci.case_index_date
+                        THEN 1 ELSE 0
+                    END AS in_lookback
+                FROM read_parquet([{all_control_paths_literal}], union_by_name=True) c
+                JOIN case_index_dates ci
+                    ON CAST(c.mi_person_key AS VARCHAR) = ci.mi_person_key
+            )
+            SELECT
+                COUNT(DISTINCT mi_person_key)::BIGINT AS joined_case_patients,
+                COUNT(*)::BIGINT AS joined_rows,
+                SUM(passes_exclusion_filter)::BIGINT AS exclusion_filter_rows,
+                SUM(in_lookback)::BIGINT AS lookback_rows,
+                SUM(CASE WHEN passes_exclusion_filter = 1 AND in_lookback = 1 THEN 1 ELSE 0 END)::BIGINT AS final_case_rows,
+                COUNT(DISTINCT CASE WHEN passes_exclusion_filter = 1 AND in_lookback = 1 THEN mi_person_key END)::BIGINT AS final_case_patients
+            FROM joined
+            """
+        ).fetchone()
+        case_gold_join_msg = (
+            f"[INFO] Case gold-event survival QA for {cohort_name}/{age_band}: "
+            f"joined_patients={int(case_gold_join_stats[0] or 0):,}, "
+            f"joined_rows={int(case_gold_join_stats[1] or 0):,}, "
+            f"exclusion_filter_rows={int(case_gold_join_stats[2] or 0):,}, "
+            f"lookback_rows={int(case_gold_join_stats[3] or 0):,}, "
+            f"final_case_rows={int(case_gold_join_stats[4] or 0):,}, "
+            f"final_case_patients={int(case_gold_join_stats[5] or 0):,}"
+        )
+        print(case_gold_join_msg)
+        if logger:
+            logger.info(case_gold_join_msg)
+        if int(case_gold_join_stats[4] or 0) == 0:
+            msg = (
+                f"[ERROR] No ed case gold events survive post-target exclusions and {lookback_days}-day pre-index lookback "
+                f"for {cohort_name}/{age_band}. Check gold event coverage, exclusion filters, and index-date alignment."
+            )
+            print(msg)
+            if logger:
+                logger.error(msg)
+            con.close()
+            sys.exit(1)
+        case_gold_cols_sql = ", ".join(
+            f'ci.case_index_date AS "{output_col}"' if c == output_col else (f"c.{c}" if c in control_cols else f"NULL AS {c}")
+            for c in output_common_cols
+        )
+        control_gold_cols_sql = ", ".join(
+            f'cp.control_index_date AS "{output_col}"' if c == output_col else (f"c.{c}" if c in control_cols else f"NULL AS {c}")
+            for c in output_common_cols
+        )
+        case_events_query = f"""
+            SELECT
+                {case_gold_cols_sql},
+                1 AS target
+            FROM read_parquet([{all_control_paths_literal}], union_by_name=True) c
+            JOIN case_index_dates ci
+                ON CAST(c.mi_person_key AS VARCHAR) = ci.mi_person_key
+            WHERE
+                {control_exclusion_condition}
+                AND c.event_date IS NOT NULL
+                AND CAST(c.event_date AS DATE) >= ci.case_index_date - INTERVAL {lookback_days} DAY
+                AND CAST(c.event_date AS DATE) < ci.case_index_date
+        """
+        print(
+            f"[INFO] Applying ed symmetric lookback: cases use gold events in "
+            f"[index-{lookback_days}d, index) before {source_col}"
+        )
+        con.execute(
+            f"""
+            CREATE TEMP TABLE control_patients_indexed AS
+            SELECT
+                cp.mi_person_key,
+                MAX(CAST(c.event_date AS DATE)) AS control_index_date
+            FROM control_patients cp
+            JOIN read_parquet([{all_control_paths_literal}], union_by_name=True) c
+                ON cp.mi_person_key = c.mi_person_key
+            WHERE c.event_date IS NOT NULL
+            GROUP BY cp.mi_person_key
+            HAVING control_index_date IS NOT NULL
+            """
+        )
+        control_events_query = f"""
+            SELECT
+                {control_gold_cols_sql},
+                0 AS target
+            FROM read_parquet([{all_control_paths_literal}], union_by_name=True) c
+            JOIN control_patients_indexed cp
+                ON c.mi_person_key = cp.mi_person_key
+            WHERE
+                {control_exclusion_condition}
+                AND c.event_date IS NOT NULL
+                AND CAST(c.event_date AS DATE) >= cp.control_index_date - INTERVAL {lookback_days} DAY
+                AND CAST(c.event_date AS DATE) < cp.control_index_date
+        """
+        print(
+            f"[INFO] Applying ed symmetric lookback: controls use gold events in "
+            f"[pseudo-index-{lookback_days}d, pseudo-index) before each patient's latest observed event"
+        )
 
     final_query = f"""
         COPY (
@@ -1015,6 +1185,36 @@ def filter_cohort_events_for_items(
     print(write_msg)
     if logger:
         logger.info(write_msg)
+    output_col = TARGET_DATE_FALLS if _is_falls_cohort(cohort_name) else TARGET_DATE_ED
+    path_str = str(out_path).replace("'", "''")
+    out_col_check = duckdb.connect()
+    try:
+        output_schema = out_col_check.execute(
+            f"DESCRIBE SELECT * FROM read_parquet('{path_str}')"
+        ).fetchall()
+        output_cols = [row[0] for row in output_schema]
+        if output_col in output_cols:
+            output_non_null = out_col_check.execute(
+                f"""
+                SELECT COUNT(*)::BIGINT
+                FROM read_parquet('{path_str}')
+                WHERE target = 1 AND "{output_col}" IS NOT NULL
+                """
+            ).fetchone()[0]
+            output_col_msg = (
+                f"[INFO] Target date output check for {cohort_name}/{age_band}: "
+                f"{output_non_null} target-case rows have non-null '{output_col}'"
+            )
+        else:
+            output_col_msg = (
+                f"[ERROR] Target date output check for {cohort_name}/{age_band}: "
+                f"model_events schema missing '{output_col}'. Columns: {output_cols[:20]}{'...' if len(output_cols) > 20 else ''}"
+            )
+        print(output_col_msg)
+        if logger:
+            logger.info(output_col_msg)
+    finally:
+        out_col_check.close()
     
     # Validate that controls are present and ratio is approximately correct
     validation_result = _validate_model_events_has_controls(out_path)
@@ -1209,8 +1409,16 @@ def main() -> None:
     )
     parser.add_argument(
         "--age-band",
+        "--age_band",
+        dest="age_band",
         type=str,
         help="Process specific age band (e.g., 65-74). Requires --cohort to be specified.",
+    )
+    parser.add_argument(
+        "--force-rebuild",
+        action="store_true",
+        default=False,
+        help="Force rebuild model_events.parquet and skip local/S3 reuse.",
     )
     parser.add_argument(
         "--time-window-days",
@@ -1376,6 +1584,7 @@ def main() -> None:
             local_pharmacy_root=local_pharmacy_root,
             sample_ratio=DEFAULT_SAMPLE_RATIO,
             control_exclusions=control_exclusions,
+            force_rebuild=args.force_rebuild,
             logger=step4_logger,
         )
 

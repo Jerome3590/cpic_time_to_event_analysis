@@ -8,6 +8,36 @@ of target date columns to `first_fall_date` / `first_ed_date`.
 
 ---
 
+## 0. Leakage Fixes Must Be Ported Across Related Cohort Repos
+
+June 2026 QA identified two leakage classes in the related PGx pipeline that also apply to this CPIC time-to-event repo:
+
+1. **Temporal holdout leakage:** final-model training must keep 2019 as a true holdout and must not reuse pre-fix checkpoints/artifacts.
+2. **ED cohort construction asymmetry:** Step 4 ED model data must represent cases and controls with symmetric pre-index windows and row-inclusion filters.
+
+For this repo, the equivalent cohorts are:
+
+| PGx repo | CPIC time-to-event repo | Risk |
+|---|---|---|
+| `opioid_ed` | final model temporal split for `falls` / `ed` | 2019 holdout records leaking into training artifacts |
+| `non_opioid_ed` | `ed` | cases/controls built from asymmetric event windows or filters |
+
+**Required safeguards:**
+- Step 4 must support `--force-rebuild` so stale S3/local `model_events.parquet` files are not reused after construction fixes.
+- Step 4 must log target-date source/output mappings and non-null case counts.
+- Step 4 `ed` cases and controls must both come from gold medical/pharmacy events using comparable 365-day pre-index windows.
+- Step 4 `ed` must not apply Step 3b important-item inclusion only to cases while controls retain broad gold histories.
+- Step 6 must support and use `--force-retrain` when rerunning after temporal-split or Step 4 construction fixes.
+- Notebook orchestration should force-rebuild corrected Step 4 cohorts and force-retrain only those rebuilt downstream models.
+
+**QA checks before accepting metrics:**
+- Log patient-level `n_events` distributions by target after Step 4.
+- Verify target-date columns (`first_fall_date` / `first_ed_date`) are present and non-null for case rows.
+- Verify no 2019 rows appear in training and 2019 is only evaluated as holdout.
+- Treat unusually high recall/AUC/PR-AUC as a leakage signal until audited.
+
+---
+
 ## 1. Categorise Before You Edit
 
 Before touching a single file, bucket every hit from `git grep` into:
