@@ -149,6 +149,9 @@ The winner is chosen by sorting candidates on **PR-AUC mean** (primary), then **
 | `model` | XGBoost \| XGBoost_RF \| CatBoost \| Ensemble |
 | `recall_mean` | Mean recall across MC-CV splits at threshold 0.5 |
 | `pr_auc_mean` | Mean Precision-Recall AUC across splits |
+| `event_prevalence` | Positive-class prevalence in the training/evaluation matrix; random-classifier PR-AUC baseline |
+| `pr_auc_random_baseline` | Same as prevalence; included for manuscript/reporting clarity |
+| `pr_auc_lift_over_prevalence` | `pr_auc_mean / event_prevalence`; primary strength interpretation for imbalanced cohorts |
 | `auc_mean` | Mean ROC-AUC (informational only, not used for selection) |
 | `logloss_mean` | Mean log loss |
 | `n_runs` | Number of MC-CV splits contributing |
@@ -198,6 +201,7 @@ See `final_model.ipynb` for the full Python workflow:
 ## Notebooks and Scripts
 
 - `final_model.ipynb`: MC-CV comparison, Optuna tuning, OOF Platt calibration, and final model export.
+- `README_experiment_setup_and_references.md`: Metric rationale and reference set for AUPRC/recall, SHAP, and causal attribution caveats.
 - `build_final_cohort_model_features.py`: Builds the final feature table (n_events, item_*, PGx, etc.). Feature engineering never generates trajectory/sequence/itemset.
   - For `ed` cohort: Filters to drug-only item features (excludes ICD/CPT codes; focuses on medication patterns relevant to ED outcomes)
 - `remove_target_leakage.py`: Removes target leakage features; DTW and any trajectory/sequence/itemset removed defensively (we do not produce those columns).

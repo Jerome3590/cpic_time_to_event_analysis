@@ -1848,6 +1848,13 @@ def train_and_evaluate(
     X = df[numeric_feature_cols].replace([float("inf"), float("-inf")], pd.NA)
     X = X.fillna(0)
     y = df["target"].astype(int)
+    event_prevalence = float(y.mean()) if len(y) else 0.0
+    pr_auc_random_baseline = event_prevalence
+
+    def _pr_lift(pr_auc_value) -> float | None:
+        if pr_auc_value is None or pr_auc_random_baseline <= 0:
+            return None
+        return float(pr_auc_value) / pr_auc_random_baseline
     
     # Get categorical feature indices for CatBoost (indices in X, not in original df)
     # CatBoost performs better when binary features are treated as categorical
@@ -1963,6 +1970,9 @@ def train_and_evaluate(
         def _selected_for_row(row):
             return row["model"] == _names.get(selected_model, selected_model)
         existing_summary["selected"] = existing_summary.apply(_selected_for_row, axis=1)
+        existing_summary["event_prevalence"] = event_prevalence
+        existing_summary["pr_auc_random_baseline"] = pr_auc_random_baseline
+        existing_summary["pr_auc_lift_over_prevalence"] = existing_summary["pr_auc_mean"].apply(_pr_lift)
         existing_summary.to_csv(summary_csv_path, index=False)
         try:
             from py_helpers.checkpoint_utils import upload_file_to_s3
@@ -1977,6 +1987,9 @@ def train_and_evaluate(
             "best_pr_auc": best_pr_auc,
             "best_recall": best_recall,
             "selection_reason": selection_reason,
+            "event_prevalence": event_prevalence,
+            "pr_auc_random_baseline": pr_auc_random_baseline,
+            "best_pr_auc_lift_over_prevalence": _pr_lift(best_pr_auc),
         }
         if metadata_path.exists():
             with open(metadata_path) as f:
@@ -2735,6 +2748,9 @@ def train_and_evaluate(
         "model": "XGBoost",
         "recall_mean": xgb_recall_mean,
         "pr_auc_mean": xgb_pr_auc_mean,
+        "event_prevalence": event_prevalence,
+        "pr_auc_random_baseline": pr_auc_random_baseline,
+        "pr_auc_lift_over_prevalence": _pr_lift(xgb_pr_auc_mean),
         "auc_mean": float(np.mean(metrics["xgb"]["auc"])) if metrics["xgb"]["auc"] else None,
         "logloss_mean": float(np.mean(metrics["xgb"]["logloss"])) if metrics["xgb"]["logloss"] else None,
         "n_runs": len(metrics["xgb"]["recall"]) if metrics["xgb"]["recall"] else 0,
@@ -2746,6 +2762,9 @@ def train_and_evaluate(
         "model": "XGBoost_RF",
         "recall_mean": xgb_rf_recall_mean,
         "pr_auc_mean": xgb_rf_pr_auc_mean,
+        "event_prevalence": event_prevalence,
+        "pr_auc_random_baseline": pr_auc_random_baseline,
+        "pr_auc_lift_over_prevalence": _pr_lift(xgb_rf_pr_auc_mean),
         "auc_mean": float(np.mean(metrics["xgb_rf"]["auc"])) if metrics["xgb_rf"]["auc"] else None,
         "logloss_mean": float(np.mean(metrics["xgb_rf"]["logloss"])) if metrics["xgb_rf"]["logloss"] else None,
         "n_runs": len(metrics["xgb_rf"]["recall"]) if metrics["xgb_rf"]["recall"] else 0,
@@ -2758,6 +2777,9 @@ def train_and_evaluate(
             "model": "CatBoost",
             "recall_mean": cb_recall_mean,
             "pr_auc_mean": cb_pr_auc_mean,
+            "event_prevalence": event_prevalence,
+            "pr_auc_random_baseline": pr_auc_random_baseline,
+            "pr_auc_lift_over_prevalence": _pr_lift(cb_pr_auc_mean),
             "auc_mean": cb_auc_mean,
             "logloss_mean": cb_logloss_mean,
             "n_runs": len(metrics["catboost"]["recall"]) if metrics.get("catboost") and metrics["catboost"].get("recall") else 0,
@@ -2775,6 +2797,9 @@ def train_and_evaluate(
             "model": "Ensemble",
             "recall_mean": ensemble_recall_mean,
             "pr_auc_mean": ensemble_pr_auc_mean,
+            "event_prevalence": event_prevalence,
+            "pr_auc_random_baseline": pr_auc_random_baseline,
+            "pr_auc_lift_over_prevalence": _pr_lift(ensemble_pr_auc_mean),
             "auc_mean": ensemble_auc_mean,
             "logloss_mean": ensemble_logloss_mean,
             "n_runs": len(metrics["ensemble"]["recall"]),
@@ -3294,6 +3319,7 @@ def evaluate_temporal_holdout(
             print("[WARN] evaluate_temporal_holdout: no 'target' column in holdout — skipping.")
             return
         y_true = df_holdout[target_col].values
+        holdout_prevalence = float(np.mean(y_true)) if len(y_true) else 0.0
         drop_cols = [c for c in df_holdout.columns if c in (
             "mi_person_key", "target", "target_time", "first_time",
             "first_f1120_date", "first_o11_p_date",
@@ -3308,6 +3334,8 @@ def evaluate_temporal_holdout(
 
         model = _load_model(xgb_path)
         y_prob = model.predict_proba(X_holdout)[:, 1]
+        pr_auc = float(average_precision_score(y_true, y_prob))
+        pr_lift = pr_auc / holdout_prevalence if holdout_prevalence > 0 else None
         metrics = {
             "cohort": cohort,
             "age_band": age_band,
@@ -3315,12 +3343,18 @@ def evaluate_temporal_holdout(
             "n_holdout": int(len(y_true)),
             "n_positive": int(y_true.sum()),
             "auroc": float(roc_auc_score(y_true, y_prob)),
-            "pr_auc": float(average_precision_score(y_true, y_prob)),
+            "pr_auc": pr_auc,
+            "event_prevalence": holdout_prevalence,
+            "pr_auc_random_baseline": holdout_prevalence,
+            "pr_auc_lift_over_prevalence": pr_lift,
         }
         with open(out_path, "w") as f:
             json.dump(metrics, f, indent=2)
         print(f"[INFO] Temporal holdout metrics → {out_path}")
-        print(f"       AUROC={metrics['auroc']:.4f}  PR-AUC={metrics['pr_auc']:.4f}  n={metrics['n_holdout']}")
+        print(
+            f"       AUROC={metrics['auroc']:.4f}  PR-AUC={metrics['pr_auc']:.4f}  "
+            f"PR-lift={(metrics['pr_auc_lift_over_prevalence'] or 0):.2f}x  n={metrics['n_holdout']}"
+        )
 
         try:
             s3 = boto3.client("s3")
