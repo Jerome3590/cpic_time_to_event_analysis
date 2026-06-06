@@ -716,10 +716,23 @@ def filter_cohort_events_for_items(
             f"DESCRIBE SELECT * FROM read_parquet([{cohort_paths_literal}], union_by_name=True)"
         ).fetchall()
     ]
+    con.execute(
+        f"""
+        CREATE TEMP VIEW all_gold_events AS
+        SELECT
+            * REPLACE (
+                COALESCE(
+                    TRY_CAST(event_date AS TIMESTAMP),
+                    TRY_STRPTIME(CAST(incurred_date AS VARCHAR), '%Y%m%d')
+                ) AS event_date
+            )
+        FROM read_parquet([{all_control_paths_literal}], union_by_name=True)
+        """
+    )
     control_cols = [
         row[0]
         for row in con.execute(
-            f"DESCRIBE SELECT * FROM read_parquet([{all_control_paths_literal}], union_by_name=True)"
+            "DESCRIBE SELECT * FROM all_gold_events"
         ).fetchall()
     ]
     common_cols = [c for c in cohort_cols if c in control_cols]
@@ -1076,7 +1089,7 @@ def filter_cohort_events_for_items(
                          AND CAST(c.event_date AS DATE) < ci.case_index_date
                         THEN 1 ELSE 0
                     END AS in_lookback
-                FROM read_parquet([{all_control_paths_literal}], union_by_name=True) c
+                FROM all_gold_events c
                 JOIN case_index_dates ci
                     ON CAST(c.mi_person_key AS VARCHAR) = ci.mi_person_key
             )
@@ -1124,7 +1137,7 @@ def filter_cohort_events_for_items(
             SELECT
                 {case_gold_cols_sql},
                 1 AS target
-            FROM read_parquet([{all_control_paths_literal}], union_by_name=True) c
+            FROM all_gold_events c
             JOIN case_index_dates ci
                 ON CAST(c.mi_person_key AS VARCHAR) = ci.mi_person_key
             WHERE
@@ -1144,7 +1157,7 @@ def filter_cohort_events_for_items(
                 cp.mi_person_key,
                 MAX(CAST(c.event_date AS DATE)) AS control_index_date
             FROM control_patients cp
-            JOIN read_parquet([{all_control_paths_literal}], union_by_name=True) c
+            JOIN all_gold_events c
                 ON cp.mi_person_key = c.mi_person_key
             WHERE c.event_date IS NOT NULL
             GROUP BY cp.mi_person_key
@@ -1155,7 +1168,7 @@ def filter_cohort_events_for_items(
             SELECT
                 {control_gold_cols_sql},
                 0 AS target
-            FROM read_parquet([{all_control_paths_literal}], union_by_name=True) c
+            FROM all_gold_events c
             JOIN control_patients_indexed cp
                 ON c.mi_person_key = cp.mi_person_key
             WHERE
@@ -1205,6 +1218,32 @@ def filter_cohort_events_for_items(
                 f"[INFO] Target date output check for {cohort_name}/{age_band}: "
                 f"{output_non_null} target-case rows have non-null '{output_col}'"
             )
+            if not _is_falls_cohort(cohort_name) and "drug_name" in output_cols:
+                drug_counts = out_col_check.execute(
+                    f"""
+                    SELECT
+                        COUNT(*) FILTER (WHERE drug_name IS NOT NULL)::BIGINT AS drug_rows,
+                        COUNT(DISTINCT CASE WHEN drug_name IS NOT NULL THEN mi_person_key END)::BIGINT AS drug_patients,
+                        COUNT(*) FILTER (WHERE target = 1 AND drug_name IS NOT NULL)::BIGINT AS case_drug_rows,
+                        COUNT(*) FILTER (WHERE target = 0 AND drug_name IS NOT NULL)::BIGINT AS control_drug_rows
+                    FROM read_parquet('{path_str}')
+                    """
+                ).fetchone()
+                drug_msg = (
+                    f"[INFO] ED pharmacy output check for {cohort_name}/{age_band}: "
+                    f"drug_rows={int(drug_counts[0] or 0):,}, "
+                    f"drug_patients={int(drug_counts[1] or 0):,}, "
+                    f"case_drug_rows={int(drug_counts[2] or 0):,}, "
+                    f"control_drug_rows={int(drug_counts[3] or 0):,}"
+                )
+                print(drug_msg)
+                if logger:
+                    logger.info(drug_msg)
+                if int(drug_counts[0] or 0) == 0:
+                    raise RuntimeError(
+                        f"ED model_events for {cohort_name}/{age_band} has zero drug_name rows. "
+                        "Raw pharmacy rows are expected; check pharmacy date normalization and gold event joins."
+                    )
         else:
             output_col_msg = (
                 f"[ERROR] Target date output check for {cohort_name}/{age_band}: "
