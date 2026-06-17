@@ -499,10 +499,18 @@ def check_existing_cohorts(age_bands=None, event_years=None, bucket_name: str = 
             if falls_exists and ed_exists:
                 existing_cohorts.append((band, year))
             else:
-                jobs_to_process.append({
-                    "age_band": band,
-                    "event_year": year
-                })
+                if not falls_exists:
+                    jobs_to_process.append({
+                        "age_band": band,
+                        "event_year": year,
+                        "cohort": "falls"
+                    })
+                if not ed_exists:
+                    jobs_to_process.append({
+                        "age_band": band,
+                        "event_year": year,
+                        "cohort": "ed"
+                    })
                 processed_combinations.add(combo_key)
 
     print(f"\nSummary:")
