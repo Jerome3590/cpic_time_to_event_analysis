@@ -10,6 +10,7 @@ PGX_TARGET_ICD_CODES = os.environ.get("PGX_TARGET_ICD_CODES", "")
 PGX_TARGET_CPT_CODES = os.environ.get("PGX_TARGET_CPT_CODES", "")
 PGX_TARGET_ICD_PREFIXES = os.environ.get("PGX_TARGET_ICD_PREFIXES", "")
 PGX_TARGET_CPT_PREFIXES = os.environ.get("PGX_TARGET_CPT_PREFIXES", "")
+OPIOID_ICD_CODES = tuple(code.strip() for code in PGX_TARGET_ICD_CODES.split(",") if code.strip())
 
 # Richmond, VA zip codes
 RICHMOND_ZIP_CODES = {
@@ -110,6 +111,10 @@ def get_icd_codes_sql_condition(icd_codes, table_alias=None):
     return "(" + " OR ".join(conditions) + ")"
 
 
+def get_opioid_icd_sql_condition(table_alias=None):
+    return get_icd_codes_sql_condition(OPIOID_ICD_CODES, table_alias) if OPIOID_ICD_CODES else "FALSE"
+
+
 # FpGrowth
 TOP_K = 50
 MIN_SUPPORT_THRESHOLD = 0.025
@@ -183,6 +188,23 @@ COHORT_TARGET_COLUMN = {
     "falls": "fall_injury_any",
     "ed":    "ed_event",
 }
+
+NON_OPIOID_ED_TIME_WINDOW_DAYS = 21
+NON_OPIOID_ED_MAX_ED_VISITS_PER_YEAR = 7
+NON_OPIOID_ED_AGE_BAND_PARAMS = {
+    "65-74": {"time_window_days": 21, "max_ed_visits_per_year": 7},
+    "75-84": {"time_window_days": 21, "max_ed_visits_per_year": 7},
+}
+
+
+def get_non_opioid_ed_params(age_band: str) -> dict:
+    return NON_OPIOID_ED_AGE_BAND_PARAMS.get(
+        age_band,
+        {
+            "time_window_days": NON_OPIOID_ED_TIME_WINDOW_DAYS,
+            "max_ed_visits_per_year": NON_OPIOID_ED_MAX_ED_VISITS_PER_YEAR,
+        }
+    )
 
 # Helper function: convert age-band to filename-safe format
 def get_target_column(cohort: str) -> str:
