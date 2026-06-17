@@ -5,6 +5,11 @@ import os
 DEFAULT_TARGET_OUTPUTS_DIR = os.environ.get(
     'CPIC_TARGET_OUTPUTS_DIR', os.path.join('1a_apcd_input_data', 'outputs')
 )
+PGX_TARGET_NAME = os.environ.get("PGX_TARGET_NAME", "")
+PGX_TARGET_ICD_CODES = os.environ.get("PGX_TARGET_ICD_CODES", "")
+PGX_TARGET_CPT_CODES = os.environ.get("PGX_TARGET_CPT_CODES", "")
+PGX_TARGET_ICD_PREFIXES = os.environ.get("PGX_TARGET_ICD_PREFIXES", "")
+PGX_TARGET_CPT_PREFIXES = os.environ.get("PGX_TARGET_CPT_PREFIXES", "")
 
 # Richmond, VA zip codes
 RICHMOND_ZIP_CODES = {
