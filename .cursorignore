@@ -1,0 +1,69 @@
+# .cursorignore - CPIC time-to-event analysis
+# Generated for Cursor project utility setup. Do not ignore .ipynb files
+# themselves; VS Code/Cursor settings exclude them from automatic context.
+
+# Python environments and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+pip-wheel-metadata/
+
+# Notebook artifacts
+**/.ipynb_checkpoints/
+**/*.nbconvert/
+.nbcache/
+.jupyter_cache/
+
+# Data/model/runtime artifacts
+**/*.csv
+**/*.parquet
+**/*.feather
+**/*.h5
+**/*.hdf5
+**/*.pkl
+**/*.joblib
+**/*.npy
+**/*.npz
+**/*.db
+**/*.sqlite
+**/*.duckdb
+**/*.pt
+**/*.pth
+**/*.onnx
+**/*.bin
+**/*.safetensors
+**/*.gguf
+
+# Local runtime/output folders
+data/
+logs/
+secrets/
+models/
+outputs/
+
+# AWS/Terraform and docs build output
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.backup
+**/.aws/
+**/*.tfvars
+_site/
+_book/
+docs/_build/
+site/
+quarto_output/
+
+# Misc
+*.log
+*.lock
+poetry.lock
+uv.lock
