@@ -21,6 +21,9 @@ This repository contains large workflow notebooks. Do not rely on raw notebook J
 - Use `python cursor_setup.py status` to inventory notebooks and pointer files.
 - Do not clear or strip outputs unless the user explicitly asks or a commit workflow requires it.
 - Keep `.ipynb` files manually referenced; avoid auto-loading large notebooks into context.
+- Do not assume live notebook stdout is synced to the notebook metadata bucket during a running cell.
+- For long-running notebook cells that call scripts, put durable progress/log uploads in the invoked script or phase code, not only in notebook output.
+- Use `cursor_setup.py push-outputs <notebook>` for completed notebook output snapshots; use pipeline S3 log/checkpoint helpers for mid-run telemetry.
 
 ## Notebook Scanning
 

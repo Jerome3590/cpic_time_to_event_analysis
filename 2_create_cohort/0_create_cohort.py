@@ -52,6 +52,7 @@ from py_helpers.data_utils import (
 from py_helpers.logging_utils import (
     setup_logging,
     save_logs_to_s3,
+    save_logs_checkpoint,
     save_logs_immediate,
 )
 
@@ -541,6 +542,8 @@ def main():
             "cohort": args.cohort,
             "cohort_conn_duckdb": cohort_conn_duckdb,
             "logger": logger,
+            "log_buffer": log_buffer,
+            "save_logs_checkpoint": save_logs_checkpoint,
             "operation_type": args.operation_type,
             "s3_bucket": constants.S3_BUCKET,
             "pipeline_state": pipeline_state,  # Add checkpoint system to context

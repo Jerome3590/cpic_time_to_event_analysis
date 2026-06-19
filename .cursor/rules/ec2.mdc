@@ -12,3 +12,6 @@ alwaysApply: false
 - Never delete shared NVMe inputs like `/mnt/nvme/gold/medical` or `/mnt/nvme/gold/pharmacy`.
 - Use S3 checkpoints and existing project path helpers instead of hard-coded local paths.
 - Before enabling the Jupyter post-save hook, verify `python cursor_setup.py status` works in the EC2 checkout.
+- For long-running EC2 pipeline phases, add best-effort incremental S3 log checkpoint calls around expensive queries, debug diagnostics, and materialization steps.
+- Do not rely on final success/error log uploads alone for multi-minute or multi-hour EC2 phases; upload key diagnostics before the next long operation starts.
+- When notebooks invoke EC2 scripts, keep telemetry in the script/phase context with `log_buffer` plus `save_logs_checkpoint` or the established project logging helper.

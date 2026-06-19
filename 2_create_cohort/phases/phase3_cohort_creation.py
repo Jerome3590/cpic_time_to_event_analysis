@@ -38,6 +38,27 @@ import os
 import time
 
 
+def _save_phase3_log_checkpoint(context, checkpoint_name: str):
+    """Best-effort upload of current in-memory logs during long Phase 3 work."""
+    save_checkpoint = context.get("save_logs_checkpoint")
+    log_buffer = context.get("log_buffer")
+    logger = context["logger"]
+    if not save_checkpoint or log_buffer is None:
+        return
+    try:
+        save_checkpoint(
+            log_buffer,
+            context["cohort"],
+            context["age_band"],
+            context["event_year"],
+            checkpoint_name,
+            pipeline_phase="create_cohort",
+            logger=logger,
+        )
+    except Exception as exc:
+        logger.warning("→ [PHASE 3 STEP 3] Could not save checkpoint logs '%s': %s", checkpoint_name, exc)
+
+
 def run_phase3_step3_final_cohort_fact(context):
     """Phase 3 Step 3: Final Cohort Creation with 5:1 ratio and DuckDB optimizations."""
     logger = context["logger"]
@@ -84,6 +105,7 @@ def run_phase3_step3_final_cohort_fact(context):
         if dynamic_targeting:
             logger.info(f"→ [PHASE 3 STEP 3] Target ICD codes: {target_icd or 'none'}")
             logger.info(f"→ [PHASE 3 STEP 3] Target CPT codes: {target_cpt or 'none'}")
+        _save_phase3_log_checkpoint(context, "phase3_step3_start")
         
         # Enable query profiling with unique filename (prevents overwrite in parallel runs)
         profile_filename = f"/tmp/duckdb_profiling_phase3_step3_{age_band.replace('-', '_')}_{event_year}_{int(time.time())}.json"
@@ -127,6 +149,7 @@ def run_phase3_step3_final_cohort_fact(context):
             FROM unified_event_fact_table
             """).fetchdf()
             logger.info("→ [PHASE 3 STEP 3 DEBUG] falls target prefix counts:\n%s", debug_counts_df.to_string(index=False))
+            _save_phase3_log_checkpoint(context, "phase3_step3_falls_prefix_counts")
 
             cross_row_debug_df = cohort_conn_duckdb.sql(f"""
             WITH injury_events AS (
@@ -148,6 +171,7 @@ def run_phase3_step3_final_cohort_fact(context):
             INNER JOIN external_events e ON i.mi_person_key = e.mi_person_key
             """).fetchdf()
             logger.info("→ [PHASE 3 STEP 3 DEBUG] falls cross-row overlap counts:\n%s", cross_row_debug_df.to_string(index=False))
+            _save_phase3_log_checkpoint(context, "phase3_step3_falls_cross_row_counts")
 
             external_sample_df = cohort_conn_duckdb.sql(f"""
             SELECT mi_person_key, event_date, event_classification,
@@ -160,6 +184,7 @@ def run_phase3_step3_final_cohort_fact(context):
             LIMIT 10
             """).fetchdf()
             logger.info("→ [PHASE 3 STEP 3 DEBUG] sample external fall-cause ICD rows:\n%s", external_sample_df.to_string(index=False))
+            _save_phase3_log_checkpoint(context, "phase3_step3_external_fall_sample")
 
             sample_df = cohort_conn_duckdb.sql(f"""
             SELECT mi_person_key, event_date, event_classification,
@@ -172,10 +197,13 @@ def run_phase3_step3_final_cohort_fact(context):
             LIMIT 10
             """).fetchdf()
             logger.info("→ [PHASE 3 STEP 3 DEBUG] sample injury/external ICD rows:\n%s", sample_df.to_string(index=False))
+            _save_phase3_log_checkpoint(context, "phase3_step3_injury_external_sample")
         except Exception as debug_exc:
             logger.warning("→ [PHASE 3 STEP 3 DEBUG] target debug logging failed: %s", debug_exc)
+            _save_phase3_log_checkpoint(context, "phase3_step3_debug_failed")
 
         logger.info("→ [PHASE 3 STEP 3] Materializing target_patients view (computed once, reused everywhere)...")
+        _save_phase3_log_checkpoint(context, "phase3_step3_before_target_materialization")
         materialize_target_patients_sql = f"""
         CREATE OR REPLACE TEMP VIEW target_patients_materialized AS
         SELECT DISTINCT mi_person_key
@@ -188,6 +216,7 @@ def run_phase3_step3_final_cohort_fact(context):
         target_patient_count_df = cohort_conn_duckdb.sql("SELECT CAST(COUNT(*) AS BIGINT) AS count FROM target_patients_materialized").fetchdf()
         target_patient_count = int(target_patient_count_df.iloc[0]['count']) if not target_patient_count_df.empty else 0
         logger.info(f"→ [PHASE 3 STEP 3] Materialized {target_patient_count:,} target patients")
+        _save_phase3_log_checkpoint(context, "phase3_step3_after_target_materialization")
         
         # Check target case counts BEFORE creating cohorts
         # Use fetchdf() to avoid INT32 overflow
