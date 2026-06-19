@@ -110,7 +110,11 @@ def run_phase2_step1_event_fact_table(context):
         # Priority: 1) Target ICD/CPT codes → target, 2) HCG ED visits → ed, 3) Other → non_target
         # IMPORTANT: 'non_target' is intentionally excluded from ED-based cohorts in later phases
         if icd_conditions or cpt_conditions:
-            where_clause = " OR ".join(filter(None, icd_conditions + cpt_conditions)) or "1=0"
+            target_conditions = []
+            if target_icd_codes or target_icd_prefixes:
+                target_conditions.append(target_icd_condition)
+            target_conditions.extend(cpt_conditions)
+            where_clause = " OR ".join(filter(None, target_conditions)) or "1=0"
             classification_sql = f"""
                 CASE 
                     WHEN ({where_clause}) THEN 'target'
