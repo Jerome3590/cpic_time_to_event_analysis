@@ -5,7 +5,8 @@ Check pipeline status via S3 objects (pgx-repository checkpoints and optional pg
 Reads:
 - s3://pgx-repository/pipeline_checkpoints/{step}/{cohort}/{age_band}/checkpoint.json
   (steps: 4_model_data, 5_pgx_analysis, 6_final_model, 9_dashboard_metadata, 9_dashboard_visuals, etc.)
-- Optionally: pgxdatalake gold/cohorts_model_data, gold/final_model (object counts per cohort/age_band)
+- Optionally: pgxdatalake gold/{PROJECT_SLUG}/cohorts_model_data,
+  gold/{PROJECT_SLUG}/final_model (object counts per cohort/age_band)
 
 Usage:
     python utility_scripts/check_pipeline_status_s3.py [--outputs] [--profile NAME]
@@ -67,7 +68,7 @@ def run(profile: str | None, show_outputs: bool) -> None:
     print("=" * 70)
     print(f"Checkpoints bucket: s3://{REPO_BUCKET}/{PIPELINE_CHECKPOINTS_PREFIX}/")
     if show_outputs:
-        print(f"Outputs bucket:     s3://{DATALAKE_BUCKET}/ (gold/cohorts_model_data, gold/final_model)")
+        print(f"Outputs bucket:     s3://{DATALAKE_BUCKET}/gold/{PROJECT_SLUG}/ (cohorts_model_data, final_model)")
     print()
 
     # ----- 1. Pipeline checkpoints (pgx-repository) -----
@@ -136,7 +137,7 @@ def run(profile: str | None, show_outputs: bool) -> None:
                     print("    ... and {} more".format(len(by_combo) - 10))
             print()
     else:
-        print("2. Outputs: (use --outputs to list pgxdatalake model_data and final_model)")
+        print("2. Outputs: (use --outputs to list project-scoped pgxdatalake model_data and final_model)")
         print()
 
 

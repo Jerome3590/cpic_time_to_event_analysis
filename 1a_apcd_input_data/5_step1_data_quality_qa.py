@@ -29,12 +29,13 @@ if project_root not in sys.path:
 
 from py_helpers.logging_utils import setup_logging, save_logs_to_s3
 from py_helpers.s3_utils import sanitize_for_s3_key, _parse_s3_path_components, s3_directory_exists_with_files, build_gold_globs
+from py_helpers.constants import PROJECT_SLUG, S3_BUCKET
 
 # Configuration
 GOLD_PHARMACY_PATH = "s3://pgxdatalake/gold/pharmacy/**/*.parquet"
 GOLD_MEDICAL_PATH = "s3://pgxdatalake/gold/medical/**/*.parquet"
 DRUG_MAPPINGS_DIR = "/home/pgx3874/cpic_time_to_event_analysis/1_apcd_input_data/drug_mappings"
-QA_RESULTS_PATH = "s3://pgxdatalake/gold/qa_results"
+QA_RESULTS_PATH = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/qa_results"
 
 # Expected age bands and valid year range
 EXPECTED_AGE_BANDS = ["0-12", "13-24", "25-44", "45-54", "55-64", "65-74", "75-84", "85-114"]

@@ -1,8 +1,7 @@
 # Step 4: Model Data
 
-Feature-engineered model datasets for falls and ED outcomes.
+The maintained Step 4 documentation lives in
+[`README_model_data.md`](README_model_data.md).
 
-## TODO
-- [ ] Copy model data build scripts from `cpic_time_to_event_analysis/4_model_data/`
-- [ ] Build feature-engineered parquet datasets for falls and ED outcomes separately
-- [ ] Validate feature distributions vs. cpic_time_to_event_analysis baseline
+The previous TODO stub was archived at
+`archive/stale_docs/4_model_data_README_stub.md`.

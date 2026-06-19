@@ -20,6 +20,7 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from py_helpers.cohort_utils import check_existing_cohorts
+from py_helpers.constants import FALL_EXTERNAL_CAUSE_PREFIXES, FALL_INJURY_ICD_PREFIXES
 from py_helpers.env_utils import get_workflow_python_bin
 
 AGE_BANDS_ORDERED = ["65-74", "75-84"]
@@ -90,9 +91,17 @@ def main():
             "--log-level", "INFO",
             "--concurrent-workers", str(args.concurrent_workers),
         ]
+        env = os.environ.copy()
+        env.update({
+            "PGX_TARGET_NAME": "falls",
+            "PGX_TARGET_ICD_PREFIXES": ",".join(FALL_INJURY_ICD_PREFIXES + FALL_EXTERNAL_CAUSE_PREFIXES),
+            "PGX_TARGET_ICD_CODES": env.get("PGX_TARGET_ICD_CODES", ""),
+            "PGX_TARGET_CPT_CODES": env.get("PGX_TARGET_CPT_CODES", ""),
+            "PGX_TARGET_CPT_PREFIXES": env.get("PGX_TARGET_CPT_PREFIXES", ""),
+        })
 
         try:
-            result = subprocess.run(cmd, check=True)
+            result = subprocess.run(cmd, check=True, env=env)
             success_count += 1
             print(f"OK: {job_id}")
         except subprocess.CalledProcessError as e:

@@ -57,7 +57,14 @@ from py_helpers.fe_monitor import (  # noqa: E402
     mirror_log_to_s3,
 )
 from py_helpers.constants import age_band_to_fname, DRUG_NAMES_EXCLUDED_MODEL_TRAINING, FEATURE_SUBSTRINGS_EXCLUDED, PROJECT_SLUG, S3_BUCKET
-from py_helpers.env_utils import get_mc_cv_n_runs, get_data_root, get_model_data_root, get_workflow_python_bin, is_linux
+from py_helpers.env_utils import (
+    get_feature_importance_root,
+    get_mc_cv_n_runs,
+    get_model_data_root,
+    get_project_data_root,
+    get_workflow_python_bin,
+    is_linux,
+)
 from py_helpers.event_density_utils import (
     DENSITY_BINS as _DENSITY_BINS,
     compute_bin_thresholds as _compute_bin_thresholds,
@@ -602,10 +609,14 @@ def _create_aggregated_feature_importance_visualizations(
         pass
     if agg_csv_path is None:
         # Local sync location (workflow syncs S3 gold/feature_importance here)
-        data_root = get_data_root()
-        gold_fi = data_root / "gold" / PROJECT_SLUG / "feature_importance" / cohort / age_band / filename
-        if gold_fi.exists():
-            agg_csv_path = gold_fi
+        for gold_fi in [
+            get_project_data_root() / "gold" / "feature_importance" / cohort / age_band / filename,
+            get_feature_importance_root() / cohort / filename,
+            get_feature_importance_root() / cohort / age_band_fname / filename,
+        ]:
+            if gold_fi.exists():
+                agg_csv_path = gold_fi
+                break
     if agg_csv_path is None:
         # Legacy: 3a outputs and 3_feature_importance paths
         candidates = [
@@ -1374,9 +1385,8 @@ def build_final_features(cohort: str, age_band: str) -> pd.DataFrame:
     pgx_path_candidates = [
         PROJECT_ROOT / "5_pgx_analysis" / "outputs" / "feature_engineering" / f"pgx_added_features_{cohort}_{age_band_fname}.csv",
     ]
-    data_root = get_data_root()
     pgx_path_candidates.append(
-        data_root / "5_pgx_analysis" / "outputs" / "feature_engineering" / f"pgx_added_features_{cohort}_{age_band_fname}.csv",
+        get_project_data_root() / "5_pgx_analysis" / "outputs" / "feature_engineering" / f"pgx_added_features_{cohort}_{age_band_fname}.csv",
     )
     
     pgx_path = None
@@ -1387,9 +1397,9 @@ def build_final_features(cohort: str, age_band: str) -> pd.DataFrame:
     
     # If not found locally, try downloading from S3
     if pgx_path is None:
-        # Primary S3 location: gold/pgx_features/
+        # Primary S3 location: gold/{PROJECT_SLUG}/pgx_features/
         s3_key_candidates = [
-            f"gold/pgx_features/{cohort}/{age_band}/pgx_added_features_{cohort}_{age_band_fname}.csv",
+            f"gold/{PROJECT_SLUG}/pgx_features/{cohort}/{age_band}/pgx_added_features_{cohort}_{age_band_fname}.csv",
             # Legacy S3 location: gold/feature_engineering/7_pgx/
             f"gold/feature_engineering/7_pgx/{cohort}/{age_band}/pgx_added_features_{cohort}_{age_band_fname}.csv",
         ]

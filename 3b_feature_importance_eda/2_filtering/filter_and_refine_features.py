@@ -35,6 +35,7 @@ else:
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from py_helpers.constants import age_band_to_fname, DRUG_NAMES_EXCLUDED_MODEL_TRAINING, FEATURE_SUBSTRINGS_EXCLUDED, PROJECT_SLUG
+from py_helpers.env_utils import get_refined_feature_importance_root
 from py_helpers.feature_utils import (
     normalize_feature_name,
     normalize_feature_set,
@@ -312,7 +313,7 @@ def main():
         "--output-dir",
         type=str,
         default=None,
-        help="Output directory (default: 3b_feature_importance_eda/outputs)"
+        help="Output directory (default: project-scoped Step 3b feature-importance root)"
     )
     parser.add_argument(
         "--min-importance",
@@ -332,7 +333,7 @@ def main():
     if args.output_dir:
         output_dir = Path(args.output_dir)
     else:
-        output_dir = PROJECT_ROOT / "3b_feature_importance_eda" / "outputs" / args.cohort / age_band_to_fname(args.age_band)
+        output_dir = get_refined_feature_importance_root() / args.cohort / age_band_to_fname(args.age_band)
     
     output_dir.mkdir(parents=True, exist_ok=True)
     

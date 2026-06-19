@@ -1081,8 +1081,8 @@ def get_output_paths(cohort_name, age_band, event_year, bucket_name="pgxdatalake
         partitions = f"cohort_name={cohort_name}/event_year={event_year}/age_band={age_band}"
         network_plot_name = f"{cohort_name}_{age_band}_{event_year}_drug_network.html"
 
-        # Final deliverables: write FP-Growth artifacts under GOLD fpgrowth/cohort
-        cohort_base = f"s3://{bucket_name}/gold/fpgrowth/cohort/{partitions}"
+        # Final deliverables: write FP-Growth artifacts under project-scoped GOLD fpgrowth/cohort
+        cohort_base = f"s3://{bucket_name}/gold/{PROJECT_SLUG}/fpgrowth/cohort/{partitions}"
         # Curated cohort parquet lives under GOLD cohorts; use normalized name so skip-check matches phase4 write path
         cohort_slug = normalize_cohort_name(cohort_name)
         gold_cohorts_partitions = f"cohort_name={cohort_slug}/event_year={event_year}/age_band={age_band}"
@@ -1128,7 +1128,7 @@ def get_output_paths(cohort_name, age_band, event_year, bucket_name="pgxdatalake
 
 def get_global_base_path(bucket_name: str = "pgxdatalake") -> str:
     """Return the GOLD base path for global FP-Growth outputs."""
-    return f"s3://{bucket_name}/gold/fpgrowth/global"
+    return f"s3://{bucket_name}/gold/{PROJECT_SLUG}/fpgrowth/global"
 
 
 # ===== Cohort name normalization and paths =====
@@ -1211,12 +1211,13 @@ def get_cohort_parquet_path(
 ) -> str:
     """Build S3 path to GOLD cohorts parquet for a cohort partition.
     
-    Structure: cohorts/cohort_name={cohort}/event_year={year}/age_band={age_band}/cohort.parquet
+    Structure: gold/{PROJECT_SLUG}/cohorts/cohort_name={cohort}/event_year={year}/age_band={age_band}/cohort.parquet
     
     Organized by cohort name first, then by year and age-band partitions.
 
-    The target_slug parameter is optional and not used in the path structure.
-    The function uses the standard cohorts directory regardless of target configuration.
+    The target_slug parameter is retained for compatibility; cohort outputs are
+    namespaced by PROJECT_SLUG so projects with different target definitions do
+    not collide in the shared bucket.
     """
     cohort_slug = normalize_cohort_name(cohort_name)
     base_dir = f"s3://{bucket_name}/gold/{PROJECT_SLUG}/cohorts/"
@@ -2337,15 +2338,15 @@ def write_parquet_and_csv_latest(
 def write_drug_frequency_latest(df: pd.DataFrame) -> None:
     write_parquet_and_csv_latest(
         df,
-        s3_parquet_path='s3://pgxdatalake/gold/drug_name/drug_frequency_latest.parquet',
-        s3_csv_path='s3://pgxdatalake/gold/drug_name/drug_frequency_latest.csv',
+        s3_parquet_path=f's3://pgxdatalake/gold/{PROJECT_SLUG}/drug_name/drug_frequency_latest.parquet',
+        s3_csv_path=f's3://pgxdatalake/gold/{PROJECT_SLUG}/drug_name/drug_frequency_latest.csv',
     )
 
 
 def write_drug_pairs_latest(pairs_df: pd.DataFrame) -> None:
     write_parquet_and_csv_latest(
         pairs_df,
-        s3_parquet_path='s3://pgxdatalake/gold/drug_name/drug_pairs_latest.parquet',
+        s3_parquet_path=f's3://pgxdatalake/gold/{PROJECT_SLUG}/drug_name/drug_pairs_latest.parquet',
         s3_csv_path=None,
     )
 
@@ -2353,8 +2354,8 @@ def write_drug_pairs_latest(pairs_df: pd.DataFrame) -> None:
 def write_target_code_latest(df: pd.DataFrame) -> None:
     write_parquet_and_csv_latest(
         df,
-        s3_parquet_path='s3://pgxdatalake/gold/target_code/target_code_latest.parquet',
-        s3_csv_path='s3://pgxdatalake/gold/target_code/target_code_latest.csv',
+        s3_parquet_path=f's3://pgxdatalake/gold/{PROJECT_SLUG}/target_code/target_code_latest.parquet',
+        s3_csv_path=f's3://pgxdatalake/gold/{PROJECT_SLUG}/target_code/target_code_latest.csv',
     )
 
 
@@ -2414,8 +2415,9 @@ def check_cohort_file_exists(cohort_name: str, age_band: str, event_year: int) -
         if os.path.exists(windows_path):
             local_data_path = windows_path
         else:
-            # Fall back to EC2 path
-            local_data_path = "/mnt/nvme/cohorts"
+            # Fall back to project-scoped EC2 path; cohort targets can differ by project.
+            from py_helpers.env_utils import get_project_data_root
+            local_data_path = str(get_project_data_root() / "gold" / "cohorts")
     
     parquet_file = os.path.join(
         local_data_path,

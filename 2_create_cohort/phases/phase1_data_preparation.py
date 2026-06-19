@@ -193,26 +193,25 @@ def run_phase1_data_preparation(context):
         logger.info(f"→ [PHASE 1] QA: Medical records: {medical_count:,}")
         logger.info(f"→ [PHASE 1] QA: Pharmacy records: {pharmacy_count:,}")
         
-        # F1120-specific check in raw medical data
-        # NOTE: This is a PRIMARY-ONLY sanity check (not full opioid detection)
-        # The actual opioid detection logic (get_opioid_icd_sql_condition()) checks ALL 10 ICD diagnosis columns
-        # This Phase 1 check is for data quality validation only
-        f1120_medical = cohort_conn_duckdb.sql("""
-        SELECT 
-            COUNT(*) as total_f1120_records,
-            COUNT(DISTINCT mi_person_key) as distinct_f1120_patients
+        falls_primary_medical = cohort_conn_duckdb.sql("""
+        SELECT
+            COUNT(*) as total_falls_prefix_records,
+            COUNT(DISTINCT mi_person_key) as distinct_falls_prefix_patients
         FROM medical
-        WHERE primary_icd_diagnosis_code = 'F1120'
+        WHERE primary_icd_diagnosis_code IS NOT NULL
+          AND (
+              STARTS_WITH(REPLACE(REPLACE(UPPER(primary_icd_diagnosis_code), '.', ''), ' ', ''), 'S')
+              OR STARTS_WITH(REPLACE(REPLACE(UPPER(primary_icd_diagnosis_code), '.', ''), ' ', ''), 'T07')
+              OR STARTS_WITH(REPLACE(REPLACE(UPPER(primary_icd_diagnosis_code), '.', ''), ' ', ''), 'T14')
+              OR STARTS_WITH(REPLACE(REPLACE(UPPER(primary_icd_diagnosis_code), '.', ''), ' ', ''), 'W')
+          )
         """).fetchone()
+
+        logger.info(f"→ [PHASE 1] Falls target ICD prefix QA (primary column only):")
+        logger.info(f"  Total falls-prefix records: {falls_primary_medical[0]:,}")
+        logger.info(f"  Distinct falls-prefix patients: {falls_primary_medical[1]:,}")
         
-        if f1120_medical and f1120_medical[0] > 0:
-            logger.info(f"→ [PHASE 1] F1120 CHECK (primary column only - sanity check):")
-            logger.info(f"  Total F1120 records: {f1120_medical[0]:,}")
-            logger.info(f"  Distinct F1120 patients: {f1120_medical[1]:,}")
-        else:
-            logger.warning(f"→ [PHASE 1] F1120 CHECK: No F1120 records found in medical data (primary column)")
-        
-        # HCG codes of interest check (for polypharmacy cohort target identification)
+        # HCG codes of interest check (for ED cohort target identification)
         # Check for ED visit HCG line codes and details: P51b (ED Visits only), O11, P33
         # Use hcg_detail to distinguish actual ED visits from observation care
         hcg_condition = """
@@ -241,7 +240,7 @@ def run_phase1_data_preparation(context):
             FROM medical
             WHERE {hcg_condition}
             """).fetchone()[0]
-            logger.info(f"→ [PHASE 1] HCG CODES CHECK (ED visit codes for polypharmacy cohort - using hcg_detail for precision):")
+            logger.info(f"→ [PHASE 1] HCG CODES CHECK (ED visit codes for ED cohort - using hcg_detail for precision):")
             logger.info(f"  Total HCG records: {total_hcg:,}")
             logger.info(f"  Distinct HCG patients: {distinct_hcg:,}")
             logger.info(f"  HCG codes breakdown (line + detail):")

@@ -12,7 +12,10 @@ Usage in notebooks:
         check_step_checkpoint_exists,
         save_step_checkpoint,
     )
-    sync_s3_to_local("s3://pgxdatalake/gold/cohorts/", get_data_root() / "gold" / "cohorts")
+    sync_s3_to_local(
+        "s3://pgxdatalake/gold/cpic_time_to_event/cohorts/",
+        get_project_data_root() / "gold" / "cohorts",
+    )
     if check_step_checkpoint_exists("1b_apcd_event_filter", cohort, age_band):
         print("Step 1b already done, skipping")
     else:
@@ -29,7 +32,7 @@ import subprocess
 from pathlib import Path
 from typing import List, Optional, Sequence
 
-from py_helpers.env_utils import get_data_root
+from py_helpers.env_utils import get_data_root, get_project_data_root
 from py_helpers.checkpoint_utils import (
     check_step_checkpoint_exists,
     save_step_checkpoint,
@@ -41,6 +44,7 @@ __all__ = [
     "sync_s3_to_local",
     "sync_local_to_s3",
     "get_data_root",
+    "get_project_data_root",
     "check_step_checkpoint_exists",
     "save_step_checkpoint",
     "delete_step_checkpoint",
@@ -62,8 +66,8 @@ def sync_s3_to_local(
     Sync S3 prefix to local directory (idempotent: aws s3 sync only updates changed/missing files).
 
     Args:
-        s3_prefix: S3 URI (e.g. s3://pgxdatalake/gold/cohorts/)
-        local_dir: Local destination directory (e.g. get_data_root() / "gold" / "cohorts")
+        s3_prefix: S3 URI (e.g. s3://pgxdatalake/gold/cpic_time_to_event/cohorts/)
+        local_dir: Local destination directory (e.g. get_project_data_root() / "gold" / "cohorts")
         profile: Optional AWS CLI profile (e.g. mushin)
         no_progress: If True, pass --no-progress to aws s3 sync
         timeout_seconds: Max time for sync (default 2 hours)

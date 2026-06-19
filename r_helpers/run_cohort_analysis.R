@@ -171,10 +171,12 @@ run_cohort_analysis <- function(cohort_name, age_band, event_year,
     logger$info("Loading cohort data...")
     check_memory_usage_r(logger, "Before DuckDB Connection")
     
-    # Determine local data path
-    local_data_path <- Sys.getenv("LOCAL_DATA_PATH", "/mnt/nvme/cohorts")
+    # Determine local data path. Generated cohorts are project-scoped because targets may differ across projects.
+    project_slug <- Sys.getenv("CPIC_PROJECT_SLUG", "cpic_time_to_event")
+    default_cohort_path <- file.path("/mnt/nvme", project_slug, "gold", "cohorts")
+    local_data_path <- Sys.getenv("LOCAL_DATA_PATH", default_cohort_path)
     if (!dir.exists(local_data_path)) {
-      local_data_path <- Sys.getenv("LOCAL_DATA_PATH", "/mnt/nvme/cohorts")
+      local_data_path <- Sys.getenv("LOCAL_DATA_PATH", default_cohort_path)
     }
     
     parquet_file <- file.path(local_data_path, 

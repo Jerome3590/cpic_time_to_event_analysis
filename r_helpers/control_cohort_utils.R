@@ -44,7 +44,8 @@ ensure_control_cohort_with_ratio <- function(
   # Step 1: Try to download from S3 if not found locally (skip when Step 3b: we use only Step 1/2/3 artifacts)
   if (!file.exists(control_model_data_path)) {
     if (is.null(output_root_3b) || !nzchar(output_root_3b)) {
-      control_s3_path <- paste0("s3://pgxdatalake/gold/cohorts_model_data/cohort_name=", control_cohort, "/age_band=", age_band, "/model_events.parquet")
+      project_slug <- Sys.getenv("CPIC_PROJECT_SLUG", "cpic_time_to_event")
+      control_s3_path <- paste0("s3://pgxdatalake/gold/", project_slug, "/cohorts_model_data/cohort_name=", control_cohort, "/age_band=", age_band, "/model_events.parquet")
       cat("Control model data not found locally. Checking S3: ", control_s3_path, "\n", sep = "")
       
       dir.create(dirname(control_model_data_path), recursive = TRUE, showWarnings = FALSE)

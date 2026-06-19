@@ -75,7 +75,7 @@ def list_local_files_to_remove(cohort: str, age_bands: list[str]) -> list[Path]:
 
 
 def delete_s3_prefix(cohort: str, age_band: str, dry_run: bool) -> int:
-    """Delete objects under s3://pgxdatalake/gold/feature_importance/{cohort}/{age_band}/. Returns count deleted."""
+    """Delete project-scoped feature-importance objects from S3. Returns count deleted."""
     try:
         from py_helpers.common_imports import s3_client, S3_BUCKET
     except ImportError:
@@ -125,7 +125,7 @@ def main():
     parser.add_argument(
         "--s3",
         action="store_true",
-        help="Also delete objects under s3://pgxdatalake/gold/feature_importance/{cohort}/{age_band}/",
+        help=f"Also delete objects under s3://pgxdatalake/gold/{PROJECT_SLUG}/feature_importance/{{cohort}}/{{age_band}}/",
     )
     parser.add_argument("--dry-run", action="store_true", help="Only print what would be removed")
     args = parser.parse_args()
@@ -154,7 +154,7 @@ def main():
 
     # S3
     if args.s3:
-        logger.info("S3: clearing gold/feature_importance/%s/ for age bands %s", args.cohort, age_bands)
+        logger.info("S3: clearing gold/%s/feature_importance/%s/ for age bands %s", PROJECT_SLUG, args.cohort, age_bands)
         for ab in age_bands:
             n = delete_s3_prefix(args.cohort, ab, args.dry_run)
             if n == 0 and not args.dry_run:
@@ -162,7 +162,6 @@ def main():
 
     logger.info("Done. Rerun Step 3a with --force for each age band, e.g.:")
     for ab in age_bands:
-        fname = age_band_to_fname(ab)
         logger.info("  python 3a_feature_importance/run_mc_feature_importance.py --cohort %s --age_band %s --force", args.cohort, ab)
     return 0
 

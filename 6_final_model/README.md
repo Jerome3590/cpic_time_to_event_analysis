@@ -57,7 +57,7 @@ Feature engineering for the final model **does not produce** trajectory, sequenc
 ## Data Inputs
 
 ### Base Cohort Data
-- Gold cohort partitions: `s3://pgxdatalake/gold/cohorts/{cohort_name}/{age_band}/{event_year}/`
+- Gold cohort partitions: `s3://pgxdatalake/gold/cpic_time_to_event/cohorts/cohort_name={cohort_name}/event_year={event_year}/age_band={age_band}/`
 
 ### Model Features
 - Final model features come from **model data + feature importance** (n_events, item_*, PGx, etc.). Feature engineering **never produces** trajectory/sequence/itemset columns.

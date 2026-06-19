@@ -567,7 +567,7 @@ def load_global_drug_mapping() -> Optional[pd.DataFrame]:
         DataFrame with drug_name, cpic_drug_name, fuzzy_score, match_method columns, or None if not found
     """
     global_mapping_path = PROJECT_ROOT / "5_pgx_analysis" / "outputs" / "global" / "drug_cpic_mapping_global.csv"
-    s3_key = "gold/pgx_features/global/drug_cpic_mapping_global.csv"
+    s3_key = f"gold/{PROJECT_SLUG}/pgx_features/global/drug_cpic_mapping_global.csv"
 
     env_local = os.environ.get("PGX_DRUG_CPIC_MAPPING_PATH")
     if env_local:

@@ -261,8 +261,9 @@ create_ageband_heatmap <- function(cohort_name,
     }
     
     if (!is.null(aws_cmd) && aws_cmd != "") {
-      s3_base <- sprintf("s3://pgxdatalake/gold/feature_importance/cohort_name=%s/cross_ageband_analysis",
-                        cohort_name)
+      project_slug <- Sys.getenv("CPIC_PROJECT_SLUG", "cpic_time_to_event")
+      s3_base <- sprintf("s3://pgxdatalake/gold/%s/feature_importance/cohort_name=%s/cross_ageband_analysis",
+                        project_slug, cohort_name)
       
       # Upload heatmap
       s3_plot_path <- sprintf("%s/%s", s3_base, basename(plot_file))

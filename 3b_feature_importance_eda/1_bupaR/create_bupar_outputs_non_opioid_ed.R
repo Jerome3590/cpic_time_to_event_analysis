@@ -124,7 +124,8 @@ for (candidate in model_data_candidates) {
 # If not found, try downloading from S3 (gold/cohorts_model_data = where Python syncs)
 if (is.null(model_data_path)) {
   model_data_path <- model_data_candidates[1]
-  s3_path <- paste0("s3://pgxdatalake/gold/cohorts_model_data/cohort_name=", path_cohort, "/age_band=", age_band, "/model_events.parquet")
+  project_slug <- Sys.getenv("CPIC_PROJECT_SLUG", "cpic_time_to_event")
+  s3_path <- paste0("s3://pgxdatalake/gold/", project_slug, "/cohorts_model_data/cohort_name=", path_cohort, "/age_band=", age_band, "/model_events.parquet")
   cat("Model data not found locally. Checking S3: ", s3_path, "\n", sep = "")
   
   # Create directory if it doesn't exist

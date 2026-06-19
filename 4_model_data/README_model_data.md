@@ -50,7 +50,7 @@ Refined feature-importance CSVs (from Step 3b) drive the case-side event filteri
 
 - Inputs (REQUIRED - Step 3b must run before Step 4a):
   - `3b_feature_importance_eda/outputs/{cohort}/{age_band}/{cohort}_{age_band}_cohort_feature_importance.csv`
-  - or downloaded from S3: `s3://pgxdatalake/gold/feature_importance/{cohort}/{age_band}/{cohort}_{age_band}_cohort_feature_importance.csv`
+  - or downloaded from S3: `s3://pgxdatalake/gold/cpic_time_to_event/feature_importance/{cohort}/{age_band}/{cohort}_{age_band}_cohort_feature_importance.csv`
 - For each `(cohort_name, age_band)`:
   - The `feature` column is parsed; `item_` prefixes are stripped to get raw item codes.
   - The resulting item list is used in the DuckDB query that filters **case events**:
@@ -73,7 +73,7 @@ Refined feature-importance CSVs (from Step 3b) drive the case-side event filteri
   - It can be re-run safely after updating feature importances or cohort/gold inputs.
   - Existing `model_events.parquet` files may be skipped to avoid Windows file-in-use errors; deleting a partition’s file and re-running will force a fresh rebuild for that cell.
 - Model data can be mirrored between environments via:
-  - `aws s3 sync 4_model_data s3://pgxdatalake/gold/cohorts_model_data --exclude "*" --include "cohort_name=*/age_band=*/model_events.parquet" --profile <profile>`
+  - `aws s3 sync 4_model_data s3://pgxdatalake/gold/cpic_time_to_event/cohorts_model_data --exclude "*" --include "cohort_name=*/age_band=*/model_events.parquet" --profile <profile>`
 
 ### Checking gold/pharmacy (and gold/medical) completeness
 

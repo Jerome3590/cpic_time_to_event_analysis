@@ -258,12 +258,13 @@ import warnings
 import subprocess
 import shutil
 from datetime import datetime
+from py_helpers.env_utils import get_feature_importance_root, get_refined_feature_importance_root
 warnings.filterwarnings('ignore')
 
 # Note: COHORT, AGE_BAND, and AGE_BAND_FNAME are defined in the OS detection section at the top
 
 # Output directories
-OUTPUT_DIR = PROJECT_ROOT / "3b_feature_importance_eda" / "outputs" / COHORT / AGE_BAND_FNAME
+OUTPUT_DIR = get_refined_feature_importance_root() / COHORT / AGE_BAND_FNAME
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 PLOTS_DIR = OUTPUT_DIR / "plots"
@@ -287,6 +288,8 @@ print(f"   Output Directory: {OUTPUT_DIR}")
 # Load aggregated feature importance from Step 3a
 # Step 3a writes to outputs/{cohort}/{filename} (no age_band subdir); also check from_s3 and S3.
 possible_paths = [
+    get_feature_importance_root() / COHORT / f"{COHORT}_{AGE_BAND_FNAME}_aggregated_feature_importance.csv",
+    get_feature_importance_root() / COHORT / AGE_BAND / f"{COHORT}_{AGE_BAND_FNAME}_aggregated_feature_importance.csv",
     PROJECT_ROOT / "3a_feature_importance" / "outputs" / COHORT / f"{COHORT}_{AGE_BAND_FNAME}_aggregated_feature_importance.csv",
     PROJECT_ROOT / "3a_feature_importance" / "outputs" / COHORT / AGE_BAND / f"{COHORT}_{AGE_BAND_FNAME}_aggregated_feature_importance.csv",
     PROJECT_ROOT / "3a_feature_importance" / "from_s3" / "by_cohort" / COHORT / AGE_BAND / f"{COHORT}_{AGE_BAND_FNAME}_aggregated_feature_importance.csv",
@@ -503,7 +506,7 @@ if 'AGE_BAND' not in globals():
 
 # Update cohort data from S3 so 3b uses latest data (seamless between 3a and 3b)
 try:
-    from py_helpers.env_utils import get_data_root
+    from py_helpers.env_utils import get_data_root, get_project_data_root
     from py_helpers.workflow_sync_checkpoint import sync_s3_to_local
     _s3_bucket = os.environ.get("PGX_S3_BUCKET", "pgxdatalake")
     _data_root = get_data_root()
@@ -512,7 +515,7 @@ try:
     except ImportError:
         _SYNC_PS = "cpic_time_to_event"
     for _name, _prefix, _local in [
-        ("cohorts", f"s3://{_s3_bucket}/gold/{_SYNC_PS}/cohorts/", _data_root / "gold" / "cohorts"),
+        ("cohorts", f"s3://{_s3_bucket}/gold/{_SYNC_PS}/cohorts/", get_project_data_root() / "gold" / "cohorts"),
         ("medical", f"s3://{_s3_bucket}/gold/medical/", _data_root / "gold" / "medical"),
         ("pharmacy", f"s3://{_s3_bucket}/gold/pharmacy/", _data_root / "gold" / "pharmacy"),
     ]:

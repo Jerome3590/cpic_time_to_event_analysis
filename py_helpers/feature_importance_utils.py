@@ -41,6 +41,7 @@ from py_helpers.feature_importance_model_utils import (
 )
 from py_helpers.s3_utils import check_feature_importance_results_exist, check_cohort_file_exists
 from py_helpers.aws_utils import send_status_email_ses
+from py_helpers.env_utils import get_feature_importance_root, get_project_data_root
 
 # S3 client for uploading results
 try:
@@ -146,6 +147,15 @@ def run_cohort_analysis(
                 "PGX_FORCE_RERUN=1 detected; ignoring existing aggregated results "
                 "locally and in S3 and recomputing from scratch."
             )
+
+        # Feature importance is target-dependent; keep generic/default local
+        # outputs under the project-scoped artifact root.
+        output_path = Path(output_dir)
+        if output_dir == "outputs":
+            output_path = get_feature_importance_root() / cohort_name
+        elif not output_path.is_absolute():
+            output_path = get_feature_importance_root() / output_path
+        output_dir = str(output_path)
 
         # ------------------------------------------------------------------
         # Fast idempotency check: if aggregated results already exist,
@@ -272,8 +282,8 @@ def run_cohort_analysis(
             if project_data_path.exists():
                 local_data_path = str(project_data_path)
             else:
-                # Fall back to EC2 path
-                local_data_path = "/mnt/nvme/cohorts"
+                # Fall back to project-scoped EC2 path; cohort targets can differ by project.
+                local_data_path = str(get_project_data_root() / "gold" / "cohorts")
         
         # Load training data from multiple years (2016-2018)
         logger.info("Loading training data from years: %s", ', '.join(map(str, train_years)))

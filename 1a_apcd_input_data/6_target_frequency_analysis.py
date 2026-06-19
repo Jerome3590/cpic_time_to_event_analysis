@@ -44,7 +44,10 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 
+from py_helpers.constants import PROJECT_SLUG, S3_BUCKET
+
 GOLD_MEDICAL_PATH = 's3://pgxdatalake/gold/medical/age_band=*/event_year=*/medical_data.parquet'
+TARGET_CODE_S3_PREFIX = f"gold/{PROJECT_SLUG}/target_code"
 
 
     
@@ -322,7 +325,7 @@ def run_analysis(years=(2016, 2020), out_dir="/home/pgx3874/cpic_time_to_event_a
         COPY (
           SELECT event_year, target_code, COUNT(*) AS frequency
           FROM cpt GROUP BY ALL
-        ) TO 's3://pgxdatalake/gold/target_code/cpt_frequency_aggregated_{ts}.parquet' (FORMAT PARQUET);
+        ) TO 's3://{S3_BUCKET}/{TARGET_CODE_S3_PREFIX}/cpt_frequency_aggregated_{ts}.parquet' (FORMAT PARQUET);
         """
     )
 
@@ -948,17 +951,17 @@ def _aggregate_and_write_outputs(icd_by_position_df: pd.DataFrame,
         conn = create_duckdb_conn(threads=1)
         if cpt_agg_df is not None and not cpt_agg_df.empty:
             conn.register('cpt_agg_df', cpt_agg_df)
-            cpt_key = f"gold/target_code/cpt_frequency_aggregated_{ts}.parquet"
+            cpt_key = f"{TARGET_CODE_S3_PREFIX}/cpt_frequency_aggregated_{ts}.parquet"
             t0 = time.time()
             conn.sql(
-                f"COPY cpt_agg_df TO 's3://pgxdatalake/{cpt_key}' (FORMAT PARQUET)"
+                f"COPY cpt_agg_df TO 's3://{S3_BUCKET}/{cpt_key}' (FORMAT PARQUET)"
             )
             t1 = time.time()
             if log_s3:
                 try:
                     import boto3  # type: ignore
                     s3 = boto3.client('s3')
-                    post = s3.head_object(Bucket='pgxdatalake', Key=cpt_key)
+                    post = s3.head_object(Bucket=S3_BUCKET, Key=cpt_key)
                     size_b = post.get('ContentLength') or 0
                     elapsed = max(1e-6, t1 - t0)
                     mbps = (size_b / (1024 * 1024)) / elapsed
@@ -973,18 +976,18 @@ def _aggregate_and_write_outputs(icd_by_position_df: pd.DataFrame,
         ], ignore_index=True)
         if not all_targets_df.empty:
             conn.register('all_targets_df', all_targets_df)
-            key_parquet = 'gold/target_code/target_code_latest.parquet'
-            key_csv = 'gold/target_code/target_code_latest.csv'
+            key_parquet = f'{TARGET_CODE_S3_PREFIX}/target_code_latest.parquet'
+            key_csv = f'{TARGET_CODE_S3_PREFIX}/target_code_latest.csv'
             t0 = time.time()
             conn.sql(
-                f"COPY all_targets_df TO 's3://pgxdatalake/{key_parquet}' (FORMAT PARQUET, OVERWRITE_OR_IGNORE)"
+                f"COPY all_targets_df TO 's3://{S3_BUCKET}/{key_parquet}' (FORMAT PARQUET, OVERWRITE_OR_IGNORE)"
             )
             t1 = time.time()
             if log_s3:
                 try:
                     import boto3  # type: ignore
                     s3 = boto3.client('s3')
-                    post = s3.head_object(Bucket='pgxdatalake', Key=key_parquet)
+                    post = s3.head_object(Bucket=S3_BUCKET, Key=key_parquet)
                     size_b = post.get('ContentLength') or 0
                     elapsed = max(1e-6, t1 - t0)
                     mbps = (size_b / (1024 * 1024)) / elapsed
@@ -994,14 +997,14 @@ def _aggregate_and_write_outputs(icd_by_position_df: pd.DataFrame,
             # CSV
             t2 = time.time()
             conn.sql(
-                f"COPY all_targets_df TO 's3://pgxdatalake/{key_csv}' (FORMAT CSV, HEADER TRUE, OVERWRITE_OR_IGNORE)"
+                f"COPY all_targets_df TO 's3://{S3_BUCKET}/{key_csv}' (FORMAT CSV, HEADER TRUE, OVERWRITE_OR_IGNORE)"
             )
             t3 = time.time()
             if log_s3:
                 try:
                     import boto3  # type: ignore
                     s3 = boto3.client('s3')
-                    post = s3.head_object(Bucket='pgxdatalake', Key=key_csv)
+                    post = s3.head_object(Bucket=S3_BUCKET, Key=key_csv)
                     size_b = post.get('ContentLength') or 0
                     elapsed = max(1e-6, t3 - t2)
                     mbps = (size_b / (1024 * 1024)) / elapsed
@@ -1277,7 +1280,7 @@ def main(codes_of_interest: Optional[List[str]] = None, years: Tuple[int, int] =
           )
               SELECT event_year, target_code, COUNT(*) AS frequency
               FROM cpt GROUP BY ALL
-            ) TO 's3://pgxdatalake/gold/target_code/cpt_frequency_aggregated_{ts}.parquet' (FORMAT PARQUET)
+            ) TO 's3://{S3_BUCKET}/{TARGET_CODE_S3_PREFIX}/cpt_frequency_aggregated_{ts}.parquet' (FORMAT PARQUET)
             """
         )
         print("📤 COPY outputs written (ICD CSV local, CPT Parquet to S3)")
@@ -1320,7 +1323,7 @@ def main(codes_of_interest: Optional[List[str]] = None, years: Tuple[int, int] =
               UNION ALL
               SELECT event_year, target_code, COUNT(*) AS frequency, 'cpt' AS target_system
               FROM cpt GROUP BY ALL
-            ) TO 's3://pgxdatalake/gold/target_code/target_code_latest.parquet' (FORMAT PARQUET, OVERWRITE_OR_IGNORE);
+            ) TO 's3://{S3_BUCKET}/{TARGET_CODE_S3_PREFIX}/target_code_latest.parquet' (FORMAT PARQUET, OVERWRITE_OR_IGNORE);
             """
         )
         conn.execute(
@@ -1351,7 +1354,7 @@ def main(codes_of_interest: Optional[List[str]] = None, years: Tuple[int, int] =
               UNION ALL
               SELECT event_year, target_code, COUNT(*) AS frequency, 'cpt' AS target_system
               FROM cpt GROUP BY ALL
-            ) TO 's3://pgxdatalake/gold/target_code/target_code_latest.csv' (FORMAT CSV, HEADER TRUE, OVERWRITE_OR_IGNORE);
+            ) TO 's3://{S3_BUCKET}/{TARGET_CODE_S3_PREFIX}/target_code_latest.csv' (FORMAT CSV, HEADER TRUE, OVERWRITE_OR_IGNORE);
             """
         )
         print("📤 Unified latest written to S3 via COPY")

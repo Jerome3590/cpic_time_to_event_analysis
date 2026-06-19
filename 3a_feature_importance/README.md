@@ -577,7 +577,7 @@ For each cohort/age-band combination:
 
 **Location:**
 - Local: `outputs/{cohort}_{age}_{year}_feature_importance_aggregated.csv`
-- S3: `s3://pgxdatalake/gold/feature_importance/cohort_name={cohort}/age_band={age}/event_year={year}/`
+- S3: `s3://pgxdatalake/gold/cpic_time_to_event/feature_importance/{cohort}/{age}/`
 
 **Columns:**
 
@@ -638,8 +638,8 @@ Four publication-ready plots are automatically generated:
 - **Shows:** Drug / ICD / CPT breakdown of top features
 
 **Location:**
-- Local: `3a_feature_importance/outputs/{cohort}/plots/` (and `PGX_FEATURE_IMPORTANCE_OUTPUTS/{cohort}/plots/` when the env var is set)
-- S3: `s3://pgxdatalake/gold/feature_importance/cohort_name={cohort}/age_band={age}/event_year={year}/plots/`
+- Local: project-scoped feature-importance root, e.g. `/mnt/nvme/cpic_time_to_event/3a_feature_importance/outputs/{cohort}/plots/` on EC2
+- S3: `s3://pgxdatalake/gold/cpic_time_to_event/feature_importance/{cohort}/{age}/plots/`
 
 **Note:** The `plots/` subdirectory is automatically created when running the analysis. All visualization files are saved here following the standard output structure framework.
 

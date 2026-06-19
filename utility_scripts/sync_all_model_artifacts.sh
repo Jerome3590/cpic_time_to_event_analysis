@@ -6,6 +6,7 @@ set -e
 
 S3_BUCKET=s3://pgx-repository
 LOCAL_DATA_DIR=data_offline
+PROJECT_SLUG="${CPIC_PROJECT_SLUG:-cpic_time_to_event}"
 
 # Model artifact and data prefixes (add/adjust as needed)
 PREFIXES=(
@@ -18,8 +19,8 @@ PREFIXES=(
   9_fpgrowth_artifacts
   9_bupar_artifacts
   9_cohort_pgx_artifacts
-  gold/cohorts
-  gold/cohorts_model_data
+  "gold/${PROJECT_SLUG}/cohorts"
+  "gold/${PROJECT_SLUG}/cohorts_model_data"
   gold/cohorts_F1120
   gold/input_data
   gold/test_data

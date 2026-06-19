@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 from py_helpers.constants import get_cohort_slug_by_cohort
+from py_helpers.env_utils import get_project_data_root
 
 
 def confirm_paths_exist_with_listings(
@@ -94,11 +95,13 @@ def get_model_events_paths_checked(
         )
         out.append(str(p))
     # 4_model_data roots (same order as resolve_model_events_path)
-    nvme_4 = Path("/mnt/nvme/4_model_data")
+    project_nvme_4 = get_project_data_root() / "4_model_data"
+    legacy_nvme_4 = Path("/mnt/nvme/4_model_data")
     data_root_env = os.environ.get("PGX_DATA_ROOT", "").strip()
-    candidates_4 = [nvme_4]
+    candidates_4 = [project_nvme_4]
     if data_root_env:
         candidates_4.append(Path(data_root_env) / "4_model_data")
+    candidates_4.append(legacy_nvme_4)
     candidates_4.extend([
         project_root / "4_model_data",
         project_root / "4a_model_data",
@@ -156,8 +159,9 @@ def resolve_model_events_path(
 
     - 3b: project_root/3b_feature_importance_eda/outputs/cohorts/input_model_data/cohort_name={slug}/age_band={age_band}/model_events.parquet
       where slug = cohort name (falls or ed).
-    - 4_model_data: under PGX_DATA_ROOT/4_model_data, /mnt/nvme/4_model_data, or project_root/4_model_data;
-      prefer model_events_no_protocols.parquet then model_events.parquet.
+    - 4_model_data: under project-scoped NVMe, PGX_DATA_ROOT/4_model_data,
+      legacy /mnt/nvme/4_model_data, or project_root/4_model_data; prefer
+      model_events_no_protocols.parquet then model_events.parquet.
 
     Returns the first path that exists, or None if none found.
     """
@@ -184,12 +188,15 @@ def resolve_model_events_path(
         if path_3b.exists():
             return path_3b
 
-    # 2) Fallback: 4_model_data. On EC2 data is on NVMe; try /mnt/nvme first, then PGX_DATA_ROOT, then project.
-    nvme_4 = Path("/mnt/nvme/4_model_data")
+    # 2) Fallback: 4_model_data. Prefer project-scoped NVMe, then explicit env,
+    # then legacy shared NVMe for backward compatibility, then project-local.
+    project_nvme_4 = get_project_data_root() / "4_model_data"
+    legacy_nvme_4 = Path("/mnt/nvme/4_model_data")
     data_root_env = os.environ.get("PGX_DATA_ROOT", "").strip()
-    candidates_4 = [nvme_4]
+    candidates_4 = [project_nvme_4]
     if data_root_env:
         candidates_4.append(Path(data_root_env) / "4_model_data")
+    candidates_4.append(legacy_nvme_4)
     candidates_4.extend([
         project_root / "4_model_data",
         project_root / "4a_model_data",

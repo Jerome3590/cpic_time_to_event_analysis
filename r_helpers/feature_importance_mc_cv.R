@@ -109,8 +109,10 @@ cat("\nLoading data...\n")
 # Load data using DuckDB (same logic as FP-Growth notebook)
 # Path structure: local_data_path/cohort_name={cohort}/event_year={year}/age_band={band}/cohort.parquet
 
-# Determine local data path (same as FP-Growth)
-LOCAL_DATA_PATH <- Sys.getenv("LOCAL_DATA_PATH", "/mnt/nvme/cohorts")
+# Determine local data path (same as FP-Growth). Generated cohorts are project-scoped.
+PROJECT_SLUG <- Sys.getenv("CPIC_PROJECT_SLUG", "cpic_time_to_event")
+DEFAULT_COHORT_PATH <- file.path("/mnt/nvme", PROJECT_SLUG, "gold", "cohorts")
+LOCAL_DATA_PATH <- Sys.getenv("LOCAL_DATA_PATH", DEFAULT_COHORT_PATH)
 if (!dir.exists(LOCAL_DATA_PATH)) {
   # Try Windows path
   LOCAL_DATA_PATH <- Sys.getenv("LOCAL_DATA_PATH", "C:/Projects/cpic_time_to_event_analysis/data/gold/cohorts_F1120")

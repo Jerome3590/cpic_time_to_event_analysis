@@ -90,9 +90,17 @@ def main():
             "--log-level", "INFO",
             "--concurrent-workers", str(args.concurrent_workers),
         ]
+        env = os.environ.copy()
+        env.update({
+            "PGX_TARGET_NAME": "ed",
+            "PGX_TARGET_ICD_CODES": env.get("PGX_TARGET_ICD_CODES", ""),
+            "PGX_TARGET_ICD_PREFIXES": env.get("PGX_TARGET_ICD_PREFIXES", ""),
+            "PGX_TARGET_CPT_CODES": env.get("PGX_TARGET_CPT_CODES", ""),
+            "PGX_TARGET_CPT_PREFIXES": env.get("PGX_TARGET_CPT_PREFIXES", ""),
+        })
 
         try:
-            result = subprocess.run(cmd, check=True)
+            result = subprocess.run(cmd, check=True, env=env)
             success_count += 1
             print(f"OK: {job_id}")
         except subprocess.CalledProcessError as e:

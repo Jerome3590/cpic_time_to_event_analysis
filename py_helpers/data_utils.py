@@ -20,7 +20,7 @@ if project_root not in sys.path:
 
 from py_helpers.common_imports import *
 from py_helpers.duckdb_utils import get_duckdb_connection
-from py_helpers.constants import EXCLUDED_CODES, DEFAULT_TARGET_OUTPUTS_DIR
+from py_helpers.constants import EXCLUDED_CODES, DEFAULT_TARGET_OUTPUTS_DIR, PROJECT_SLUG
 
 
 def is_excluded_code(code):
@@ -1194,7 +1194,7 @@ def normalize_to_all_targets(obj: object) -> Optional[pd.DataFrame]:
 
 
 def load_target_artifacts(outputs_dir: Optional[str] = None,
-                          s3_parquet: Optional[str] = 's3://pgxdatalake/gold/target_code/target_code_latest.parquet') -> Tuple[pd.DataFrame, pd.DataFrame]:
+                          s3_parquet: Optional[str] = f's3://pgxdatalake/gold/{PROJECT_SLUG}/target_code/target_code_latest.parquet') -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Resolve and load target-code analysis artifacts.
 
     Returns a tuple (t_orig, t_updated) where each item is a normalized

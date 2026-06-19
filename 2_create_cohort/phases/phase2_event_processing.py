@@ -82,7 +82,7 @@ def run_phase2_step1_event_fact_table(context):
                 f"procedure_code LIKE '{like}' OR cpt_mod_1_code LIKE '{like}' OR cpt_mod_2_code LIKE '{like}'"
             )
 
-        # HCG-based ED visit identification (for ED_NON_OPIOID cohort)
+        # HCG-based ED visit identification (for ED cohort)
         # ED visits are identified by HCG line codes and details for precision
         # Use hcg_detail to distinguish actual ED visits from observation care
         # P51a = Observation Care (exclude), P51b = ED Visits (include)
@@ -94,28 +94,27 @@ def run_phase2_step1_event_fact_table(context):
             OR hcg_line = 'P33 - Urgent Care Visits'
         """
         
-        # Default classification falls back to opioid_ed vs ed_non_opioid
-        # Priority: 1) Opioid ICD codes (ANY position) → opioid_ed, 2) HCG ED visits → ed_non_opioid, 3) Other → ed_non_opioid
-        # CRITICAL: Check ALL 10 ICD diagnosis columns for opioid codes
-        opioid_icd_condition = get_opioid_icd_sql_condition()
+        # Default classification falls back to falls vs ed
+        # Priority: 1) target ICD codes (ANY position) → falls, 2) HCG ED visits → ed, 3) Other → ed
+        # CRITICAL: Check ALL 10 ICD diagnosis columns for target codes
+        target_icd_condition = get_opioid_icd_sql_condition()
         default_case = f"""
             CASE 
-                WHEN {opioid_icd_condition} THEN 'opioid_ed'
-                WHEN {ed_hcg_condition} THEN 'ed_non_opioid'
-                ELSE 'ed_non_opioid'
+                WHEN {target_icd_condition} THEN 'falls'
+                WHEN {ed_hcg_condition} THEN 'ed'
+                ELSE 'ed'
             END
         """
 
         # If any env targets are provided, build a generic target/non_target classification
-        # Priority: 1) Target ICD/CPT codes → target, 2) HCG ED visits → ed_non_opioid, 3) Other → non_target
+        # Priority: 1) Target ICD/CPT codes → target, 2) HCG ED visits → ed, 3) Other → non_target
         # IMPORTANT: 'non_target' is intentionally excluded from ED-based cohorts in later phases
-        # This classification is used for dynamic targeting scenarios, not for standard opioid/polypharmacy cohorts
         if icd_conditions or cpt_conditions:
             where_clause = " OR ".join(filter(None, icd_conditions + cpt_conditions)) or "1=0"
             classification_sql = f"""
                 CASE 
                     WHEN ({where_clause}) THEN 'target'
-                    WHEN {ed_hcg_condition} THEN 'ed_non_opioid'
+                    WHEN {ed_hcg_condition} THEN 'ed'
                     ELSE 'non_target'
                 END
             """
@@ -254,58 +253,31 @@ def run_phase2_step1_event_fact_table(context):
         logger.info(f"→ [PHASE 2 STEP 1] QA: Total events: {total_events:,}")
         logger.info(f"→ [PHASE 2 STEP 1] QA: Event type distribution: {dict(event_type_dist)}")
         
-        # F1120-specific checks
-        # NOTE: This QA check only inspects primary_icd_diagnosis_code for F1120
-        # The actual opioid detection logic (get_opioid_icd_sql_condition()) checks ALL 10 ICD diagnosis columns
-        # This is a simplified QA check - for full validation, see Phase 4 QA which checks all columns
-        f1120_total = cohort_conn_duckdb.sql("""
-        SELECT 
-            COUNT(*) as total_f1120_records,
-            COUNT(DISTINCT mi_person_key) as distinct_f1120_patients
+        target_classification = 'target' if (icd_conditions or cpt_conditions) else 'falls'
+        target_total = cohort_conn_duckdb.sql(f"""
+        SELECT
+            COUNT(*) as total_target_records,
+            COUNT(DISTINCT mi_person_key) as distinct_target_patients
         FROM unified_event_fact_table
-        WHERE primary_icd_diagnosis_code = 'F1120'
+        WHERE event_classification = '{target_classification}'
         """).fetchone()
-        
-        f1120_by_class = cohort_conn_duckdb.sql("""
-        SELECT 
+
+        target_by_class = cohort_conn_duckdb.sql("""
+        SELECT
             event_classification,
             COUNT(*) as count_by_classification
         FROM unified_event_fact_table
-        WHERE primary_icd_diagnosis_code = 'F1120'
         GROUP BY event_classification
         ORDER BY count_by_classification DESC
         """).fetchall()
-        
-        # Expanded QA: Check all 10 ICD columns for F1120 (matches Phase 3/4 logic)
-        opioid_icd_condition = get_opioid_icd_sql_condition()
-        f1120_all_columns = cohort_conn_duckdb.sql(f"""
-        SELECT 
-            COUNT(*) as total_f1120_records_all_columns,
-            COUNT(DISTINCT mi_person_key) as distinct_f1120_patients_all_columns
-        FROM unified_event_fact_table
-        WHERE {opioid_icd_condition}
-        """).fetchone()
-        
-        if f1120_total and f1120_total[0] > 0:
-            logger.info(f"→ [PHASE 2 STEP 1] F1120 CHECK (primary column only - simplified QA):")
-            logger.info(f"  Total F1120 records (primary): {f1120_total[0]:,}")
-            logger.info(f"  Distinct F1120 patients (primary): {f1120_total[1]:,}")
-            if f1120_by_class:
-                logger.info(f"  F1120 by classification:")
-                for row in f1120_by_class:
-                    logger.info(f"    '{row[0]}': {row[1]:,} records")
-            
-            # Log expanded check for comparison
-            if f1120_all_columns and f1120_all_columns[0] > 0:
-                logger.info(f"→ [PHASE 2 STEP 1] F1120 CHECK (all 10 ICD columns - matches Phase 3/4 logic):")
-                logger.info(f"  Total opioid records (all columns): {f1120_all_columns[0]:,}")
-                logger.info(f"  Distinct opioid patients (all columns): {f1120_all_columns[1]:,}")
-                if f1120_all_columns[0] > f1120_total[0]:
-                    logger.info(f"  → Note: {f1120_all_columns[0] - f1120_total[0]:,} additional records found in non-primary ICD columns")
-        else:
-            logger.warning(f"→ [PHASE 2 STEP 1] F1120 CHECK: No F1120 records found in unified_event_fact_table (primary column)")
-            if f1120_all_columns and f1120_all_columns[0] > 0:
-                logger.info(f"→ [PHASE 2 STEP 1] F1120 CHECK (all columns): Found {f1120_all_columns[0]:,} opioid records in non-primary columns")
+
+        logger.info(f"→ [PHASE 2 STEP 1] Target classification QA ({target_classification}):")
+        logger.info(f"  Total target records: {target_total[0]:,}")
+        logger.info(f"  Distinct target patients: {target_total[1]:,}")
+        if target_by_class:
+            logger.info(f"  Event classification distribution:")
+            for row in target_by_class:
+                logger.info(f"    '{row[0]}': {row[1]:,} records")
         
         # Force checkpoint
         force_checkpoint(cohort_conn_duckdb, logger)

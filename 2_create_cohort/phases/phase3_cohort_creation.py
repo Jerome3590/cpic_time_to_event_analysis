@@ -4,7 +4,7 @@ Phase 3: Final Cohort Creation with 5:1 ratio and DuckDB optimizations.
 OPTIMIZED VERSION - Addresses:
 - Replaces NOT IN with NOT EXISTS (safer, faster)
 - Eliminates ORDER BY RANDOM() (uses hash-based sampling)
-- Materializes opioid_patients once
+- Materializes target_patients once
 - Unions HCG exclusion windows into single set
 - Reduces CTE depth
 - Makes profiling filenames unique
@@ -23,12 +23,13 @@ from .common import (
     ensure_unified_views,
 )
 from py_helpers.constants import (
+    PROJECT_SLUG,
     S3_BUCKET,
     get_opioid_icd_sql_condition,
     get_icd_codes_sql_condition,
     ALL_ICD_DIAGNOSIS_COLUMNS,
     OPIOID_ICD_CODES,
-    NON_OPIOID_ED_MAX_ED_VISITS_PER_YEAR,
+    NON_FALLS_MAX_ED_VISITS_PER_YEAR,
 )
 import os
 import time
@@ -42,10 +43,10 @@ def run_phase3_step3_final_cohort_fact(context):
     event_year = context["event_year"]
     pipeline_state = context.get("pipeline_state")
     
-    # Get age-band-specific parameters for non_opioid_ed cohort
+    # Get age-band-specific parameters for non_falls cohort
     # Pediatric and geriatric ages have relaxed filters to capture more adverse drug events
-    from py_helpers.constants import get_non_opioid_ed_params
-    age_params = get_non_opioid_ed_params(age_band)
+    from py_helpers.constants import get_non_falls_params
+    age_params = get_non_falls_params(age_band)
     time_window_days = age_params["time_window_days"]
     max_ed_visits = age_params["max_ed_visits_per_year"]
     
@@ -71,12 +72,12 @@ def run_phase3_step3_final_cohort_fact(context):
         target_icd = os.getenv("PGX_TARGET_ICD_CODES", "").strip() or os.getenv("PGX_TARGET_ICD_PREFIXES", "").strip()
         target_cpt = os.getenv("PGX_TARGET_CPT_CODES", "").strip() or os.getenv("PGX_TARGET_CPT_PREFIXES", "").strip()
         dynamic_targeting = bool(target_icd or target_cpt)
-        label_target = 'target' if dynamic_targeting else 'opioid_ed'
-        label_ed_non_opioid = 'ed_non_opioid'
+        label_target = 'target' if dynamic_targeting else 'falls'
+        label_ed = 'ed'
         
         # Log resolved dynamic targeting state for clarity and reproducibility
         logger.info(f"→ [PHASE 3 STEP 3] Dynamic targeting: {dynamic_targeting}")
-        logger.info(f"→ [PHASE 3 STEP 3] Target label: '{label_target}', ED_NON_OPIOID label: '{label_ed_non_opioid}'")
+        logger.info(f"→ [PHASE 3 STEP 3] Target label: '{label_target}', ED label: '{label_ed}'")
         if dynamic_targeting:
             logger.info(f"→ [PHASE 3 STEP 3] Target ICD codes: {target_icd or 'none'}")
             logger.info(f"→ [PHASE 3 STEP 3] Target CPT codes: {target_cpt or 'none'}")
@@ -85,22 +86,22 @@ def run_phase3_step3_final_cohort_fact(context):
         profile_filename = f"/tmp/duckdb_profiling_phase3_step3_{age_band.replace('-', '_')}_{event_year}_{int(time.time())}.json"
         enable_query_profiling(cohort_conn_duckdb, logger, "json", profile_filename)
         
-        # HIGH-IMPACT FIX #3: Materialize opioid_patients once and reuse
+        # HIGH-IMPACT FIX #3: Materialize target_patients once and reuse
         # This avoids recomputing the expensive ICD condition check multiple times
         opioid_icd_condition = get_opioid_icd_sql_condition()
-        logger.info("→ [PHASE 3 STEP 3] Materializing opioid_patients view (computed once, reused everywhere)...")
-        materialize_opioid_patients_sql = f"""
-        CREATE OR REPLACE TEMP VIEW opioid_patients_materialized AS
+        logger.info("→ [PHASE 3 STEP 3] Materializing target_patients view (computed once, reused everywhere)...")
+        materialize_target_patients_sql = f"""
+        CREATE OR REPLACE TEMP VIEW target_patients_materialized AS
         SELECT DISTINCT mi_person_key
         FROM unified_event_fact_table
         WHERE {opioid_icd_condition}
         """
-        execute_sql_with_dev_validation(cohort_conn_duckdb, logger, materialize_opioid_patients_sql)
+        execute_sql_with_dev_validation(cohort_conn_duckdb, logger, materialize_target_patients_sql)
         # Cast COUNT(*) to BIGINT to avoid INT32 overflow for large counts
         # Use fetchdf() to avoid Python connector's INT32 casting issue
-        opioid_patient_count_df = cohort_conn_duckdb.sql("SELECT CAST(COUNT(*) AS BIGINT) AS count FROM opioid_patients_materialized").fetchdf()
-        opioid_patient_count = int(opioid_patient_count_df.iloc[0]['count']) if not opioid_patient_count_df.empty else 0
-        logger.info(f"→ [PHASE 3 STEP 3] Materialized {opioid_patient_count:,} opioid patients")
+        target_patient_count_df = cohort_conn_duckdb.sql("SELECT CAST(COUNT(*) AS BIGINT) AS count FROM target_patients_materialized").fetchdf()
+        target_patient_count = int(target_patient_count_df.iloc[0]['count']) if not target_patient_count_df.empty else 0
+        logger.info(f"→ [PHASE 3 STEP 3] Materialized {target_patient_count:,} target patients")
         
         # Check target case counts BEFORE creating cohorts
         # Use fetchdf() to avoid INT32 overflow
@@ -111,27 +112,27 @@ def run_phase3_step3_final_cohort_fact(context):
         """).fetchdf()
         target_case_count = int(target_case_count_df.iloc[0]['count']) if not target_case_count_df.empty else 0
         
-        # Count ED_NON_OPIOID targets AFTER excluding opioid patients AND applying both filters:
+        # Count ED targets AFTER excluding target patients AND applying both filters:
         # FILTER 1: < max_ed_visits ED visits per year (true adverse drug events)
         # FILTER 2: Drug event within {time_window_days} days of ED event (temporal relationship)
         # HIGH-IMPACT FIX #1: Replace NOT IN with NOT EXISTS
         # Use fetchdf() to avoid INT32 overflow
         # First, count total before filters
-        ed_non_opioid_total_before_filter_query = f"""
+        ed_total_before_filter_query = f"""
         SELECT CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) AS count
         FROM unified_event_fact_table uef
-        WHERE event_classification = '{label_ed_non_opioid}'
+        WHERE event_classification = '{label_ed}'
           AND NOT EXISTS (
               SELECT 1
-              FROM opioid_patients_materialized op
+              FROM target_patients_materialized op
               WHERE op.mi_person_key = uef.mi_person_key
           )
         """
-        ed_non_opioid_total_before_filter_df = cohort_conn_duckdb.sql(ed_non_opioid_total_before_filter_query).fetchdf()
-        ed_non_opioid_total_before_filter = int(ed_non_opioid_total_before_filter_df.iloc[0]['count']) if not ed_non_opioid_total_before_filter_df.empty else 0
+        ed_total_before_filter_df = cohort_conn_duckdb.sql(ed_total_before_filter_query).fetchdf()
+        ed_total_before_filter = int(ed_total_before_filter_df.iloc[0]['count']) if not ed_total_before_filter_df.empty else 0
 
         # Now count with both filters: < max_ed_visits visits per year AND drug event within {time_window_days} days of ED event
-        ed_non_opioid_case_count_query = f"""
+        ed_case_count_query = f"""
         WITH hcg_patients_with_visit_counts AS (
             -- FILTER 1: Count ED visits per patient per year
             -- Note: unified_event_fact_table doesn't have event_year column, extract from event_date
@@ -140,10 +141,10 @@ def run_phase3_step3_final_cohort_fact(context):
                 CAST(YEAR(uef.event_date) AS INTEGER) as event_year,
                 CAST(COUNT(*) AS BIGINT) as ed_visit_count
             FROM unified_event_fact_table uef
-            WHERE uef.event_classification = '{label_ed_non_opioid}'
+            WHERE uef.event_classification = '{label_ed}'
               AND NOT EXISTS (
                   SELECT 1
-                  FROM opioid_patients_materialized op
+                  FROM target_patients_materialized op
                   WHERE op.mi_person_key = uef.mi_person_key
               )
             GROUP BY uef.mi_person_key, CAST(YEAR(uef.event_date) AS INTEGER)
@@ -160,10 +161,10 @@ def run_phase3_step3_final_cohort_fact(context):
                 uef.event_date as ed_event_date
             FROM unified_event_fact_table uef
             INNER JOIN patients_with_less_than_5_visits p5v ON uef.mi_person_key = p5v.mi_person_key
-            WHERE uef.event_classification = '{label_ed_non_opioid}'
+            WHERE uef.event_classification = '{label_ed}'
               AND NOT EXISTS (
                   SELECT 1
-                  FROM opioid_patients_materialized op
+                  FROM target_patients_materialized op
                   WHERE op.mi_person_key = uef.mi_person_key
               )
         ),
@@ -206,31 +207,31 @@ def run_phase3_step3_final_cohort_fact(context):
         SELECT CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) AS count
         FROM patients_with_temporal_relationship
         """
-        ed_non_opioid_case_count_df = cohort_conn_duckdb.sql(ed_non_opioid_case_count_query).fetchdf()
-        ed_non_opioid_case_count = int(ed_non_opioid_case_count_df.iloc[0]['count']) if not ed_non_opioid_case_count_df.empty else 0
-        excluded_by_filters = ed_non_opioid_total_before_filter - ed_non_opioid_case_count
+        ed_case_count_df = cohort_conn_duckdb.sql(ed_case_count_query).fetchdf()
+        ed_case_count = int(ed_case_count_df.iloc[0]['count']) if not ed_case_count_df.empty else 0
+        excluded_by_filters = ed_total_before_filter - ed_case_count
 
         logger.info(f"→ [PHASE 3 STEP 3] Target case counts:")
-        logger.info(f"  OPIOID_ED target patients ({label_target}): {target_case_count:,}")
-        logger.info(f"  ED_NON_OPIOID target patients ({label_ed_non_opioid}): {ed_non_opioid_case_count:,}")
+        logger.info(f"  FALLS target patients ({label_target}): {target_case_count:,}")
+        logger.info(f"  ED target patients ({label_ed}): {ed_case_count:,}")
         if excluded_by_filters > 0:
-            logger.info(f"  ED_NON_OPIOID: Excluded {excluded_by_filters:,} patients by filters (<{max_ed_visits} visits per year AND drug within {time_window_days} days)")
-            logger.info(f"  ED_NON_OPIOID: Total before filters: {ed_non_opioid_total_before_filter:,}, After filters: {ed_non_opioid_case_count:,}")
-        logger.info(f"  POLYPHARMACY COHORT: Using {time_window_days}-day time window for adverse drug event identification")
-        logger.info(f"  POLYPHARMACY COHORT: Filtering to patients with <{max_ed_visits} ED visits per year AND drug event within {time_window_days} days of ED event")
+            logger.info(f"  ED: Excluded {excluded_by_filters:,} patients by filters (<{max_ed_visits} visits per year AND drug within {time_window_days} days)")
+            logger.info(f"  ED: Total before filters: {ed_total_before_filter:,}, After filters: {ed_case_count:,}")
+        logger.info(f"  ED COHORT: Using {time_window_days}-day time window for adverse drug event identification")
+        logger.info(f"  ED COHORT: Filtering to patients with <{max_ed_visits} ED visits per year AND drug event within {time_window_days} days of ED event")
         
         if target_case_count == 0:
-            logger.warning(f"⚠️ [PHASE 3 STEP 3] WARNING: No target cases found for OPIOID_ED cohort ({label_target})")
+            logger.warning(f"⚠️ [PHASE 3 STEP 3] WARNING: No target cases found for FALLS cohort ({label_target})")
             logger.warning(f"   Cohort will be empty and will not be saved to S3")
             logger.warning(f"   Check: Are target ICD codes present in {age_band}/{event_year}?")
         
-        if ed_non_opioid_case_count == 0:
-            logger.warning(f"⚠️ [PHASE 3 STEP 3] WARNING: No target cases found for ED_NON_OPIOID cohort ({label_ed_non_opioid})")
+        if ed_case_count == 0:
+            logger.warning(f"⚠️ [PHASE 3 STEP 3] WARNING: No target cases found for ED cohort ({label_ed})")
             logger.warning(f"   Will create control-only cohort for model training consistency")
         
         # Load pre-computed average target count for control-only cohorts
         avg_target_count = None
-        if target_case_count == 0 or ed_non_opioid_case_count == 0:
+        if target_case_count == 0 or ed_case_count == 0:
             import json
             import boto3
             
@@ -244,14 +245,14 @@ def run_phase3_step3_final_cohort_fact(context):
                     logger.info(f"→ [PHASE 3 STEP 3] Loaded pre-computed averages from local config")
                 else:
                     logger.info(f"→ [PHASE 3 STEP 3] Local config not found, trying S3...")
-                    s3_path = f"s3://{S3_BUCKET}/gold/qa_results/pre_cohort_audit/target_averages.json"
+                    key = f"gold/{PROJECT_SLUG}/qa_results/pre_cohort_audit/target_averages.json"
+                    s3_path = f"s3://{S3_BUCKET}/{key}"
                     try:
                         s3_client = boto3.client('s3')
                         bucket = S3_BUCKET
-                        key = "gold/qa_results/pre_cohort_audit/target_averages.json"
                         response = s3_client.get_object(Bucket=bucket, Key=key)
                         config = json.loads(response['Body'].read().decode('utf-8'))
-                        logger.info(f"→ [PHASE 3 STEP 3] Loaded pre-computed averages from S3")
+                        logger.info(f"→ [PHASE 3 STEP 3] Loaded pre-computed averages from S3: {s3_path}")
                         try:
                             with open(config_file, 'w') as f:
                                 json.dump(config, f, indent=2)
@@ -272,12 +273,12 @@ def run_phase3_step3_final_cohort_fact(context):
                 avg_target_count = 1000
                 logger.warning(f"⚠️ [PHASE 3 STEP 3] Using fallback average target count: {avg_target_count:,}")
         
-        # Create OPIOID_ED cohort with 5:1 control-to-target ratio
+        # Create FALLS cohort with 5:1 control-to-target ratio
         if target_case_count > 0:
             # HIGH-IMPACT FIX #1: Replace NOT IN with NOT EXISTS
             # HIGH-IMPACT FIX #2: Replace ORDER BY RANDOM() with hash-based sampling (deterministic, fast, parallelizable)
-            opioid_ed_cohort_sql = f"""
-            CREATE OR REPLACE TABLE opioid_ed_cohort AS
+            falls_cohort_sql = f"""
+            CREATE OR REPLACE TABLE falls_cohort AS
             WITH target_cases AS (
                 SELECT DISTINCT mi_person_key
                 FROM unified_event_fact_table
@@ -286,7 +287,7 @@ def run_phase3_step3_final_cohort_fact(context):
             first_target_dates AS (
                 SELECT 
                     mi_person_key,
-                    MIN(event_date) as first_opioid_ed_date
+                    MIN(event_date) as first_falls_date
                 FROM unified_event_fact_table
                 WHERE event_classification = '{label_target}'
                 GROUP BY mi_person_key
@@ -335,17 +336,17 @@ def run_phase3_step3_final_cohort_fact(context):
                 -- CLARITY: target column is legacy compatibility (always 1 for this cohort)
                 -- Use is_target_case for actual target/control distinction
                 1 as target,
-                'OPIOID_ED' as cohort_name,
+                'FALLS' as cohort_name,
                 CASE 
-                    WHEN tc.mi_person_key IS NOT NULL THEN 'OPIOID_ED'
+                    WHEN tc.mi_person_key IS NOT NULL THEN 'FALLS'
                     ELSE 'NON_ED'
                 END as cohort,
                 CASE WHEN tc.mi_person_key IS NOT NULL THEN 1 ELSE 0 END as is_target_case,
                 CASE 
-                    WHEN tc.mi_person_key IS NOT NULL THEN ftd.first_opioid_ed_date
+                    WHEN tc.mi_person_key IS NOT NULL THEN ftd.first_falls_date
                     ELSE NULL
-                END as first_opioid_ed_date,
-                NULL as first_ed_non_opioid_date,
+                END as first_falls_date,
+                NULL as first_ed_date,
                 NULL as days_to_target_event
             FROM unified_event_fact_table uef
             LEFT JOIN target_cases tc ON uef.mi_person_key = tc.mi_person_key
@@ -355,11 +356,11 @@ def run_phase3_step3_final_cohort_fact(context):
             """
         else:
             # Zero targets: create control-only cohort
-            logger.info(f"→ [PHASE 3 STEP 3] Creating control-only OPIOID_ED cohort (no targets found)")
+            logger.info(f"→ [PHASE 3 STEP 3] Creating control-only FALLS cohort (no targets found)")
             control_limit = avg_target_count * 5 if avg_target_count else 5000
             # HIGH-IMPACT FIX #2: Hash-based sampling
-            opioid_ed_cohort_sql = f"""
-            CREATE OR REPLACE TABLE opioid_ed_cohort AS
+            falls_cohort_sql = f"""
+            CREATE OR REPLACE TABLE falls_cohort AS
             WITH control_candidates AS (
                 SELECT DISTINCT mi_person_key
                 FROM unified_event_fact_table
@@ -374,27 +375,27 @@ def run_phase3_step3_final_cohort_fact(context):
             SELECT 
                 uef.*,
                 0 as target,
-                'OPIOID_ED' as cohort_name,
+                'FALLS' as cohort_name,
                 'NON_ED' as cohort,
                 0 as is_target_case,
-                NULL as first_opioid_ed_date,
-                NULL as first_ed_non_opioid_date,
+                NULL as first_falls_date,
+                NULL as first_ed_date,
                 NULL as days_to_target_event
             FROM unified_event_fact_table uef
             INNER JOIN sampled_controls sc ON uef.mi_person_key = sc.mi_person_key;
             """
-        execute_sql_with_dev_validation(cohort_conn_duckdb, logger, opioid_ed_cohort_sql)
-        logger.info("→ [PHASE 3 STEP 3] OPIOID_ED cohort created")
+        execute_sql_with_dev_validation(cohort_conn_duckdb, logger, falls_cohort_sql)
+        logger.info("→ [PHASE 3 STEP 3] FALLS cohort created")
         
-        # Create ED_NON_OPIOID cohort with 5:1 control-to-target ratio
-        if ed_non_opioid_case_count > 0:
+        # Create ED cohort with 5:1 control-to-target ratio
+        if ed_case_count > 0:
             # HIGH-IMPACT FIX #4: Union HCG exclusion windows into single exclusion set
             # This reduces planner load, temp tables, and memory pressure
             # Simplified to {time_window_days}-day window for adverse drug event identification
             # - All target cases based on drug-ED relationship within {time_window_days} days (excluding 0-day discharge prescriptions)
             # - {time_window_days}-day window captures majority of adverse drug events based on distribution analysis
-            ed_non_opioid_cohort_sql = f"""
-            CREATE OR REPLACE TABLE ed_non_opioid_cohort AS
+            ed_cohort_sql = f"""
+            CREATE OR REPLACE TABLE ed_cohort AS
             WITH hcg_patients_with_visit_counts AS (
                 -- FILTER 1: Count ED visits per patient per year
                 -- Note: unified_event_fact_table doesn't have event_year column, extract from event_date
@@ -403,10 +404,10 @@ def run_phase3_step3_final_cohort_fact(context):
                     CAST(YEAR(uef.event_date) AS INTEGER) as event_year,
                     CAST(COUNT(*) AS BIGINT) as ed_visit_count
                 FROM unified_event_fact_table uef
-                WHERE uef.event_classification = '{label_ed_non_opioid}'
+                WHERE uef.event_classification = '{label_ed}'
                   AND NOT EXISTS (
                       SELECT 1
-                      FROM opioid_patients_materialized op
+                      FROM target_patients_materialized op
                       WHERE op.mi_person_key = uef.mi_person_key
                   )
                 GROUP BY uef.mi_person_key, CAST(YEAR(uef.event_date) AS INTEGER)
@@ -423,10 +424,10 @@ def run_phase3_step3_final_cohort_fact(context):
                     uef.event_date as ed_event_date
                 FROM unified_event_fact_table uef
                 INNER JOIN patients_with_less_than_5_visits p5v ON uef.mi_person_key = p5v.mi_person_key
-                WHERE uef.event_classification = '{label_ed_non_opioid}'
+                WHERE uef.event_classification = '{label_ed}'
                   AND NOT EXISTS (
                       SELECT 1
-                      FROM opioid_patients_materialized op
+                      FROM target_patients_materialized op
                       WHERE op.mi_person_key = uef.mi_person_key
                   )
             ),
@@ -534,7 +535,7 @@ def run_phase3_step3_final_cohort_fact(context):
             first_target_dates AS (
                 SELECT
                     mi_person_key,
-                    index_hcg_date AS first_ed_non_opioid_date
+                    index_hcg_date AS first_ed_date
                 FROM index_qualifying_ed
             ),
             control_candidates AS (
@@ -549,7 +550,7 @@ def run_phase3_step3_final_cohort_fact(context):
                 )
                   AND NOT EXISTS (
                       SELECT 1
-                      FROM opioid_patients_materialized op
+                      FROM target_patients_materialized op
                       WHERE op.mi_person_key = pde.mi_person_key
                   )
                   AND NOT EXISTS (
@@ -652,13 +653,13 @@ def run_phase3_step3_final_cohort_fact(context):
             events_with_dates AS (
                 SELECT 
                     uef.*,
-                    ftd.first_ed_non_opioid_date,
+                    ftd.first_ed_date,
                     crd.reference_date as control_reference_date,
                     -- Explicitly cast to BIGINT to prevent DuckDB from inferring INTEGER type during view creation
                     -- This prevents INT32 overflow when materializing views with large date differences
                     CASE 
-                        WHEN ftd.first_ed_non_opioid_date IS NOT NULL AND uef.event_date IS NOT NULL
-                        THEN CAST(datediff('day', CAST(uef.event_date AS DATE), CAST(ftd.first_ed_non_opioid_date AS DATE)) AS BIGINT)
+                        WHEN ftd.first_ed_date IS NOT NULL AND uef.event_date IS NOT NULL
+                        THEN CAST(datediff('day', CAST(uef.event_date AS DATE), CAST(ftd.first_ed_date AS DATE)) AS BIGINT)
                         WHEN crd.reference_date IS NOT NULL AND uef.event_date IS NOT NULL
                         THEN CAST(datediff('day', CAST(uef.event_date AS DATE), CAST(crd.reference_date AS DATE)) AS BIGINT)
                         ELSE NULL
@@ -680,19 +681,19 @@ def run_phase3_step3_final_cohort_fact(context):
                 -- CLARITY: target column is legacy compatibility (always 1 for this cohort)
                 -- Use is_target_case for actual target/control distinction
                 1 as target,
-                'ED_NON_OPIOID' as cohort_name,
+                'ED' as cohort_name,
                 CASE 
-                    WHEN tc.mi_person_key IS NOT NULL THEN 'NON_OPIOID_ED'
+                    WHEN tc.mi_person_key IS NOT NULL THEN 'NON_FALLS'
                     WHEN ewd.event_type = 'medical' AND ewd.hcg_line IS NULL THEN 'NON_ED'
                     ELSE 'NON_ED'
                 END as cohort,
                 -- is_target_case: 1 if patient has drug-ED relationship within {time_window_days}-day window
                 CASE WHEN tc.mi_person_key IS NOT NULL THEN 1 ELSE 0 END as is_target_case,
-                NULL as first_opioid_ed_date,
+                NULL as first_falls_date,
                 CASE 
-                    WHEN tc.mi_person_key IS NOT NULL THEN ewd.first_ed_non_opioid_date
+                    WHEN tc.mi_person_key IS NOT NULL THEN ewd.first_ed_date
                     ELSE NULL
-                END as first_ed_non_opioid_date
+                END as first_ed_date
             FROM events_with_dates ewd
             -- Join target_cases (cohort membership based on {time_window_days}-day window)
             LEFT JOIN target_cases tc ON ewd.mi_person_key = tc.mi_person_key
@@ -707,19 +708,19 @@ def run_phase3_step3_final_cohort_fact(context):
             """
         else:
             # Zero targets: create control-only cohort
-            logger.info(f"→ [PHASE 3 STEP 3] Creating control-only ED_NON_OPIOID cohort (no targets found)")
+            logger.info(f"→ [PHASE 3 STEP 3] Creating control-only ED cohort (no targets found)")
             control_limit = avg_target_count * 5 if avg_target_count else 5000
             # HIGH-IMPACT FIX #1: Replace NOT IN with NOT EXISTS
             # HIGH-IMPACT FIX #2: Hash-based sampling
-            ed_non_opioid_cohort_sql = f"""
-            CREATE OR REPLACE TABLE ed_non_opioid_cohort AS
+            ed_cohort_sql = f"""
+            CREATE OR REPLACE TABLE ed_cohort AS
             WITH control_candidates AS (
                 SELECT DISTINCT mi_person_key
                 FROM unified_event_fact_table uef
-                WHERE event_classification != '{label_ed_non_opioid}'
+                WHERE event_classification != '{label_ed}'
                   AND NOT EXISTS (
                       SELECT 1
-                      FROM opioid_patients_materialized op
+                      FROM target_patients_materialized op
                       WHERE op.mi_person_key = uef.mi_person_key
                   )
             ),
@@ -732,17 +733,17 @@ def run_phase3_step3_final_cohort_fact(context):
              SELECT 
                  uef.*,
                  0 as target,
-                 'ED_NON_OPIOID' as cohort_name,
+                 'ED' as cohort_name,
                  'NON_ED' as cohort,
                  0 as is_target_case,
-                 NULL as first_opioid_ed_date,
-                 NULL as first_ed_non_opioid_date,
+                 NULL as first_falls_date,
+                 NULL as first_ed_date,
                  NULL as days_to_target_event
              FROM unified_event_fact_table uef
             INNER JOIN sampled_controls sc ON uef.mi_person_key = sc.mi_person_key;
             """
         # Log drug-to-ED gap distribution for validation
-        if ed_non_opioid_case_count > 0:
+        if ed_case_count > 0:
             try:
                 logger.info("→ [PHASE 3 STEP 3] Drug-to-ED gap distribution (excluding 0-day discharge prescriptions)...")
                 # First, log the distribution of days_from_drug_to_ed
@@ -753,9 +754,9 @@ def run_phase3_step3_final_cohort_fact(context):
                         CAST(YEAR(uef.event_date) AS INTEGER) as event_year,
                         CAST(COUNT(*) AS BIGINT) as ed_visit_count
                     FROM unified_event_fact_table uef
-                    WHERE uef.event_classification = '{label_ed_non_opioid}'
+                    WHERE uef.event_classification = '{label_ed}'
                       AND NOT EXISTS (
-                          SELECT 1 FROM opioid_patients_materialized op
+                          SELECT 1 FROM target_patients_materialized op
                           WHERE op.mi_person_key = uef.mi_person_key
                       )
                     GROUP BY uef.mi_person_key, CAST(YEAR(uef.event_date) AS INTEGER)
@@ -771,9 +772,9 @@ def run_phase3_step3_final_cohort_fact(context):
                         uef.event_date as ed_event_date
                     FROM unified_event_fact_table uef
                     INNER JOIN patients_with_less_than_5_visits p5v ON uef.mi_person_key = p5v.mi_person_key
-                    WHERE uef.event_classification = '{label_ed_non_opioid}'
+                    WHERE uef.event_classification = '{label_ed}'
                       AND NOT EXISTS (
-                          SELECT 1 FROM opioid_patients_materialized op
+                          SELECT 1 FROM target_patients_materialized op
                           WHERE op.mi_person_key = uef.mi_person_key
                       )
                 ),
@@ -866,9 +867,9 @@ def run_phase3_step3_final_cohort_fact(context):
                                 CAST(YEAR(uef.event_date) AS INTEGER) as event_year,
                                 CAST(COUNT(*) AS BIGINT) as ed_visit_count
                             FROM unified_event_fact_table uef
-                            WHERE uef.event_classification = '{label_ed_non_opioid}'
+                            WHERE uef.event_classification = '{label_ed}'
                               AND NOT EXISTS (
-                                  SELECT 1 FROM opioid_patients_materialized op
+                                  SELECT 1 FROM target_patients_materialized op
                                   WHERE op.mi_person_key = uef.mi_person_key
                               )
                             GROUP BY uef.mi_person_key, CAST(YEAR(uef.event_date) AS INTEGER)
@@ -884,9 +885,9 @@ def run_phase3_step3_final_cohort_fact(context):
                                 uef.event_date as ed_event_date
                             FROM unified_event_fact_table uef
                             INNER JOIN patients_with_less_than_5_visits p5v ON uef.mi_person_key = p5v.mi_person_key
-                            WHERE uef.event_classification = '{label_ed_non_opioid}'
+                            WHERE uef.event_classification = '{label_ed}'
                               AND NOT EXISTS (
-                                  SELECT 1 FROM opioid_patients_materialized op
+                                  SELECT 1 FROM target_patients_materialized op
                                   WHERE op.mi_person_key = uef.mi_person_key
                               )
                         ),
@@ -968,9 +969,9 @@ def run_phase3_step3_final_cohort_fact(context):
                         CAST(YEAR(uef.event_date) AS INTEGER) as event_year,
                         CAST(COUNT(*) AS BIGINT) as ed_visit_count
                     FROM unified_event_fact_table uef
-                    WHERE uef.event_classification = '{label_ed_non_opioid}'
+                    WHERE uef.event_classification = '{label_ed}'
                       AND NOT EXISTS (
-                          SELECT 1 FROM opioid_patients_materialized op
+                          SELECT 1 FROM target_patients_materialized op
                           WHERE op.mi_person_key = uef.mi_person_key
                       )
                     GROUP BY uef.mi_person_key, CAST(YEAR(uef.event_date) AS INTEGER)
@@ -986,9 +987,9 @@ def run_phase3_step3_final_cohort_fact(context):
                         uef.event_date as ed_event_date
                     FROM unified_event_fact_table uef
                     INNER JOIN patients_with_less_than_5_visits p5v ON uef.mi_person_key = p5v.mi_person_key
-                    WHERE uef.event_classification = '{label_ed_non_opioid}'
+                    WHERE uef.event_classification = '{label_ed}'
                       AND NOT EXISTS (
-                          SELECT 1 FROM opioid_patients_materialized op
+                          SELECT 1 FROM target_patients_materialized op
                           WHERE op.mi_person_key = uef.mi_person_key
                       )
                 ),
@@ -1064,11 +1065,11 @@ def run_phase3_step3_final_cohort_fact(context):
             except Exception as e:
                 logger.warning(f"Could not calculate CTE diagnostic counts: {e}")
         
-        execute_sql_with_dev_validation(cohort_conn_duckdb, logger, ed_non_opioid_cohort_sql)
-        logger.info("→ [PHASE 3 STEP 3] ED_NON_OPIOID cohort created")
+        execute_sql_with_dev_validation(cohort_conn_duckdb, logger, ed_cohort_sql)
+        logger.info("→ [PHASE 3 STEP 3] ED cohort created")
         
-        # Log drug window statistics for ed_non_opioid cohort
-        if ed_non_opioid_case_count > 0:
+        # Log drug window statistics for ed cohort
+        if ed_case_count > 0:
             try:
                 # Use fetchdf() to avoid INT32 overflow in COUNT queries
                 drug_window_stats_df = cohort_conn_duckdb.sql(f"""
@@ -1077,12 +1078,12 @@ def run_phase3_step3_final_cohort_fact(context):
                     CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) as patients_with_drugs,
                     CAST(COUNT(CASE WHEN days_to_target_event IS NOT NULL AND days_to_target_event >= 0 AND days_to_target_event <= {time_window_days} THEN 1 END) AS BIGINT) as drugs_in_time_window,
                     AVG(CASE WHEN days_to_target_event IS NOT NULL AND days_to_target_event >= 0 AND days_to_target_event <= {time_window_days} THEN days_to_target_event END) as avg_days_in_window
-                FROM ed_non_opioid_cohort
+                FROM ed_cohort
                 WHERE event_type = 'pharmacy' AND is_target_case = 1
                 """).fetchdf()
                 drug_window_stats = drug_window_stats_df.iloc[0] if not drug_window_stats_df.empty else None
                 if drug_window_stats is not None and drug_window_stats['total_drug_events'] > 0:
-                    logger.info(f"→ [PHASE 3 STEP 3] ED_NON_OPIOID Drug Window Stats (target cases):")
+                    logger.info(f"→ [PHASE 3 STEP 3] ED Drug Window Stats (target cases):")
                     logger.info(f"  Total drug events: {int(drug_window_stats['total_drug_events']):,}")
                     logger.info(f"  Patients with drugs: {int(drug_window_stats['patients_with_drugs']):,}")
                     logger.info(f"  Drugs in {time_window_days}-day window: {int(drug_window_stats['drugs_in_time_window']):,}")
@@ -1090,11 +1091,11 @@ def run_phase3_step3_final_cohort_fact(context):
                         logger.info(f"  Avg days in window: {float(drug_window_stats['avg_days_in_window']):.1f}")
                 
                 # Log temporal relationship between drug and ED events (QA check)
-                logger.info("→ [PHASE 3 STEP 3] ED_NON_OPIOID Drug-ED Temporal Relationship (QA check):")
+                logger.info("→ [PHASE 3 STEP 3] ED Drug-ED Temporal Relationship (QA check):")
                 temporal_relationship_df = cohort_conn_duckdb.sql(f"""
                 WITH target_patients AS (
                     SELECT DISTINCT mi_person_key
-                    FROM ed_non_opioid_cohort
+                    FROM ed_cohort
                     WHERE is_target_case = 1
                 ),
                 ed_events AS (
@@ -1103,9 +1104,9 @@ def run_phase3_step3_final_cohort_fact(context):
                         uef.event_date as ed_event_date
                     FROM unified_event_fact_table uef
                     INNER JOIN target_patients tp ON uef.mi_person_key = tp.mi_person_key
-                    WHERE uef.event_classification = '{label_ed_non_opioid}'
+                    WHERE uef.event_classification = '{label_ed}'
                       AND NOT EXISTS (
-                          SELECT 1 FROM opioid_patients_materialized op
+                          SELECT 1 FROM target_patients_materialized op
                           WHERE op.mi_person_key = uef.mi_person_key
                       )
                 ),
@@ -1161,62 +1162,62 @@ def run_phase3_step3_final_cohort_fact(context):
         # Event-level COUNT(*) can explode to billions of rows due to multiple time windows
         # Patient-level counts are stable and prevent INT32 overflow
         # Use fetchdf() to avoid Python connector's INT32 casting issue
-        opioid_ed_count_df = cohort_conn_duckdb.sql("SELECT CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) AS count FROM opioid_ed_cohort").fetchdf()
-        opioid_ed_count = int(opioid_ed_count_df.iloc[0]['count']) if not opioid_ed_count_df.empty else 0
+        falls_count_df = cohort_conn_duckdb.sql("SELECT CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) AS count FROM falls_cohort").fetchdf()
+        falls_count = int(falls_count_df.iloc[0]['count']) if not falls_count_df.empty else 0
         
-        ed_non_opioid_count_df = cohort_conn_duckdb.sql("SELECT CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) AS count FROM ed_non_opioid_cohort").fetchdf()
-        ed_non_opioid_count = int(ed_non_opioid_count_df.iloc[0]['count']) if not ed_non_opioid_count_df.empty else 0
+        ed_count_df = cohort_conn_duckdb.sql("SELECT CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) AS count FROM ed_cohort").fetchdf()
+        ed_count = int(ed_count_df.iloc[0]['count']) if not ed_count_df.empty else 0
         
         # Cast to BIGINT to avoid INT32 overflow
         # Use fetchdf() to avoid Python connector's INT32 casting issue
-        opioid_ed_ratio_df = cohort_conn_duckdb.sql("""
+        falls_ratio_df = cohort_conn_duckdb.sql("""
         SELECT 
             CAST(COUNT(DISTINCT CASE WHEN is_target_case = 1 THEN mi_person_key END) AS BIGINT) as target_cases,
             CAST(COUNT(DISTINCT CASE WHEN is_target_case = 0 THEN mi_person_key END) AS BIGINT) as control_cases
-        FROM opioid_ed_cohort
+        FROM falls_cohort
         """).fetchdf()
-        opioid_ed_ratio = (
-            int(opioid_ed_ratio_df.iloc[0]['target_cases']) if not opioid_ed_ratio_df.empty and opioid_ed_ratio_df.iloc[0]['target_cases'] is not None else 0,
-            int(opioid_ed_ratio_df.iloc[0]['control_cases']) if not opioid_ed_ratio_df.empty and opioid_ed_ratio_df.iloc[0]['control_cases'] is not None else 0
+        falls_ratio = (
+            int(falls_ratio_df.iloc[0]['target_cases']) if not falls_ratio_df.empty and falls_ratio_df.iloc[0]['target_cases'] is not None else 0,
+            int(falls_ratio_df.iloc[0]['control_cases']) if not falls_ratio_df.empty and falls_ratio_df.iloc[0]['control_cases'] is not None else 0
         )
         
         # Cast to BIGINT to avoid INT32 overflow
         # Use fetchdf() to avoid Python connector's INT32 casting issue
-        ed_non_opioid_ratio_df = cohort_conn_duckdb.sql("""
+        ed_ratio_df = cohort_conn_duckdb.sql("""
         SELECT 
             CAST(COUNT(DISTINCT CASE WHEN is_target_case = 1 THEN mi_person_key END) AS BIGINT) as target_cases,
             CAST(COUNT(DISTINCT CASE WHEN is_target_case = 0 THEN mi_person_key END) AS BIGINT) as control_cases
-        FROM ed_non_opioid_cohort
+        FROM ed_cohort
         """).fetchdf()
-        ed_non_opioid_ratio = (
-            int(ed_non_opioid_ratio_df.iloc[0]['target_cases']) if not ed_non_opioid_ratio_df.empty and ed_non_opioid_ratio_df.iloc[0]['target_cases'] is not None else 0,
-            int(ed_non_opioid_ratio_df.iloc[0]['control_cases']) if not ed_non_opioid_ratio_df.empty and ed_non_opioid_ratio_df.iloc[0]['control_cases'] is not None else 0
+        ed_ratio = (
+            int(ed_ratio_df.iloc[0]['target_cases']) if not ed_ratio_df.empty and ed_ratio_df.iloc[0]['target_cases'] is not None else 0,
+            int(ed_ratio_df.iloc[0]['control_cases']) if not ed_ratio_df.empty and ed_ratio_df.iloc[0]['control_cases'] is not None else 0
         )
         
-        opioid_ed_control_ratio = opioid_ed_ratio[1] / opioid_ed_ratio[0] if opioid_ed_ratio[0] > 0 else 0
-        ed_non_opioid_control_ratio = ed_non_opioid_ratio[1] / ed_non_opioid_ratio[0] if ed_non_opioid_ratio[0] > 0 else 0
+        falls_control_ratio = falls_ratio[1] / falls_ratio[0] if falls_ratio[0] > 0 else 0
+        ed_control_ratio = ed_ratio[1] / ed_ratio[0] if ed_ratio[0] > 0 else 0
         
-        logger.info(f"→ [PHASE 3 STEP 3] QA: OPIOID_ED patients: {opioid_ed_count:,}")
-        logger.info(f"→ [PHASE 3 STEP 3] QA: ED_NON_OPIOID patients: {ed_non_opioid_count:,}")
-        logger.info(f"→ [PHASE 3 STEP 3] QA: OPIOID_ED control ratio: {opioid_ed_control_ratio:.2f}:1")
-        logger.info(f"→ [PHASE 3 STEP 3] QA: ED_NON_OPIOID control ratio: {ed_non_opioid_control_ratio:.2f}:1")
+        logger.info(f"→ [PHASE 3 STEP 3] QA: FALLS patients: {falls_count:,}")
+        logger.info(f"→ [PHASE 3 STEP 3] QA: ED patients: {ed_count:,}")
+        logger.info(f"→ [PHASE 3 STEP 3] QA: FALLS control ratio: {falls_control_ratio:.2f}:1")
+        logger.info(f"→ [PHASE 3 STEP 3] QA: ED control ratio: {ed_control_ratio:.2f}:1")
         
-        if opioid_ed_ratio[0] > 0 and opioid_ed_control_ratio < 5.0:
+        if falls_ratio[0] > 0 and falls_control_ratio < 5.0:
             logger.warning(
-                f"⚠️ [PHASE 3 STEP 3] OPIOID_ED cohort has control ratio {opioid_ed_control_ratio:.2f}:1 "
+                f"⚠️ [PHASE 3 STEP 3] FALLS cohort has control ratio {falls_control_ratio:.2f}:1 "
                 f"(target: 5:1). This is expected for small partitions ({age_band}/{event_year}). "
-                f"All available controls used: Target cases: {opioid_ed_ratio[0]:,}, Control cases: {opioid_ed_ratio[1]:,}"
+                f"All available controls used: Target cases: {falls_ratio[0]:,}, Control cases: {falls_ratio[1]:,}"
             )
         
-        if ed_non_opioid_ratio[0] > 0 and ed_non_opioid_control_ratio < 5.0:
+        if ed_ratio[0] > 0 and ed_control_ratio < 5.0:
             logger.warning(
-                f"⚠️ [PHASE 3 STEP 3] ED_NON_OPIOID cohort has control ratio {ed_non_opioid_control_ratio:.2f}:1 "
+                f"⚠️ [PHASE 3 STEP 3] ED cohort has control ratio {ed_control_ratio:.2f}:1 "
                 f"(target: 5:1). This is expected for small partitions ({age_band}/{event_year}). "
-                f"All available controls used: Target cases: {ed_non_opioid_ratio[0]:,}, Control cases: {ed_non_opioid_ratio[1]:,}"
+                f"All available controls used: Target cases: {ed_ratio[0]:,}, Control cases: {ed_ratio[1]:,}"
             )
         
-        # F1120-specific checks in cohorts (all 10 ICD diagnosis columns — matches exclusion logic)
-        f1120_condition = get_icd_codes_sql_condition(["F1120"])
+        # target ICD-specific checks in cohorts (all 10 ICD diagnosis columns — matches exclusion logic)
+        f1120_condition = get_icd_codes_sql_condition(["target ICD"])
         # Use fetchdf() to avoid INT32 overflow in COUNT queries
         f1120_opioid_check_df = cohort_conn_duckdb.sql(f"""
         SELECT 
@@ -1224,7 +1225,7 @@ def run_phase3_step3_final_cohort_fact(context):
             CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) as distinct_f1120_patients,
             CAST(COUNT(DISTINCT CASE WHEN is_target_case = 1 THEN mi_person_key END) AS BIGINT) as f1120_target_patients,
             CAST(COUNT(DISTINCT CASE WHEN is_target_case = 0 THEN mi_person_key END) AS BIGINT) as f1120_control_patients
-        FROM opioid_ed_cohort
+        FROM falls_cohort
         WHERE {f1120_condition}
         """).fetchdf()
         f1120_opioid_check = (
@@ -1235,35 +1236,35 @@ def run_phase3_step3_final_cohort_fact(context):
         )
         
         # Use fetchdf() to avoid INT32 overflow in COUNT queries
-        f1120_ed_non_opioid_check_df = cohort_conn_duckdb.sql(f"""
+        f1120_ed_check_df = cohort_conn_duckdb.sql(f"""
         SELECT 
             CAST(COUNT(*) AS BIGINT) as total_f1120_records,
             CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) as distinct_f1120_patients,
             CAST(COUNT(DISTINCT CASE WHEN is_target_case = 1 THEN mi_person_key END) AS BIGINT) as f1120_target_patients,
             CAST(COUNT(DISTINCT CASE WHEN is_target_case = 0 THEN mi_person_key END) AS BIGINT) as f1120_control_patients
-        FROM ed_non_opioid_cohort
+        FROM ed_cohort
         WHERE {f1120_condition}
         """).fetchdf()
-        f1120_ed_non_opioid_check = (
-            int(f1120_ed_non_opioid_check_df.iloc[0]['total_f1120_records']) if not f1120_ed_non_opioid_check_df.empty and f1120_ed_non_opioid_check_df.iloc[0]['total_f1120_records'] is not None else 0,
-            int(f1120_ed_non_opioid_check_df.iloc[0]['distinct_f1120_patients']) if not f1120_ed_non_opioid_check_df.empty and f1120_ed_non_opioid_check_df.iloc[0]['distinct_f1120_patients'] is not None else 0,
-            int(f1120_ed_non_opioid_check_df.iloc[0]['f1120_target_patients']) if not f1120_ed_non_opioid_check_df.empty and f1120_ed_non_opioid_check_df.iloc[0]['f1120_target_patients'] is not None else 0,
-            int(f1120_ed_non_opioid_check_df.iloc[0]['f1120_control_patients']) if not f1120_ed_non_opioid_check_df.empty and f1120_ed_non_opioid_check_df.iloc[0]['f1120_control_patients'] is not None else 0
+        f1120_ed_check = (
+            int(f1120_ed_check_df.iloc[0]['total_f1120_records']) if not f1120_ed_check_df.empty and f1120_ed_check_df.iloc[0]['total_f1120_records'] is not None else 0,
+            int(f1120_ed_check_df.iloc[0]['distinct_f1120_patients']) if not f1120_ed_check_df.empty and f1120_ed_check_df.iloc[0]['distinct_f1120_patients'] is not None else 0,
+            int(f1120_ed_check_df.iloc[0]['f1120_target_patients']) if not f1120_ed_check_df.empty and f1120_ed_check_df.iloc[0]['f1120_target_patients'] is not None else 0,
+            int(f1120_ed_check_df.iloc[0]['f1120_control_patients']) if not f1120_ed_check_df.empty and f1120_ed_check_df.iloc[0]['f1120_control_patients'] is not None else 0
         )
         
-        logger.info(f"→ [PHASE 3 STEP 3] F1120 IN OPIOID_ED COHORT (any of 10 ICD diagnosis columns):")
-        logger.info(f"  Total F1120 records: {f1120_opioid_check[0]:,}")
-        logger.info(f"  Distinct F1120 patients: {f1120_opioid_check[1]:,}")
-        logger.info(f"  F1120 target patients: {f1120_opioid_check[2]:,}")
-        logger.info(f"  F1120 control patients: {f1120_opioid_check[3]:,}")
+        logger.info(f"→ [PHASE 3 STEP 3] target ICD IN FALLS COHORT (any of 10 ICD diagnosis columns):")
+        logger.info(f"  Total target ICD records: {f1120_opioid_check[0]:,}")
+        logger.info(f"  Distinct target ICD patients: {f1120_opioid_check[1]:,}")
+        logger.info(f"  target ICD target patients: {f1120_opioid_check[2]:,}")
+        logger.info(f"  target ICD control patients: {f1120_opioid_check[3]:,}")
         
-        logger.info(f"→ [PHASE 3 STEP 3] F1120 IN ED_NON_OPIOID COHORT (any of 10 ICD diagnosis columns; expect 0 targets):")
-        logger.info(f"  Total F1120 records: {f1120_ed_non_opioid_check[0]:,}")
-        logger.info(f"  Distinct F1120 patients: {f1120_ed_non_opioid_check[1]:,}")
-        logger.info(f"  F1120 target patients: {f1120_ed_non_opioid_check[2]:,}")
-        logger.info(f"  F1120 control patients: {f1120_ed_non_opioid_check[3]:,}")
+        logger.info(f"→ [PHASE 3 STEP 3] target ICD IN ED COHORT (any of 10 ICD diagnosis columns; expect 0 targets):")
+        logger.info(f"  Total target ICD records: {f1120_ed_check[0]:,}")
+        logger.info(f"  Distinct target ICD patients: {f1120_ed_check[1]:,}")
+        logger.info(f"  target ICD target patients: {f1120_ed_check[2]:,}")
+        logger.info(f"  target ICD control patients: {f1120_ed_check[3]:,}")
         
-        # Polypharmacy/HCG check for ED_NON_OPIOID cohort (similar to F1120 check)
+        # ED/HCG check for ED cohort (similar to target ICD check)
         # Validates that HCG target events (ED visits) are present for target cases
         # Use hcg_detail for precision: P51b = ED Visits (exclude P51a = Observation Care)
         hcg_condition = """
@@ -1273,30 +1274,30 @@ def run_phase3_step3_final_cohort_fact(context):
         """
         
         # Use fetchdf() to avoid INT32 overflow in COUNT queries
-        polypharmacy_check_df = cohort_conn_duckdb.sql(f"""
+        ed_check_df = cohort_conn_duckdb.sql(f"""
         SELECT 
             CAST(COUNT(*) AS BIGINT) as total_hcg_records,
             CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) as distinct_hcg_patients,
             CAST(COUNT(DISTINCT CASE WHEN is_target_case = 1 THEN mi_person_key END) AS BIGINT) as hcg_target_patients,
             CAST(COUNT(DISTINCT CASE WHEN is_target_case = 0 THEN mi_person_key END) AS BIGINT) as hcg_control_patients,
             CAST(COUNT(DISTINCT CASE WHEN event_type = 'pharmacy' AND is_target_case = 1 THEN mi_person_key END) AS BIGINT) as hcg_target_patients_with_drugs
-        FROM ed_non_opioid_cohort
+        FROM ed_cohort
         WHERE {hcg_condition}
         """).fetchdf()
-        polypharmacy_check = (
-            int(polypharmacy_check_df.iloc[0]['total_hcg_records']) if not polypharmacy_check_df.empty and polypharmacy_check_df.iloc[0]['total_hcg_records'] is not None else 0,
-            int(polypharmacy_check_df.iloc[0]['distinct_hcg_patients']) if not polypharmacy_check_df.empty and polypharmacy_check_df.iloc[0]['distinct_hcg_patients'] is not None else 0,
-            int(polypharmacy_check_df.iloc[0]['hcg_target_patients']) if not polypharmacy_check_df.empty and polypharmacy_check_df.iloc[0]['hcg_target_patients'] is not None else 0,
-            int(polypharmacy_check_df.iloc[0]['hcg_control_patients']) if not polypharmacy_check_df.empty and polypharmacy_check_df.iloc[0]['hcg_control_patients'] is not None else 0,
-            int(polypharmacy_check_df.iloc[0]['hcg_target_patients_with_drugs']) if not polypharmacy_check_df.empty and polypharmacy_check_df.iloc[0]['hcg_target_patients_with_drugs'] is not None else 0
+        ed_check = (
+            int(ed_check_df.iloc[0]['total_hcg_records']) if not ed_check_df.empty and ed_check_df.iloc[0]['total_hcg_records'] is not None else 0,
+            int(ed_check_df.iloc[0]['distinct_hcg_patients']) if not ed_check_df.empty and ed_check_df.iloc[0]['distinct_hcg_patients'] is not None else 0,
+            int(ed_check_df.iloc[0]['hcg_target_patients']) if not ed_check_df.empty and ed_check_df.iloc[0]['hcg_target_patients'] is not None else 0,
+            int(ed_check_df.iloc[0]['hcg_control_patients']) if not ed_check_df.empty and ed_check_df.iloc[0]['hcg_control_patients'] is not None else 0,
+            int(ed_check_df.iloc[0]['hcg_target_patients_with_drugs']) if not ed_check_df.empty and ed_check_df.iloc[0]['hcg_target_patients_with_drugs'] is not None else 0
         )
         
-        logger.info(f"→ [PHASE 3 STEP 3] POLYPHARMACY/HCG IN ED_NON_OPIOID COHORT:")
-        logger.info(f"  Total HCG records: {polypharmacy_check[0]:,}")
-        logger.info(f"  Distinct HCG patients: {polypharmacy_check[1]:,}")
-        logger.info(f"  HCG target patients: {polypharmacy_check[2]:,}")
-        logger.info(f"  HCG control patients: {polypharmacy_check[3]:,}")
-        logger.info(f"  HCG target patients with drug events: {polypharmacy_check[4]:,}")
+        logger.info(f"→ [PHASE 3 STEP 3] ED/HCG IN ED COHORT:")
+        logger.info(f"  Total HCG records: {ed_check[0]:,}")
+        logger.info(f"  Distinct HCG patients: {ed_check[1]:,}")
+        logger.info(f"  HCG target patients: {ed_check[2]:,}")
+        logger.info(f"  HCG control patients: {ed_check[3]:,}")
+        logger.info(f"  HCG target patients with drug events: {ed_check[4]:,}")
         
         # Force checkpoint
         force_checkpoint(cohort_conn_duckdb, logger)
@@ -1307,10 +1308,10 @@ def run_phase3_step3_final_cohort_fact(context):
         # Save checkpoint
         if pipeline_state:
             pipeline_state.mark_step_completed(step_name, {
-                'opioid_ed_count': opioid_ed_count,
-                'ed_non_opioid_count': ed_non_opioid_count,
-                'opioid_ed_control_ratio': float(opioid_ed_control_ratio),
-                'ed_non_opioid_control_ratio': float(ed_non_opioid_control_ratio),
+                'falls_count': falls_count,
+                'ed_count': ed_count,
+                'falls_control_ratio': float(falls_control_ratio),
+                'ed_control_ratio': float(ed_control_ratio),
                 'timestamp': datetime.now().isoformat()
             })
         

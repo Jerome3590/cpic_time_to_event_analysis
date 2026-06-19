@@ -1,8 +1,7 @@
 # Step 3b: Feature Importance EDA
 
-Post-target BupaR and EDA analysis of top features identified in Step 3a.
+The maintained Step 3b documentation lives in
+[`README_feature_importance_eda.md`](README_feature_importance_eda.md).
 
-## TODO
-- [ ] Copy BupaR post-target analysis scripts from `cpic_time_to_event_analysis/3b_feature_importance_eda/`
-- [ ] Update target codes for falls-specific process sequences
-- [ ] Generate activity frequency plots for pre-fall clinical sequences
+The previous TODO stub was archived at
+`archive/stale_docs/3b_feature_importance_eda_README_stub.md`.

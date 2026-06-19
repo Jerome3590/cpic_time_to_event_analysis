@@ -57,6 +57,8 @@ while (i <= length(args)) {
 
 project_root <- normalizePath(project_root)
 age_band_fname <- gsub("-", "_", age_band)
+project_slug <- Sys.getenv("CPIC_PROJECT_SLUG", "cpic_time_to_event")
+s3_bucket <- Sys.getenv("S3_BUCKET", "pgxdatalake")
 
 cat("=== Merging BupaR Features ===\n")
 cat("  Cohort:      ", cohort_name, "\n", sep = "")
@@ -198,7 +200,7 @@ write_csv(merged, out_path)
 # Upload to S3
 # -------------------------------------------------------------------
 
-s3_path <- paste0("s3://pgxdatalake/gold/feature_engineering/5_bupar/", cohort_name, "/", age_band,
+s3_path <- paste0("s3://", s3_bucket, "/gold/", project_slug, "/feature_engineering/5_bupar/", cohort_name, "/", age_band,
                   "/bupaR_added_features_", cohort_name, "_", age_band_fname, ".csv")
 
 aws_cli <- Sys.which("aws")

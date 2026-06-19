@@ -21,7 +21,7 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
-from py_helpers.constants import DRUG_NAMES_EXCLUDED_MODEL_TRAINING, FEATURE_SUBSTRINGS_EXCLUDED
+from py_helpers.constants import DRUG_NAMES_EXCLUDED_MODEL_TRAINING, FEATURE_SUBSTRINGS_EXCLUDED, PROJECT_SLUG, S3_BUCKET
 from py_helpers.feature_importance_eda_utils import load_cohort_feature_importance
 from py_helpers.event_density_utils import (
     DENSITY_BINS as _DENSITY_BINS,
@@ -278,8 +278,8 @@ def build_final_features(project_root: Path, cohort_name: str, age_band: str) ->
             from botocore.exceptions import ClientError
 
             s3_client = boto3.client("s3")
-            bucket = "pgxdatalake"
-            s3_key = f"gold/pgx_features/{cohort_name}/{age_band}/pgx_added_features_{cohort_name}_{age_band_fname}.csv"
+            bucket = S3_BUCKET
+            s3_key = f"gold/{PROJECT_SLUG}/pgx_features/{cohort_name}/{age_band}/pgx_added_features_{cohort_name}_{age_band_fname}.csv"
 
             print(f"[INFO] PGx features not found locally. Downloading from S3: s3://{bucket}/{s3_key}")
 
@@ -304,7 +304,7 @@ def build_final_features(project_root: Path, cohort_name: str, age_band: str) ->
             print("[ERROR] Expected locations:")
             pgx_path_1 = project_root / "5_pgx_analysis" / "outputs" / "feature_engineering" / f"pgx_added_features_{cohort_name}_{age_band_fname}.csv"
             pgx_path_2 = project_root / "5c_pgx_analysis" / "outputs" / "feature_engineering" / f"pgx_added_features_{cohort_name}_{age_band_fname}.csv"
-            s3_path = f"s3://pgxdatalake/gold/pgx_features/{cohort_name}/{age_band}/pgx_added_features_{cohort_name}_{age_band_fname}.csv"
+            s3_path = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/pgx_features/{cohort_name}/{age_band}/pgx_added_features_{cohort_name}_{age_band_fname}.csv"
             print(f"  - {pgx_path_1}")
             print(f"  - {pgx_path_2}")
             print(f"  - {s3_path}")

@@ -30,6 +30,8 @@ if str(PROJECT_ROOT) not in sys.path:
 if str(PROJECT_ROOT / "5_pgx_analysis") not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT / "5_pgx_analysis"))
 
+from py_helpers.env_utils import get_feature_importance_root, get_refined_feature_importance_root
+
 # Import fuzzy matching functions
 from map_drugs_to_genes import (
     load_cpic_drug_list_from_file,
@@ -125,6 +127,8 @@ def find_all_cohort_fi_files(cohort: Optional[str] = None, age_band: Optional[st
     pattern = "*_cohort_feature_importance.csv"
     fi_files: List[Path] = []
     for base in [
+        get_feature_importance_root(),
+        get_refined_feature_importance_root(),
         PROJECT_ROOT / "3a_feature_importance" / "outputs",
         PROJECT_ROOT / "3b_feature_importance_eda" / "outputs",
     ]:
@@ -157,6 +161,8 @@ def find_all_aggregated_fi_files(cohort: Optional[str] = None, age_band: Optiona
     pattern = "*_aggregated_feature_importance.csv"
     fi_files: List[Path] = []
     for base in [
+        get_feature_importance_root(),
+        get_refined_feature_importance_root(),
         PROJECT_ROOT / "3_feature_importance" / "outputs",
         PROJECT_ROOT / "3a_feature_importance" / "outputs",
     ]:
@@ -404,8 +410,8 @@ def main():
     # Upload to S3 so EC2/Lambda instances can download it without the local file
     try:
         import boto3
-        from py_helpers.constants import S3_BUCKET
-        s3_key = "gold/pgx_features/global/drug_cpic_mapping_global.csv"
+        from py_helpers.constants import PROJECT_SLUG, S3_BUCKET
+        s3_key = f"gold/{PROJECT_SLUG}/pgx_features/global/drug_cpic_mapping_global.csv"
         boto3.client("s3").upload_file(str(output_path), S3_BUCKET, s3_key)
         logger.info("Uploaded global drug mapping to s3://%s/%s", S3_BUCKET, s3_key)
     except Exception as e:

@@ -78,7 +78,13 @@ from py_helpers.constants import (
     get_physical_age_bands_for_medical_pharmacy,
     age_band_partition_candidates,
 )
-from py_helpers.env_utils import get_data_root, get_model_data_root
+from py_helpers.env_utils import (
+    get_data_root,
+    get_feature_importance_root,
+    get_model_data_root,
+    get_project_data_root,
+    get_refined_feature_importance_root,
+)
 from py_helpers.feature_utils import feature_to_code
 
 try:
@@ -119,10 +125,11 @@ def _get_logger(cohort_name: str, age_band: str) -> tuple[logging.Logger, Path]:
 
 
 def get_step3b_fi_roots() -> list:
-    """Roots for Step 3b cohort_feature_importance (NVMe/project). Prefer DATA_ROOT/gold/feature_importance."""
-    data_root = get_data_root()
+    """Roots for Step 3b cohort_feature_importance (project-scoped NVMe/project/S3 cache)."""
     return [
-        data_root / "gold" / "feature_importance",
+        get_refined_feature_importance_root(),
+        get_project_data_root() / "gold" / "feature_importance",
+        get_feature_importance_root(),
         STEP3B_OUTPUTS_DIR,
     ]
 # Single canonical location: py_helpers.env_utils.get_model_data_root()
@@ -135,7 +142,7 @@ def resolve_local_cohort_root() -> Path:
 
     Priority:
       1. LOCAL_DATA_PATH environment variable (if set)
-      2. get_data_root()/gold/cohorts, then data/gold_cohorts alternatives
+      2. get_project_data_root()/gold/cohorts, then project data/gold_cohorts
       3. PROJECT_ROOT/data/gold_cohorts (default)
     """
     env_path = os.getenv("LOCAL_DATA_PATH")
@@ -145,10 +152,8 @@ def resolve_local_cohort_root() -> Path:
         if root.exists():
             return root
 
-    data_root = get_data_root()
     candidates = [
-        data_root / "gold" / "cohorts",  # Linux/EC2: /mnt/nvme/gold/cohorts
-        data_root / "data" / "gold_cohorts",
+        get_project_data_root() / "gold" / "cohorts",
         PROJECT_ROOT / "data" / "gold_cohorts",
     ]
     for path in candidates:

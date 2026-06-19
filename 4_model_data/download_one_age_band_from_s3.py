@@ -2,7 +2,7 @@
 """
 Download one cohort/age_band of model_events.parquet from S3 to local 4_model_data.
 
-S3 path: s3://pgxdatalake/gold/cohorts_model_data/cohort_name={cohort}/age_band={age_band}/model_events.parquet
+S3 path: s3://pgxdatalake/gold/{PROJECT_SLUG}/cohorts_model_data/cohort_name={cohort}/age_band={age_band}/model_events.parquet
 Local:   4_model_data/cohort_name={cohort}/age_band={age_band}/model_events.parquet
 
 Usage (from repo root):

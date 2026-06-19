@@ -57,10 +57,10 @@ Based on this EDA, we filter and update the aggregated feature importances to pr
 ### S3 Checkpoints
 
 All outputs are automatically uploaded to S3 for checkpointing and downstream consumption:
-- `s3://pgxdatalake/gold/feature_importance/{cohort}/{age_band}/{cohort}_{age_band}_cohort_feature_importance.csv`
-- `s3://pgxdatalake/gold/feature_importance/{cohort}/{age_band}/{cohort}_{age_band}_bupar_post_target_analysis.csv`
-- `s3://pgxdatalake/gold/bupar/{cohort}/{age_band}/*_bupar.csv` - BupaR feature files
-- `s3://pgxdatalake/gold/feature_importance/{cohort}/{age_band}/plots/*.png` - Visualizations
+- `s3://pgxdatalake/gold/cpic_time_to_event/feature_importance/{cohort}/{age_band}/{cohort}_{age_band}_cohort_feature_importance.csv`
+- `s3://pgxdatalake/gold/cpic_time_to_event/feature_importance/{cohort}/{age_band}/{cohort}_{age_band}_bupar_post_target_analysis.csv`
+- `s3://pgxdatalake/gold/cpic_time_to_event/bupar/{cohort}/{age_band}/*_bupar.csv` - BupaR feature files
+- `s3://pgxdatalake/gold/cpic_time_to_event/feature_importance/{cohort}/{age_band}/plots/*.png` - Visualizations
 
 **Note**: Uploads are idempotent - files are only uploaded if they don't already exist in S3.
 

@@ -70,6 +70,8 @@ if (is.null(cohort_name) || is.null(age_band)) {
 
 project_root <- getwd()
 age_band_fname <- gsub("-", "_", age_band)
+project_slug <- Sys.getenv("CPIC_PROJECT_SLUG", "cpic_time_to_event")
+s3_bucket <- Sys.getenv("S3_BUCKET", "pgxdatalake")
 
 cat("=== Creating Sequence Features ===\n")
 cat("  Cohort:      ", cohort_name, "\n", sep = "")
@@ -618,7 +620,7 @@ cat("Output format: Ready for joining with model_data (uses mi_person_key)\n")
 cat("Saved to:", output_path, "\n")
 
 # Upload to S3 gold location (intermediate file)
-s3_path <- paste0("s3://pgxdatalake/gold/feature_engineering/5_bupar/", cohort_name, "/", age_band, 
+s3_path <- paste0("s3://", s3_bucket, "/gold/", project_slug, "/feature_engineering/5_bupar/", cohort_name, "/", age_band,
                   "/sequence_features_", cohort_name, "_", age_band_fname, ".csv")
 
 # Check for AWS CLI

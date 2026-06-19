@@ -15,6 +15,7 @@ import sys
 import pandas as pd
 from pathlib import Path
 import logging
+import os
 import subprocess
 import shutil
 import duckdb
@@ -24,9 +25,10 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
-    from py_helpers.constants import PROJECT_SLUG
+    from py_helpers.constants import PROJECT_SLUG, S3_BUCKET
 except ImportError:
     PROJECT_SLUG = "cpic_time_to_event"
+    S3_BUCKET = "pgxdatalake"
 
 # Setup logging
 logging.basicConfig(
@@ -237,10 +239,11 @@ def main():
     print("Output format: Ready for merging with other features (uses mi_person_key)")
     print(f"Saved to: {output_path}")
     
-    # Upload to S3 gold location (primary: gold/pgx_features/, also mirror to legacy location)
+    # Upload to project-scoped S3 gold location. Legacy mirrors are opt-in only.
     age_band_fname = args.age_band.replace("-", "_")
-    s3_path_primary = f"s3://pgxdatalake/gold/{PROJECT_SLUG}/pgx_features/{args.cohort}/{args.age_band}/pgx_features_{args.cohort}_{age_band_fname}.csv"
-    s3_path_legacy = f"s3://pgxdatalake/gold/feature_engineering/7_pgx/{args.cohort}/{args.age_band}/pgx_features_{args.cohort}_{age_band_fname}.csv"
+    s3_path_primary = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/pgx_features/{args.cohort}/{args.age_band}/pgx_features_{args.cohort}_{age_band_fname}.csv"
+    s3_path_legacy = f"s3://{S3_BUCKET}/gold/feature_engineering/7_pgx/{args.cohort}/{args.age_band}/pgx_features_{args.cohort}_{age_band_fname}.csv"
+    upload_legacy = os.environ.get("CPIC_UPLOAD_LEGACY_PGX_S3", "").strip().lower() in {"1", "true", "yes"}
     
     # Check for AWS CLI
     aws_cli = shutil.which("aws")
@@ -258,19 +261,19 @@ def main():
         except subprocess.CalledProcessError as e:
             print(f"[WARNING] Primary S3 upload failed: {e.stderr if e.stderr else 'Unknown error'}")
         
-        # Also upload to legacy location for backward compatibility
-        try:
-            print(f"[INFO] Uploading to S3 (legacy): {s3_path_legacy}")
-            subprocess.run(
-                [aws_cli, "s3", "cp", str(output_path), s3_path_legacy],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            print(f"[INFO] Legacy S3 upload successful: {s3_path_legacy}")
-        except subprocess.CalledProcessError as e:
-            logger.warning(f"S3 upload failed: {e.stderr}")
-            print(f"Warning: Could not upload to S3: {e.stderr}")
+        if upload_legacy:
+            try:
+                print(f"[INFO] Uploading to S3 (legacy): {s3_path_legacy}")
+                subprocess.run(
+                    [aws_cli, "s3", "cp", str(output_path), s3_path_legacy],
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                print(f"[INFO] Legacy S3 upload successful: {s3_path_legacy}")
+            except subprocess.CalledProcessError as e:
+                logger.warning(f"S3 upload failed: {e.stderr}")
+                print(f"Warning: Could not upload to S3: {e.stderr}")
     else:
         logger.info("AWS CLI not found, skipping S3 upload")
         print("Note: AWS CLI not found, skipping S3 upload")

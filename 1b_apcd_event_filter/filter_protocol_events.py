@@ -32,7 +32,13 @@ PROJECT_ROOT = Path(__file__).parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from py_helpers.env_utils import get_data_root, is_linux  # noqa: E402
+from py_helpers.env_utils import (
+    get_data_root,
+    get_feature_importance_root,
+    get_model_data_root,
+    get_project_data_root,
+    is_linux,
+)  # noqa: E402
 
 try:
     from py_helpers.common_imports import s3_client, S3_BUCKET  # noqa: E402
@@ -258,7 +264,17 @@ def _validate_and_filter_aggregated_feature_importance(
 
     # Prefer original (first-pass) aggregated FI in _baseline; then current (second-pass) location
     agg_csv_path = None
+    for candidate_baseline in [
+        get_feature_importance_root() / cohort / "_baseline" / filename,
+        get_project_data_root() / "gold" / "feature_importance" / cohort / age_band / "_baseline" / filename,
+    ]:
+        if candidate_baseline.exists():
+            agg_csv_path = candidate_baseline
+            logger.info("Using aggregated feature importance from project-scoped _baseline: %s", agg_csv_path)
+            break
     for step_dir in ("3_feature_importance", "3a_feature_importance"):
+        if agg_csv_path is not None:
+            break
         # 1) _baseline (original aggregated FI from first pass)
         candidate_baseline = (
             PROJECT_ROOT / step_dir / "outputs" / cohort / "_baseline" / filename
@@ -267,6 +283,15 @@ def _validate_and_filter_aggregated_feature_importance(
             agg_csv_path = candidate_baseline
             logger.info("Using aggregated feature importance from _baseline: %s", agg_csv_path)
             break
+    if agg_csv_path is None:
+        for candidate in [
+            get_feature_importance_root() / cohort / filename,
+            get_feature_importance_root() / cohort / age_band / filename,
+            get_project_data_root() / "gold" / "feature_importance" / cohort / age_band / filename,
+        ]:
+            if candidate.exists():
+                agg_csv_path = candidate
+                break
     if agg_csv_path is None:
         for step_dir in ("3_feature_importance", "3a_feature_importance"):
             # 2) Current location (second-pass or legacy)
@@ -302,7 +327,7 @@ def _validate_and_filter_aggregated_feature_importance(
             )
             try:
                 s3_client.head_object(Bucket=S3_BUCKET, Key=s3_key)
-                dest_dir = PROJECT_ROOT / "3a_feature_importance" / "outputs" / cohort
+                dest_dir = get_feature_importance_root() / cohort
                 if subdir:
                     dest_dir = dest_dir / subdir
                 dest_dir.mkdir(parents=True, exist_ok=True)
@@ -327,7 +352,7 @@ def _validate_and_filter_aggregated_feature_importance(
         )
         try:
             s3_client.head_object(Bucket=PGX_REPO_BUCKET, Key=s3_key)
-            dest_dir = PROJECT_ROOT / "3a_feature_importance" / "outputs" / cohort
+            dest_dir = get_feature_importance_root() / cohort
             dest_dir.mkdir(parents=True, exist_ok=True)
             dest_path = dest_dir / filename
             s3_client.download_file(PGX_REPO_BUCKET, s3_key, str(dest_path))
@@ -512,19 +537,16 @@ def _validate_cohort_events_has_controls(path_or_paths: Union[Path, List[Path]])
 
 def _cohort_root_candidates() -> List[Path]:
     """Cohort parquet root dirs (Step 2 output): gold/cohorts or data/gold_cohorts."""
-    data_root = get_data_root()
     return [
-        data_root / "gold" / "cohorts",
-        data_root / "data" / "gold_cohorts",
+        get_project_data_root() / "gold" / "cohorts",
         PROJECT_ROOT / "data" / "gold_cohorts",
     ]
 
 
 def get_event_filter_output_dir(cohort: str, age_band: str) -> Path:
     """Output directory for event filter: 4_model_data/cohort_name=.../age_band=... (same layout as Step 4)."""
-    data_root = get_data_root()
     if is_linux():
-        return data_root / "4_model_data" / f"cohort_name={cohort}" / f"age_band={age_band}"
+        return get_model_data_root() / f"cohort_name={cohort}" / f"age_band={age_band}"
     return PROJECT_ROOT / "4_model_data" / f"cohort_name={cohort}" / f"age_band={age_band}"
 
 
@@ -534,7 +556,6 @@ def _resolve_cohort_parquet_paths(cohort: str, age_band: str) -> List[Path]:
     Returns one path per event_year; multiple years are unioned by the filter.
     Priority: local cohort roots (gold/cohorts, data/gold_cohorts), then S3 download.
     """
-    data_root = get_data_root()
     found: List[Path] = []
 
     # Local: check each cohort root × event_year
@@ -574,14 +595,14 @@ def _resolve_cohort_parquet_paths(cohort: str, age_band: str) -> List[Path]:
             )
         return found
 
-    # S3: gold/cohorts/cohort_name=.../event_year=.../age_band=.../cohort.parquet
+    # S3: gold/{PROJECT_SLUG}/cohorts/cohort_name=.../event_year=.../age_band=.../cohort.parquet
     try:
         from py_helpers.s3_utils import get_cohort_parquet_path
     except ImportError:
         get_cohort_parquet_path = None
     if get_cohort_parquet_path:
-        # Download destination: same layout under data_root or PROJECT_ROOT
-        base = data_root / "gold" / "cohorts" if is_linux() else PROJECT_ROOT / "data" / "gold_cohorts"
+        # Download destination: same layout under the project-scoped cohort cache or PROJECT_ROOT.
+        base = get_project_data_root() / "gold" / "cohorts" if is_linux() else PROJECT_ROOT / "data" / "gold_cohorts"
         base = base / f"cohort_name={cohort}"
         base.mkdir(parents=True, exist_ok=True)
         for year in COHORT_EVENT_YEARS:
@@ -619,7 +640,7 @@ def _resolve_cohort_parquet_paths(cohort: str, age_band: str) -> List[Path]:
     if len(checked) > 8:
         error_msg += f"  ... and {len(checked) - 8} more.\n"
     error_msg += (
-        "S3: gold/cohorts/cohort_name=.../event_year=<year>/age_band=.../cohort.parquet\n"
+        f"S3: gold/{PROJECT_SLUG}/cohorts/cohort_name=.../event_year=<year>/age_band=.../cohort.parquet\n"
         "Run Step 2 (create cohort) for this cohort/age_band, then re-run this event filter."
     )
     raise FileNotFoundError(error_msg)

@@ -206,6 +206,13 @@ def get_non_opioid_ed_params(age_band: str) -> dict:
         }
     )
 
+
+NON_FALLS_MAX_ED_VISITS_PER_YEAR = NON_OPIOID_ED_MAX_ED_VISITS_PER_YEAR
+
+
+def get_non_falls_params(age_band: str) -> dict:
+    return get_non_opioid_ed_params(age_band)
+
 # Helper function: convert age-band to filename-safe format
 def get_target_column(cohort: str) -> str:
     """Return the binary target column name for a given cohort."""

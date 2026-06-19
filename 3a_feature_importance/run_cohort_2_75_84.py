@@ -15,7 +15,7 @@ Outputs:
 - Constant features: 3_feature_importance/outputs/{cohort}_{age_band}_constant_features.csv
 
 All results are also uploaded to S3:
-- s3://pgxdatalake/gold/feature_importance/{cohort}/{age_band}/
+- s3://pgxdatalake/gold/cpic_time_to_event/feature_importance/{cohort}/{age_band}/
 """
 
 import sys
@@ -26,6 +26,8 @@ project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
+from py_helpers.constants import PROJECT_SLUG, S3_BUCKET
+from py_helpers.env_utils import get_feature_importance_root
 from py_helpers.feature_importance_utils import run_cohort_analysis
 
 # Configuration
@@ -85,7 +87,7 @@ print(f"  Train Years: {TRAIN_YEARS}")
 print(f"  Test Year: {TEST_YEAR}")
 print(f"  MC-CV Splits: {N_SPLITS}")
 print(f"  Workers: {N_WORKERS}")
-print(f"  Output Directory: 3_feature_importance/outputs")
+print(f"  Output Directory: {get_feature_importance_root()}")
 print(f"\nNote: This script is idempotent - models with existing results in S3 will be skipped.")
 print()
 
@@ -101,7 +103,7 @@ result = run_cohort_analysis(
     scaling_metric=SCALING_METRIC,
     model_params=MODEL_PARAMS,
     debug_mode=DEBUG_MODE,
-    output_dir='3_feature_importance/outputs'
+    output_dir=str(get_feature_importance_root())
 )
 
 # Check results
@@ -109,8 +111,8 @@ if result.get('status') == 'success':
     print(f"\n[SUCCESS] Analysis complete!")
     print(f"  Aggregated output: {result.get('output_file', 'N/A')}")
     print(f"  Features analyzed: {result.get('n_features', 'N/A')}")
-    print(f"\n  Individual model results saved to: 3_feature_importance/outputs/")
-    print(f"  All results uploaded to: s3://pgxdatalake/gold/feature_importance/{COHORT_NAME}/{AGE_BAND}/")
+    print(f"\n  Individual model results saved to: {get_feature_importance_root()}")
+    print(f"  All results uploaded to: s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/feature_importance/{COHORT_NAME}/{AGE_BAND}/")
 elif result.get('status') == 'skipped':
     print(f"\n[SKIPPED] Analysis skipped: {result.get('reason', 'Unknown reason')}")
 else:

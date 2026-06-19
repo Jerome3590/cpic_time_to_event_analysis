@@ -38,6 +38,7 @@ else:
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from py_helpers.constants import age_band_to_fname, get_target_name_by_cohort
+from py_helpers.env_utils import get_refined_feature_importance_root
 from py_helpers.feature_utils import categorize_feature
 
 
@@ -53,15 +54,15 @@ def create_safe_feature_filter_json(
     """Create safe feature filter: exclude post-target leakage, keep all pre-target features.
     Works for fall_injury_any (falls cohort) or ed_event (ed cohort)."""
     age_band_fname = age_band_to_fname(age_band)
-    project_root = PROJECT_ROOT
+    refined_root = get_refined_feature_importance_root()
     # Target by cohort: falls=fall_injury_any, ed=ed_event
     target_name = get_target_name_by_cohort(cohort)
 
     # Load BupaR analysis results
-    analysis_path = project_root / "3b_feature_importance_eda" / "outputs" / cohort / age_band_fname / f"{cohort}_{age_band_fname}_bupar_post_target_analysis.csv"
+    analysis_path = refined_root / cohort / age_band_fname / f"{cohort}_{age_band_fname}_bupar_post_target_analysis.csv"
     
     # Check if file exists in wrong location (features/ subdirectory) and move it
-    wrong_location = project_root / "3b_feature_importance_eda" / "outputs" / cohort / age_band_fname / "features" / f"{cohort}_{age_band_fname}_bupar_post_target_analysis.csv"
+    wrong_location = refined_root / cohort / age_band_fname / "features" / f"{cohort}_{age_band_fname}_bupar_post_target_analysis.csv"
     if wrong_location.exists() and not analysis_path.exists():
         print(f"[INFO] Found file in wrong location: {wrong_location}")
         print(f"       Moving to correct location: {analysis_path}")
@@ -186,7 +187,7 @@ def create_safe_feature_filter_json(
     }
     
     # Save JSON file
-    output_dir = project_root / "3b_feature_importance_eda" / "outputs" / cohort / age_band_fname
+    output_dir = refined_root / cohort / age_band_fname
     output_dir.mkdir(parents=True, exist_ok=True)
     
     output_path = output_dir / f"{cohort}_{age_band_fname}_safe_feature_filter.json"

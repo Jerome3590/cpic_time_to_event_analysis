@@ -27,13 +27,13 @@ if project_root not in sys.path:
 from py_helpers.logging_utils import setup_logging, save_logs_to_s3
 from py_helpers.duckdb_utils import create_simple_duckdb_connection
 from py_helpers.s3_utils import get_cohort_parquet_path
-from py_helpers.constants import ALL_ICD_DIAGNOSIS_COLUMNS
+from py_helpers.constants import ALL_ICD_DIAGNOSIS_COLUMNS, PROJECT_SLUG
 
 
 def build_qa_output_path(cohort_name: str, age_band: str, event_year: int, bucket: str = "pgxdatalake") -> str:
     # Save under GOLD qa_results with cohort partitions
     return (
-        f"s3://{bucket}/gold/qa_results/"
+        f"s3://{bucket}/gold/{PROJECT_SLUG}/qa_results/"
         f"cohort_name={cohort_name}/age_band={age_band}/event_year={event_year}/qa.json"
     )
 

@@ -27,7 +27,7 @@ This output can then be used as input for:
 Local data path resolution mirrors the feature-importance utilities:
  - Use LOCAL_DATA_PATH env var if set
  - Otherwise, try project-root-relative `data/cohorts`
- - Finally, fall back to EC2 path `/mnt/nvme/cohorts`
+ - Finally, fall back to project-scoped EC2 path `/mnt/nvme/{PROJECT_SLUG}/gold/cohorts`
 """
 
 import os
@@ -43,6 +43,7 @@ import duckdb
 import pandas as pd
 
 from py_helpers.constants import ALL_ICD_DIAGNOSIS_COLUMNS, S3_BUCKET, PROJECT_SLUG
+from py_helpers.env_utils import get_project_data_root
 
 try:
     # Prefer shared s3_client if available
@@ -69,8 +70,8 @@ def resolve_local_data_path() -> Path:
     if project_data.exists():
         return project_data
 
-    # EC2 default
-    return Path("/mnt/nvme/cohorts")
+    # EC2 default: generated cohorts are project-scoped because targets may differ across projects.
+    return get_project_data_root() / "gold" / "cohorts"
 
 
 def upload_parquet_to_s3(local_path: Path, cohort_name: str, age_band: str) -> None:

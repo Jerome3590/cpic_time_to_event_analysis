@@ -76,8 +76,15 @@ class FileResolver:
                 "gold/{project_slug}/feature_importance/{cohort}/{age_band}",
                 "gold/{project_slug}/feature_importance/{cohort}/{age_band_fname}",
             ],
+            "project_data_root_paths": [
+                "gold/feature_importance/{cohort}/{age_band}",
+                "gold/feature_importance/{cohort}/{age_band_fname}",
+                "3b_feature_importance_eda/outputs/{cohort}/{age_band_fname}",
+                "3b_feature_importance_eda/outputs/{cohort}/{age_band}",
+            ],
             "s3_key": "gold/{project_slug}/feature_importance/{cohort}/{age_band}/{filename}",
             "cache_dir": "3b_feature_importance_eda/outputs/{cohort}",
+            "project_cache_dir": "gold/feature_importance/{cohort}/{age_band}",
         },
         "aggregated_feature_importance": {
             "filename_pattern": "{cohort}_{age_band_fname}_aggregated_feature_importance.csv",
@@ -91,8 +98,14 @@ class FileResolver:
             "data_root_paths": [
                 "gold/{project_slug}/feature_importance/{cohort}/{age_band}",
             ],
+            "project_data_root_paths": [
+                "gold/feature_importance/{cohort}/{age_band}",
+                "3a_feature_importance/outputs/{cohort}",
+                "3a_feature_importance/outputs/{cohort}/{age_band}",
+            ],
             "s3_key": "gold/{project_slug}/feature_importance/{cohort}/{age_band}/{filename}",
             "cache_dir": "3a_feature_importance/{cohort}",
+            "project_cache_dir": "gold/feature_importance/{cohort}/{age_band}",
         },
         "bupar_post_target_analysis": {
             "filename_pattern": "{cohort}_{age_band_fname}_bupar_post_target_analysis.csv",
@@ -103,8 +116,14 @@ class FileResolver:
             "data_root_paths": [
                 "gold/{project_slug}/feature_importance/{cohort}/{age_band}",
             ],
+            "project_data_root_paths": [
+                "gold/feature_importance/{cohort}/{age_band}",
+                "3b_feature_importance_eda/outputs/{cohort}/{age_band_fname}",
+                "3b_feature_importance_eda/outputs/{cohort}/{age_band}",
+            ],
             "s3_key": "gold/{project_slug}/feature_importance/{cohort}/{age_band}/{filename}",
             "cache_dir": "3b_feature_importance_eda/outputs/{cohort}",
+            "project_cache_dir": "gold/feature_importance/{cohort}/{age_band}",
         },
         "cohort_parquet": {
             "filename_pattern": "cohort.parquet",
@@ -114,7 +133,11 @@ class FileResolver:
             "data_root_paths": [
                 "gold/{project_slug}/cohorts/cohort_name={cohort}/event_year={event_year}/age_band={age_band}",
             ],
+            "project_data_root_paths": [
+                "gold/cohorts/cohort_name={cohort}/event_year={event_year}/age_band={age_band}",
+            ],
             "s3_key": "gold/{project_slug}/cohorts/cohort_name={cohort}/event_year={event_year}/age_band={age_band}/{filename}",
+            "project_cache_dir": "gold/cohorts/cohort_name={cohort}/event_year={event_year}/age_band={age_band}",
         },
         "model_data": {
             "filename_pattern": "model_events.parquet",
@@ -198,6 +221,7 @@ class FileResolver:
         
         # Get data root
         self.data_root = self._get_data_root()
+        self.project_data_root = self._get_project_data_root()
     
     def _get_data_root(self) -> Optional[Path]:
         """Get data root from environment or defaults."""
@@ -215,6 +239,17 @@ class FileResolver:
                 if Path(default).exists():
                     return Path(default)
             
+            return None
+
+    def _get_project_data_root(self) -> Optional[Path]:
+        """Get project-scoped artifact root from environment or defaults."""
+        try:
+            from py_helpers.env_utils import get_project_data_root
+            return get_project_data_root()
+        except ImportError:
+            project_root_env = os.environ.get("CPIC_PROJECT_DATA_ROOT") or os.environ.get("CPIC_PROJECT_NVME_ROOT")
+            if project_root_env:
+                return Path(project_root_env)
             return None
     
     def _format_path(self, template: str, *, include_filename: bool = True) -> str:
@@ -278,6 +313,12 @@ class FileResolver:
             for path_template in self.config.get("data_root_paths", []):
                 path = self.data_root / self._format_path(path_template) / self._get_filename()
                 candidates.append(path)
+
+        # 5. Project-scoped artifact root paths
+        if self.project_data_root:
+            for path_template in self.config.get("project_data_root_paths", []):
+                path = self.project_data_root / self._format_path(path_template) / self._get_filename()
+                candidates.append(path)
         
         return candidates
     
@@ -320,9 +361,14 @@ class FileResolver:
             # Get S3 key
             s3_key = self._format_path(self.config["s3_key"])
             
-            # Get cache directory
-            cache_template = self.config.get("cache_dir", "cache/{cohort}")
-            cache_dir = self.project_root / self._format_path(cache_template)
+            # Get cache directory. Project-dependent artifacts cache under the
+            # project-scoped artifact root when available.
+            project_cache_template = self.config.get("project_cache_dir")
+            if project_cache_template and self.project_data_root:
+                cache_dir = self.project_data_root / self._format_path(project_cache_template)
+            else:
+                cache_template = self.config.get("cache_dir", "cache/{cohort}")
+                cache_dir = self.project_root / self._format_path(cache_template)
             cache_dir.mkdir(parents=True, exist_ok=True)
             
             cache_path = cache_dir / self._get_filename()

@@ -268,8 +268,9 @@ create_feature_importance_plots <- function(aggregated_file,
     }
     
     if (!is.null(aws_cmd) && aws_cmd != "") {
-      s3_base <- sprintf("s3://pgxdatalake/gold/feature_importance/cohort_name=%s/age_band=%s/event_year=%d/plots",
-                        cohort_name, age_band, event_year)
+      project_slug <- Sys.getenv("CPIC_PROJECT_SLUG", "cpic_time_to_event")
+      s3_base <- sprintf("s3://pgxdatalake/gold/%s/feature_importance/cohort_name=%s/age_band=%s/event_year=%d/plots",
+                        project_slug, cohort_name, age_band, event_year)
       
       upload_count <- 0
       for (plot_name in names(plot_files)) {
@@ -294,8 +295,9 @@ create_feature_importance_plots <- function(aggregated_file,
     } else {
       cat("⚠ AWS CLI not found. Plots saved locally only.\n")
       cat(sprintf("To upload manually:\n"))
-      cat(sprintf("  aws s3 sync %s s3://pgxdatalake/gold/feature_importance/cohort_name=%s/age_band=%s/event_year=%d/plots/\n",
-                 plot_dir, cohort_name, age_band, event_year))
+      project_slug <- Sys.getenv("CPIC_PROJECT_SLUG", "cpic_time_to_event")
+      cat(sprintf("  aws s3 sync %s s3://pgxdatalake/gold/%s/feature_importance/cohort_name=%s/age_band=%s/event_year=%d/plots/\n",
+                 plot_dir, project_slug, cohort_name, age_band, event_year))
     }
   }
   

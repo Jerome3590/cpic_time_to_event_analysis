@@ -44,7 +44,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from py_helpers.constants import age_band_to_fname, PROJECT_SLUG  # noqa: E402
-from py_helpers.env_utils import get_xgb_cpu_nthread, get_data_root, is_linux  # noqa: E402
+from py_helpers.env_utils import get_feature_importance_root, get_project_data_root, is_linux, get_xgb_cpu_nthread  # noqa: E402
 from py_helpers.feature_utils import filter_fi_to_drug_only  # noqa: E402
 from py_helpers.s3_utils import normalize_cohort_name, get_cohort_parquet_path  # noqa: E402
 from py_helpers.feature_importance_utils import aggregate_feature_importance  # noqa: E402
@@ -411,7 +411,7 @@ def _validate_cohort_file_has_controls(path_or_s3: str) -> dict:
 
 def _cohort_local_root() -> Path:
     """Local root for syncing cohort.parquet from S3 (NVMe on EC2). DuckDB uses only local paths."""
-    return get_data_root() / "gold" / "cohorts"
+    return get_project_data_root() / "gold" / "cohorts"
 
 
 def _resolve_cohort_parquet_paths(cohort: str, age_band: str) -> List[str]:
@@ -423,10 +423,8 @@ def _resolve_cohort_parquet_paths(cohort: str, age_band: str) -> List[str]:
     cohort_slug = normalize_cohort_name(cohort)
     local_root = _cohort_local_root()
     # Candidate local roots to check before syncing (same layout as 4_model_data)
-    data_root = get_data_root()
     check_roots: List[Path] = [
-        data_root / "gold" / "cohorts",
-        data_root / "data" / "gold_cohorts",
+        get_project_data_root() / "gold" / "cohorts",
         PROJECT_ROOT / "data" / "gold_cohorts",
     ]
     if os.environ.get("LOCAL_DATA_PATH"):
@@ -480,7 +478,8 @@ def build_final_features_for_mc(cohort: str, age_band: str, prefer_filtered: boo
     if not cohort_paths:
         raise FileNotFoundError(
             f"Cohort data not found for cohort={cohort}, age_band={age_band}. "
-            f"Checked local gold/cohorts and S3 gold/cohorts/ for event years {DEFAULT_EVENT_YEARS}. "
+            f"Checked project-scoped local gold/cohorts and S3 gold/{PROJECT_SLUG}/cohorts/ "
+            f"for event years {DEFAULT_EVENT_YEARS}. "
             "Run Step 2 (2_create_cohort) first to produce cohort.parquet files."
         )
 
@@ -597,13 +596,12 @@ def run_mc_feature_importance(
     unless force=True is specified.
     """
     age_band_fname = age_band_to_fname(age_band)
-    # Optional: write to NVMe on EC2 (set PGX_FEATURE_IMPORTANCE_OUTPUTS e.g. /mnt/nvme/feature_importance/outputs)
-    _outputs_base = os.environ.get("PGX_FEATURE_IMPORTANCE_OUTPUTS")
-    if _outputs_base:
-        out_dir = Path(_outputs_base) / cohort
-        print(f"[INFO] Writing Step 3 outputs to NVMe: {out_dir}")
+    # Feature importances are target-dependent; use the project-scoped root by default.
+    out_dir = get_feature_importance_root() / cohort
+    if os.environ.get("CPIC_FEATURE_IMPORTANCE_ROOT") or os.environ.get("PGX_FEATURE_IMPORTANCE_OUTPUTS"):
+        print(f"[INFO] Writing Step 3 outputs to configured FI root: {out_dir}")
     else:
-        out_dir = PROJECT_ROOT / "3a_feature_importance" / "outputs" / cohort
+        print(f"[INFO] Writing Step 3 outputs to project-scoped FI root: {out_dir}")
     if baseline:
         out_dir = out_dir / "_baseline"
         print("[INFO] Baseline run: writing to _baseline subfolder (original aggregated FI for 1b event filter)")

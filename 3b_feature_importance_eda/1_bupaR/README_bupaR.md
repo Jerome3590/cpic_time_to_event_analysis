@@ -35,8 +35,8 @@ For each `(cohort, age_band)` combination, the following files should be generat
 | `bupaR_added_features_{cohort}_{age_band}.csv` | **Final merged bupaR features ready for model training** | ✅ Yes | `add_bupar_features_to_model_data.R` |
 
 **S3 Locations:**
-- Sequence features: `s3://pgxdatalake/gold/feature_engineering/5_bupar/{cohort}/{age_band}/sequence_features_{cohort}_{age_band}.csv`
-- Final merged features: `s3://pgxdatalake/gold/feature_engineering/5_bupar/{cohort}/{age_band}/bupaR_added_features_{cohort}_{age_band}.csv`
+- Sequence features: `s3://pgxdatalake/gold/cpic_time_to_event/feature_engineering/5_bupar/{cohort}/{age_band}/sequence_features_{cohort}_{age_band}.csv`
+- Final merged features: `s3://pgxdatalake/gold/cpic_time_to_event/feature_engineering/5_bupar/{cohort}/{age_band}/bupaR_added_features_{cohort}_{age_band}.csv`
 
 **Format:** CSV with `mi_person_key` column for joining with `model_data` in final model step.
 

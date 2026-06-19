@@ -18,6 +18,8 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if project_root not in sys.path:
     sys.path.append(project_root)
 
+from py_helpers.constants import PROJECT_SLUG, S3_BUCKET
+
 
 def create_simple_duckdb_connection():
     """Create a simple DuckDB connection without complex chaining - testing our fix"""
@@ -275,8 +277,8 @@ def main():
         # Aggregate df (already event_year, drug_name, frequency)
         write_drug_frequency_latest(df)
         print("📤 Drug frequency written to S3:")
-        print("  • s3://pgxdatalake/gold/drug_name/drug_frequency_latest.parquet")
-        print("  • s3://pgxdatalake/gold/drug_name/drug_frequency_latest.csv")
+        print(f"  • s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/drug_name/drug_frequency_latest.parquet")
+        print(f"  • s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/drug_name/drug_frequency_latest.csv")
     except Exception as e:
         print(f"⚠️ Skipped writing latest drug frequency: {e}")
 

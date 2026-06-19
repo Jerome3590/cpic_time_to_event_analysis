@@ -170,11 +170,11 @@ def is_linux() -> bool:
 
 def get_data_root() -> Path:
     """
-    Get the root directory for large data files.
+    Get the root directory for shared large input data files.
 
     Precedence:
     1. PGX_DATA_ROOT env var (if set)
-    2. On Linux: /mnt/nvme
+    2. On Linux: /mnt/nvme (shared gold medical/pharmacy/cohort inputs)
     3. On Windows: %USERPROFILE%/pgx_data
     4. Fallback: project_root / "data"
     """
@@ -191,6 +191,36 @@ def get_data_root() -> Path:
     # Fallback: project root / data
     project_root = get_repo_root()
     return project_root / "data"
+
+
+def get_project_slug() -> str:
+    """Return the project slug used to namespace generated artifacts."""
+    return os.environ.get("CPIC_PROJECT_SLUG", "cpic_time_to_event")
+
+
+def get_project_data_root() -> Path:
+    """
+    Get the root directory for generated project artifacts.
+
+    Shared inputs may still live under get_data_root()/gold/{medical,pharmacy}.
+    Generated EC2 artifacts should use this project-scoped root so cleanup can
+    safely target only this repository's outputs.
+
+    Precedence:
+    1. CPIC_PROJECT_DATA_ROOT or CPIC_PROJECT_NVME_ROOT env var
+    2. On Linux: CPIC_NVME_ROOT/<project_slug>, default /mnt/nvme/cpic_time_to_event
+    3. On Windows/other: project_root
+    """
+    env_root = os.getenv("CPIC_PROJECT_DATA_ROOT") or os.getenv("CPIC_PROJECT_NVME_ROOT")
+    if env_root:
+        return Path(env_root)
+
+    project_root = get_repo_root()
+    if is_linux():
+        nvme_root = Path(os.getenv("CPIC_NVME_ROOT", "/mnt/nvme"))
+        return nvme_root / get_project_slug()
+
+    return project_root
 
 
 def get_repo_root(anchor: Path | None = None) -> Path:
@@ -219,17 +249,54 @@ def get_model_data_root() -> Path:
     """
     Single canonical root for model data (model_events.parquet per cohort/age_band).
 
-    Use this one location for efficiency; do not use gold/model_training_data or
-    other duplicate paths. S3 mirror: gold/cohorts_model_data/.
+    Use this one project-scoped location for efficiency; do not use
+    gold/model_training_data or other duplicate paths. S3 mirror:
+    gold/{PROJECT_SLUG}/cohorts_model_data/.
 
-    - Linux/EC2: get_data_root() / "4_model_data" (e.g. /mnt/nvme/4_model_data)
+    - Linux/EC2: get_project_data_root() / "4_model_data"
+      (e.g. /mnt/nvme/cpic_time_to_event/4_model_data)
     - Windows: PROJECT_ROOT / "4_model_data"
     """
     project_root = get_repo_root()
-    data_root = get_data_root()
     if is_linux():
-        return data_root / "4_model_data"
+        return get_project_data_root() / "4_model_data"
     return project_root / "4_model_data"
+
+
+def get_feature_importance_root() -> Path:
+    """
+    Canonical root for generated feature-importance artifacts.
+
+    Feature importance is target-dependent, so EC2/NVMe outputs are kept under
+    the project-scoped artifact root by default. S3 mirror:
+    gold/{PROJECT_SLUG}/feature_importance/.
+    """
+    env_root = os.getenv("CPIC_FEATURE_IMPORTANCE_ROOT") or os.getenv("PGX_FEATURE_IMPORTANCE_OUTPUTS")
+    if env_root:
+        return Path(env_root)
+
+    project_root = get_repo_root()
+    if is_linux():
+        return get_project_data_root() / "3a_feature_importance" / "outputs"
+    return project_root / "3a_feature_importance" / "outputs"
+
+
+def get_refined_feature_importance_root() -> Path:
+    """
+    Canonical root for Step 3b refined feature-importance artifacts.
+
+    Refined feature lists are also target-dependent, so EC2/NVMe outputs use
+    the project-scoped artifact root by default. S3 mirror:
+    gold/{PROJECT_SLUG}/feature_importance/.
+    """
+    env_root = os.getenv("CPIC_REFINED_FEATURE_IMPORTANCE_ROOT") or os.getenv("PGX_REFINED_FEATURE_IMPORTANCE_OUTPUTS")
+    if env_root:
+        return Path(env_root)
+
+    project_root = get_repo_root()
+    if is_linux():
+        return get_project_data_root() / "3b_feature_importance_eda" / "outputs"
+    return project_root / "3b_feature_importance_eda" / "outputs"
 
 
 def ensure_output_dir(*parts: str, use_data_root: bool = True) -> Path:
@@ -245,7 +312,7 @@ def ensure_output_dir(*parts: str, use_data_root: bool = True) -> Path:
         use_data_root: If True, root is get_data_root(); otherwise project root.
     """
     if use_data_root:
-        root = get_data_root()
+        root = get_project_data_root()
     else:
         root = Path(__file__).resolve().parents[1]
 

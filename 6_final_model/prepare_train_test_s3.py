@@ -13,8 +13,8 @@ This script:
 4. Organizes by cohort and age_band
 
 S3 Structure:
-- s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/inputs/model_train/final_features.parquet
-- s3://pgxdatalake/gold/final_model/{cohort}/{age_band}/inputs/model_test/final_features.parquet
+- s3://pgxdatalake/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/inputs/model_train/final_features.parquet
+- s3://pgxdatalake/gold/{PROJECT_SLUG}/final_model/{cohort}/{age_band}/inputs/model_test/final_features.parquet
 
 Usage:
     python prepare_train_test_s3.py --cohort-name falls --age-band 65-74
@@ -36,9 +36,10 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
-    from py_helpers.constants import PROJECT_SLUG
+    from py_helpers.constants import PROJECT_SLUG, S3_BUCKET
 except ImportError:
     PROJECT_SLUG = "cpic_time_to_event"
+    S3_BUCKET = "pgxdatalake"
 
 
 def prepare_train_test_s3(
@@ -124,7 +125,6 @@ def prepare_train_test_s3(
             from botocore.exceptions import ClientError
             
             s3_client = boto3.client("s3")
-            S3_BUCKET = "pgxdatalake"
             s3_key = f"gold/{PROJECT_SLUG}/cohorts_model_data/cohort_name={cohort_name}/age_band={age_band}/model_events.parquet"
             
             # Download to canonical location
