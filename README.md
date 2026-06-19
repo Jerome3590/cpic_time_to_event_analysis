@@ -176,7 +176,7 @@ python 9_dtw_analysis/run_dtw_analysis.py   # DTW trajectories → S3 (after Ste
 | S3 bucket | `pgxdatalake` |
 | Cohorts | `falls`, `ed` |
 | Age bands | `65-74`, `75-84` |
-| Checkpoints | `s3://pgxdatalake/pipeline_checkpoints/cpic_time_to_event/` |
+| Checkpoints | `s3://pgxdatalake/gold/cpic_time_to_event/pipeline_checkpoints/` |
 
 ---
 

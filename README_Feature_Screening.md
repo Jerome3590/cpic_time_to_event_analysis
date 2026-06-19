@@ -36,7 +36,8 @@ Validated code path:
 
 Known cleanup items from the audit:
 
-- `2_create_cohort/3_cohort_final_metrics.py` still uses the legacy `gold/cohorts_{target_slug}/` layout and should be migrated to `gold/{PROJECT_SLUG}/cohorts/`.
+- `2_create_cohort/3_cohort_final_metrics.py` now reads the production `gold/{PROJECT_SLUG}/cohorts/` layout; `--target-slug` is deprecated and ignored.
+- `PipelineState` now writes production checkpoints under `gold/{PROJECT_SLUG}/pipeline_checkpoints/` and can resume from legacy `pgx-pipeline-status/` state during the transition.
 - Several notebooks and READMEs still contain stale unscoped examples such as `gold/cohorts`, `gold/feature_importance`, and `gold/final_model`; executable code has been updated more broadly than the documentation.
 - `2_create_cohort/2_step2_data_quality_qa.py` defaults `PGX_TARGET_NAME` to `falls` when unset. For target experiments, prefer setting target env vars explicitly.
 

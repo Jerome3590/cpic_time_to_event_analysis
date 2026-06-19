@@ -312,7 +312,6 @@ def main():
     logger.info(f"{SYMBOLS['info']} Profiling: {'Enabled' if args.enable_profiling else 'Disabled'}")
     
     # Log process information
-    import os
     import multiprocessing
     current_pid = os.getpid()
     cpu_count = multiprocessing.cpu_count()
@@ -353,7 +352,7 @@ def main():
         # Initialize centralized checkpoint system
         entity_id = f"{args.cohort}_{args.age_band}_{args.event_year}"
         pipeline_state = PipelineState('create_cohort', entity_id, logger)
-        logger.info(f"Checkpoint location: s3://pgx-repository/pgx-pipeline-status/create_cohort/{entity_id.replace('/', '_')}/")
+        logger.info("Checkpoint location: s3://%s/%s", pipeline_state.s3_bucket, pipeline_state.state_key.rsplit("/", 1)[0] + "/")
 
         # --repair-state: only sync state from output, then exit (no pipeline run)
         if getattr(args, 'repair_state', False):

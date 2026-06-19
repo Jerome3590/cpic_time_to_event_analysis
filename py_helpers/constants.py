@@ -212,8 +212,8 @@ BASE_PATH_FFA_ANALYSIS     = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/ffa_analysis
 # Checkpoint and log storage — env-overridable; defaults to main data bucket
 # Override with: export CPIC_CHECKPOINT_BUCKET=pgxdatalake
 CHECKPOINT_BUCKET      = os.environ.get("CPIC_CHECKPOINT_BUCKET", S3_BUCKET)
-LOG_BUCKET             = os.environ.get("CPIC_LOG_BUCKET", "mushin-solutions-project-metadata")
-LOG_PREFIX             = os.environ.get("CPIC_LOG_PREFIX", "notebooks")
+LOG_BUCKET             = os.environ.get("CPIC_LOG_BUCKET", S3_BUCKET)
+LOG_PREFIX             = os.environ.get("CPIC_LOG_PREFIX", f"gold/{PROJECT_SLUG}/logs")
 BASE_PATH_CHECKPOINTS  = f"s3://{CHECKPOINT_BUCKET}/gold/{PROJECT_SLUG}/pipeline_checkpoints"
 BASE_PATH_LOGS         = f"s3://{LOG_BUCKET}/{LOG_PREFIX}"
 

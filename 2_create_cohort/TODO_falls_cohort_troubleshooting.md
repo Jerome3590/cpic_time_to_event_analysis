@@ -8,6 +8,8 @@ title: Falls cohort troubleshooting TODO
 
 Phase 3 is materializing zero falls target patients for `falls/65-74/2016` under the current strict falls definition.
 
+Latest S3 state check (`pgx-repository/pgx-pipeline-status/create_cohort/falls_65-74_2016/`) shows the current EC2 run is still `running` after `phase2_step2_drug_exposure`; no Phase 3 checkpoint or Phase 3 debug log was present yet. Do not change the falls definition until the Phase 3 debug block below has run.
+
 Observed diagnostic counts from the EC2 run:
 
 - **Injury-prefix patients:** `98,352`
@@ -24,7 +26,7 @@ The W00-W19 external fall-cause code may be present on a different claim row fro
 ## Immediate validation steps
 
 1. Re-run `falls/65-74/2016` from Phase 2 Step 1 after the latest code is deployed.
-2. Confirm logs are saved under `s3://mushin-solutions-project-metadata/notebooks/create_cohort/falls/65-74/2016/`.
+2. Confirm logs are saved under production `s3://pgxdatalake/gold/cpic_time_to_event/logs/create_cohort/falls/65-74/2016/`; legacy notebook logs may appear under `s3://mushin-solutions-project-metadata/notebooks/create_cohort/falls/65-74/2016/`.
 3. Inspect the new Phase 3 debug block for:
    - `same_patient_any_date_patients`
    - `same_patient_same_date_patients`

@@ -2,8 +2,9 @@
 r"""
 Check S3 for cohort creation completion status with time durations.
 
-Reads pipeline state from pgx-repository (pgx-pipeline-status/create_cohort/)
-and optionally lists cohort parquets in pgxdatalake (gold/cohorts/) to report:
+Reads production pipeline state from gold/{PROJECT_SLUG}/pipeline_checkpoints/create_cohort/
+with a legacy fallback to pgx-pipeline-status/create_cohort/, and optionally
+lists cohort parquets in pgxdatalake (gold/{PROJECT_SLUG}/cohorts/) to report:
 - Status (completed / running / failed)
 - created_at, completed_at
 - Duration (completed_at - created_at)
@@ -32,10 +33,12 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 try:
-    from py_helpers.constants import PROJECT_SLUG, CHECKPOINT_BUCKET
+    from py_helpers.constants import PROJECT_SLUG, CHECKPOINT_BUCKET, LOG_BUCKET, LOG_PREFIX
 except ImportError:
     PROJECT_SLUG = "cpic_time_to_event"
     CHECKPOINT_BUCKET = "pgxdatalake"
+    LOG_BUCKET = "mushin-solutions-project-metadata"
+    LOG_PREFIX = "notebooks"
 
 # Use C:\Projects\credentials when present (local runs)
 _creds_file = project_root.parent / "credentials"
@@ -44,9 +47,13 @@ if _creds_file.exists() and not os.environ.get("AWS_SHARED_CREDENTIALS_FILE"):
 
 STATE_BUCKET = CHECKPOINT_BUCKET
 STATE_PREFIX = f"gold/{PROJECT_SLUG}/pipeline_checkpoints/create_cohort"
+LEGACY_STATE_BUCKET = os.environ.get("PGX_S3_BUCKET", "pgx-repository")
+LEGACY_STATE_PREFIX = "pgx-pipeline-status/create_cohort"
 COHORT_BUCKET = os.environ.get("PGX_DATALAKE_BUCKET", "pgxdatalake")
 COHORT_PREFIX = f"gold/{PROJECT_SLUG}/cohorts"
 BUILD_LOGS_PREFIX = f"gold/{PROJECT_SLUG}/logs/create_cohort"
+LEGACY_BUILD_LOGS_BUCKET = os.environ.get("CPIC_LEGACY_LOG_BUCKET", "mushin-solutions-project-metadata")
+LEGACY_BUILD_LOGS_PREFIX = os.environ.get("CPIC_LEGACY_LOG_PREFIX", "notebooks").strip("/") + "/create_cohort"
 
 
 def _parse_iso(s):
@@ -72,7 +79,7 @@ def _duration_seconds(created_at, completed_at):
 
 def _format_duration(seconds):
     if seconds is None:
-        return "—"
+        return "-"
     if seconds < 60:
         return f"{seconds:.0f}s"
     if seconds < 3600:
@@ -81,52 +88,69 @@ def _format_duration(seconds):
 
 
 def fetch_pipeline_states(s3_client):
-    """List and fetch all create_cohort state.json from pgx-repository."""
-    prefix = f"{STATE_PREFIX}/"
+    """List and fetch create_cohort state.json from production and legacy prefixes."""
     states = []
-    paginator = s3_client.get_paginator("list_objects_v2")
-    for page in paginator.paginate(Bucket=STATE_BUCKET, Prefix=prefix):
-        for obj in page.get("Contents", []):
-            key = obj["Key"]
-            if not key.endswith("state.json"):
-                continue
-            try:
-                resp = s3_client.get_object(Bucket=STATE_BUCKET, Key=key)
-                body = resp["Body"].read().decode("utf-8")
-                data = json.loads(body)
+    seen = set()
+    for bucket, state_prefix, source in [
+        (STATE_BUCKET, STATE_PREFIX, "production"),
+        (LEGACY_STATE_BUCKET, LEGACY_STATE_PREFIX, "legacy"),
+    ]:
+        prefix = f"{state_prefix}/"
+        paginator = s3_client.get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+            for obj in page.get("Contents", []):
+                key = obj["Key"]
+                if not key.endswith("state.json"):
+                    continue
                 entity_id = key.replace(prefix, "").replace("/state.json", "").strip("/")
-                data["_entity_id"] = entity_id
-                data["_key"] = key
-                data["_last_modified"] = obj.get("LastModified")
-                states.append(data)
-            except Exception as e:
-                print(f"Warning: could not read {key}: {e}", file=sys.stderr)
+                dedupe_key = entity_id
+                if dedupe_key in seen:
+                    continue
+                try:
+                    resp = s3_client.get_object(Bucket=bucket, Key=key)
+                    body = resp["Body"].read().decode("utf-8")
+                    data = json.loads(body)
+                    data["_entity_id"] = entity_id
+                    data["_key"] = key
+                    data["_bucket"] = bucket
+                    data["_source"] = source
+                    data["_last_modified"] = obj.get("LastModified")
+                    states.append(data)
+                    seen.add(dedupe_key)
+                except Exception as e:
+                    print(f"Warning: could not read s3://{bucket}/{key}: {e}", file=sys.stderr)
     return states
 
 
 def list_build_logs(s3_client, bucket=STATE_BUCKET, prefix=BUILD_LOGS_PREFIX, max_keys=100):
-    """List recent build log objects (create_cohort) from pgx-repository."""
+    """List recent build log objects from production and notebook log prefixes."""
     results = []
-    paginator = s3_client.get_paginator("list_objects_v2")
-    for page in paginator.paginate(Bucket=bucket, Prefix=prefix + "/", MaxKeys=max_keys):
-        for obj in page.get("Contents", []):
-            key = obj["Key"]
-            if not key.endswith(".txt"):
-                continue
-            # key like build_logs/create_cohort/falls/25-44/2016/log_20260201_123456.txt
-            parts = key.replace(prefix + "/", "").split("/")
-            if len(parts) >= 4:
-                cohort_name, band, year = parts[0], parts[1], parts[2]
-            else:
-                cohort_name = band = year = ""
-            results.append({
-                "cohort_name": cohort_name,
-                "age_band": band,
-                "event_year": year,
-                "key": key,
-                "last_modified": obj.get("LastModified"),
-                "size": obj.get("Size", 0),
-            })
+    for log_bucket, log_prefix, source in [
+        (bucket, prefix, "production"),
+        (LEGACY_BUILD_LOGS_BUCKET, LEGACY_BUILD_LOGS_PREFIX, "notebook"),
+    ]:
+        paginator = s3_client.get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=log_bucket, Prefix=log_prefix + "/", MaxKeys=max_keys):
+            for obj in page.get("Contents", []):
+                key = obj["Key"]
+                if not key.endswith(".txt"):
+                    continue
+                # key like .../create_cohort/falls/65-74/2016/log_20260201_123456.txt
+                parts = key.replace(log_prefix + "/", "").split("/")
+                if len(parts) >= 4:
+                    cohort_name, band, year = parts[0], parts[1], parts[2]
+                else:
+                    cohort_name = band = year = ""
+                results.append({
+                    "cohort_name": cohort_name,
+                    "age_band": band,
+                    "event_year": year,
+                    "key": key,
+                    "bucket": log_bucket,
+                    "source": source,
+                    "last_modified": obj.get("LastModified"),
+                    "size": obj.get("Size", 0),
+                })
     return results
 
 
@@ -195,6 +219,7 @@ def _repair_running_states(s3_client, states, bucket_state, bucket_cohorts, dry_
     for s in running:
         entity_id = s.get("_entity_id", "")
         key = s.get("_key", "")
+        state_bucket = s.get("_bucket", bucket_state)
         cohort, age_band, event_year = _parse_entity_id(entity_id)
         if not cohort or not age_band or not event_year:
             print(f"  Skip {entity_id}: could not parse cohort/age_band/event_year")
@@ -220,7 +245,7 @@ def _repair_running_states(s3_client, states, bucket_state, bucket_cohorts, dry_
         state.setdefault("metadata", {})["repair_from_script"] = True
         try:
             s3_client.put_object(
-                Bucket=bucket_state,
+                Bucket=state_bucket,
                 Key=key,
                 Body=json.dumps(state, indent=2),
                 ContentType="application/json",
@@ -267,7 +292,7 @@ def main():
         help="AWS profile for S3 (default: AWS_PROFILE or default profile)",
     )
     parser.add_argument("--repair", action="store_true",
-        help="For each 'running' entity, if output exists in pgxdatalake, set state to completed in pgx-repository (run locally with profile that can write)")
+        help="For each 'running' entity, if output exists in pgxdatalake, set state to completed in its source state prefix")
     parser.add_argument("--dry-run", action="store_true", help="With --repair: only print what would be repaired")
     args = parser.parse_args()
 
@@ -288,8 +313,9 @@ def main():
 
     # ----- Pipeline state (pgx-repository) -----
     print("=" * 80)
-    print("COHORT PIPELINE STATE (pgx-repository)")
-    print(f"Bucket: {args.bucket_state}  Prefix: {STATE_PREFIX}/")
+    print("COHORT PIPELINE STATE (production + legacy fallback)")
+    print(f"Production: s3://{STATE_BUCKET}/{STATE_PREFIX}/")
+    print(f"Legacy:     s3://{LEGACY_STATE_BUCKET}/{LEGACY_STATE_PREFIX}/")
     print("=" * 80)
 
     states = fetch_pipeline_states(s3)
@@ -306,8 +332,8 @@ def main():
             created_at = _parse_iso(s.get("created_at"))
             completed_at = _parse_iso(s.get("completed_at"))
             duration_sec = _duration_seconds(created_at, completed_at)
-            created_str = created_at.strftime("%Y-%m-%d %H:%M") if created_at else "—"
-            completed_str = completed_at.strftime("%Y-%m-%d %H:%M") if completed_at else "—"
+            created_str = created_at.strftime("%Y-%m-%d %H:%M") if created_at else "-"
+            completed_str = completed_at.strftime("%Y-%m-%d %H:%M") if completed_at else "-"
             rows.append({
                 "entity_id": entity_id,
                 "status": status,
@@ -351,7 +377,7 @@ def main():
                 print("-" * 70)
                 for o in outputs:
                     lm = o["last_modified"]
-                    lm_str = lm.strftime("%Y-%m-%d %H:%M") if lm else "—"
+                    lm_str = lm.strftime("%Y-%m-%d %H:%M") if lm else "-"
                     size_mb = o["size_bytes"] / (1024 * 1024)
                     print(fmt.format(
                         o["cohort_name"], o["event_year"], o["age_band"],
@@ -370,22 +396,23 @@ def main():
     if args.logs:
         print()
         print("=" * 80)
-        print("BUILD LOGS (pgx-repository)")
-        print(f"Bucket: {args.bucket_state}  Prefix: {BUILD_LOGS_PREFIX}/")
+        print("BUILD LOGS (production + notebook fallback)")
+        print(f"Production: s3://{args.bucket_state}/{BUILD_LOGS_PREFIX}/")
+        print(f"Notebook:   s3://{LEGACY_BUILD_LOGS_BUCKET}/{LEGACY_BUILD_LOGS_PREFIX}/")
         print("=" * 80)
         logs = list_build_logs(s3, bucket=args.bucket_state)
         if not logs:
             print("No build logs found.")
         else:
             logs.sort(key=lambda x: (x["last_modified"] or datetime.min.replace(tzinfo=timezone.utc), x["cohort_name"], x["age_band"], x["event_year"]), reverse=True)
-            fmt = "{:<18} {:<8} {:<6}  {}  {}"
-            print(fmt.format("COHORT", "AGE_BAND", "YEAR", "LAST_MODIFIED", "KEY"))
+            fmt = "{:<18} {:<8} {:<6} {:<10}  {}  {}"
+            print(fmt.format("COHORT", "AGE_BAND", "YEAR", "SOURCE", "LAST_MODIFIED", "KEY"))
             print("-" * 90)
             for log in logs[:80]:
                 lm = log["last_modified"]
-                lm_str = lm.strftime("%Y-%m-%d %H:%M") if lm else "—"
+                lm_str = lm.strftime("%Y-%m-%d %H:%M") if lm else "-"
                 key_short = log["key"].split("/")[-1] if log["key"] else ""
-                print(fmt.format(log["cohort_name"], log["age_band"], str(log["event_year"]), lm_str, key_short))
+                print(fmt.format(log["cohort_name"], log["age_band"], str(log["event_year"]), log.get("source", ""), lm_str, key_short))
             if len(logs) > 80:
                 print(f"... and {len(logs) - 80} more")
             print(f"Total log files: {len(logs)}")

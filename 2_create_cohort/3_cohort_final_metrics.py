@@ -16,14 +16,13 @@ Uses DuckDB to query S3 parquet files and saves all metrics as CSV files.
 Usage:
   python 3_cohort_final_metrics.py
   python 3_cohort_final_metrics.py --output-dir ./metrics
-  python 3_cohort_final_metrics.py --target-slug fall_injury_any
+  python 3_cohort_final_metrics.py --cohort falls
 """
 
 import os
 import sys
 import argparse
 import logging
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import re
@@ -35,19 +34,24 @@ if project_root not in sys.path:
 
 from py_helpers.logging_utils import setup_logging
 from py_helpers.duckdb_utils import create_simple_duckdb_connection
-from py_helpers.s3_utils import S3_BUCKET, get_cohort_parquet_path
+from py_helpers.constants import PROJECT_SLUG
+from py_helpers.s3_utils import S3_BUCKET
 import boto3
 
 
-def discover_cohort_files(target_slug: str = "fall_injury_any", bucket: str = S3_BUCKET) -> Dict[str, List[Dict[str, str]]]:
+def discover_cohort_files(
+    cohort_filter: Optional[str] = None,
+    bucket: str = S3_BUCKET,
+    project_slug: str = PROJECT_SLUG,
+) -> Dict[str, List[Dict[str, str]]]:
     """
-    Discover all cohort parquet files in S3.
+    Discover all project-scoped cohort parquet files in S3.
     
     Returns:
         Dict mapping cohort_name -> list of dicts with keys: s3_path, event_year, age_band
     """
     s3_client = boto3.client('s3')
-    prefix = f"gold/cohorts_{target_slug}/"
+    prefix = f"gold/{project_slug}/cohorts/"
     
     cohort_files = {}
     
@@ -61,10 +65,12 @@ def discover_cohort_files(target_slug: str = "fall_injury_any", bucket: str = S3
             if not key.endswith("cohort.parquet"):
                 continue
             
-            # Parse path: gold/cohorts_{target}/cohort_name={cohort}/event_year={year}/age_band={band}/cohort.parquet
+            # Parse path: gold/{project_slug}/cohorts/cohort_name={cohort}/event_year={year}/age_band={band}/cohort.parquet
             match = re.search(r'cohort_name=([^/]+)/event_year=(\d+)/age_band=([^/]+)/cohort\.parquet', key)
             if match:
                 cohort_name = match.group(1)
+                if cohort_filter and cohort_name != cohort_filter:
+                    continue
                 event_year = match.group(2)
                 age_band = match.group(3)
                 
@@ -189,7 +195,7 @@ def aggregate_metrics_by_cohort(all_metrics: List[Dict], cohort_name: str) -> Di
     
     for metrics in all_metrics:
         # Aggregate transactions by year
-        for year, target_txns, control_txns, target_pats, control_pats in metrics["transactions_by_year"]:
+        for year, target_txns, control_txns, _target_pats, _control_pats in metrics["transactions_by_year"]:
             year = int(year)
             if year not in year_data:
                 year_data[year] = {
@@ -353,7 +359,8 @@ def calculate_distinct_patients_by_year(conn, cohort_files: List[Dict], cohort_n
 def main():
     parser = argparse.ArgumentParser(description="Generate final metrics for cohorts")
     parser.add_argument("--output-dir", type=str, default="./cohort_metrics", help="Output directory for CSV files")
-    parser.add_argument("--target-slug", type=str, default="fall_injury_any", help="Target slug for S3 path (e.g. fall_injury_any or ed_event)")
+    parser.add_argument("--cohort", choices=["falls", "ed"], default=None, help="Optional cohort filter")
+    parser.add_argument("--target-slug", type=str, default=None, help="Deprecated; ignored. Cohorts are read from gold/{PROJECT_SLUG}/cohorts/")
     parser.add_argument("--log-level", type=str, default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     
     args = parser.parse_args()
@@ -368,11 +375,14 @@ def main():
     logger.info("=" * 80)
     logger.info("Cohort Final Metrics Generation")
     logger.info("=" * 80)
-    logger.info(f"Target slug: {args.target_slug}")
+    if args.target_slug:
+        logger.warning("--target-slug is deprecated and ignored; using project-scoped cohort root")
+    logger.info(f"Project slug: {PROJECT_SLUG}")
+    logger.info(f"Cohort filter: {args.cohort or 'all'}")
     logger.info(f"Output directory: {output_dir}")
     
     # Discover cohort files
-    cohort_files_dict = discover_cohort_files(target_slug=args.target_slug, bucket=S3_BUCKET)
+    cohort_files_dict = discover_cohort_files(cohort_filter=args.cohort, bucket=S3_BUCKET)
     
     if not cohort_files_dict:
         logger.warning("No cohort files found. Check S3 bucket and target slug.")

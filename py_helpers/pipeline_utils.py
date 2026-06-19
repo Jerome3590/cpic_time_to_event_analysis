@@ -6,7 +6,6 @@ persist/load mappings) and the PipelineState + GlobalPipelineTracker classes.
 """
 
 import os
-import sys
 import json
 import tempfile
 import multiprocessing as mp
@@ -15,9 +14,20 @@ import boto3
 from datetime import datetime
 import logging
 
-# Default S3 bucket used for pipeline state metadata
-S3_BUCKET = os.environ.get("PGX_S3_BUCKET", "pgx-repository")
-STATE_PREFIX = "pgx-pipeline-status"
+try:
+	from py_helpers.constants import CHECKPOINT_BUCKET, PROJECT_SLUG
+except Exception:
+	CHECKPOINT_BUCKET = os.environ.get("CPIC_CHECKPOINT_BUCKET", os.environ.get("CPIC_S3_BUCKET", "pgxdatalake"))
+	PROJECT_SLUG = os.environ.get("CPIC_PROJECT_SLUG", "cpic_time_to_event")
+
+# Production S3 location for pipeline state metadata.
+S3_BUCKET = CHECKPOINT_BUCKET
+STATE_PREFIX = f"gold/{PROJECT_SLUG}/pipeline_checkpoints"
+
+# Legacy state location retained as a read fallback so in-progress EC2 runs can
+# resume without losing their existing `pgx-pipeline-status` checkpoints.
+LEGACY_STATE_BUCKET = os.environ.get("PGX_S3_BUCKET", "pgx-repository")
+LEGACY_STATE_PREFIX = "pgx-pipeline-status"
 
 
 def get_multiprocessing_context():
@@ -36,8 +46,12 @@ def get_multiprocessing_context():
 	return mp.get_context('spawn'), 'spawn'
 
 
-def persist_mappings_to_temp(icd_map: Dict[str, str], cpt_map: Dict[str, str],
-							   icd_target_map: Dict[str, str], drug_map: Optional[Dict[str, str]] = None) -> Optional[str]:
+def persist_mappings_to_temp(
+	icd_map: Dict[str, str],
+	cpt_map: Dict[str, str],
+	icd_target_map: Dict[str, str],
+	drug_map: Optional[Dict[str, str]] = None,
+) -> Optional[str]:
 	"""
 	Persist mappings to temporary JSON files to reduce memory duplication in spawn mode.
 	Returns temp directory path if successful, None otherwise.
@@ -125,7 +139,9 @@ class PipelineState:
 		self.entity_id = entity_id.replace('/', '_')  # S3 safe
 		self.logger = logger or logging.getLogger(__name__)
 		self.s3_client = boto3.client('s3')
+		self.s3_bucket = S3_BUCKET
 		self.state_key = f"{STATE_PREFIX}/{pipeline_name}/{self.entity_id}/state.json"
+		self.legacy_state_key = f"{LEGACY_STATE_PREFIX}/{pipeline_name}/{self.entity_id}/state.json"
 		self.state = self._load_state()
 
 	def _load_state(self) -> Dict[str, Any]:
@@ -134,29 +150,33 @@ class PipelineState:
 			state = json.loads(response['Body'].read().decode('utf-8'))
 			self.logger.info(f"📂 Loaded pipeline state: {len(state.get('completed_steps', []))} steps completed")
 			return state
-		except self.s3_client.exceptions.NoSuchKey:
-			self.logger.info(f"📂 No existing state found, starting fresh")
-			return {
-				'pipeline_name': self.pipeline_name,
-				'entity_id': self.entity_id,
-				'created_at': datetime.utcnow().isoformat(),
-				'updated_at': datetime.utcnow().isoformat(),
-				'status': 'running',
-				'completed_steps': [],
-				'failed_steps': [],
-				'metadata': {}
-			}
-		except Exception as e:
-			self.logger.warning(f"⚠️ Could not load state: {e}, starting fresh")
-			return {
-				'pipeline_name': self.pipeline_name,
-				'entity_id': self.entity_id,
-				'created_at': datetime.utcnow().isoformat(),
-				'status': 'running',
-				'completed_steps': [],
-				'failed_steps': [],
-				'metadata': {}
-			}
+		except Exception as primary_error:
+			try:
+				response = self.s3_client.get_object(Bucket=LEGACY_STATE_BUCKET, Key=self.legacy_state_key)
+				state = json.loads(response['Body'].read().decode('utf-8'))
+				self.logger.info(
+					"📂 Loaded legacy pipeline state from s3://%s/%s; future saves use s3://%s/%s",
+					LEGACY_STATE_BUCKET,
+					self.legacy_state_key,
+					S3_BUCKET,
+					self.state_key,
+				)
+				return state
+			except Exception:
+				if primary_error.__class__.__name__ != "NoSuchKey":
+					self.logger.warning(f"⚠️ Could not load state: {primary_error}, starting fresh")
+				else:
+					self.logger.info("📂 No existing state found, starting fresh")
+				return {
+					'pipeline_name': self.pipeline_name,
+					'entity_id': self.entity_id,
+					'created_at': datetime.utcnow().isoformat(),
+					'updated_at': datetime.utcnow().isoformat(),
+					'status': 'running',
+					'completed_steps': [],
+					'failed_steps': [],
+					'metadata': {}
+				}
 
 	def _save_state(self):
 		try:
@@ -187,12 +207,15 @@ class PipelineState:
 		return completed
 
 	def _check_step_checkpoint_exists(self, step_name: str) -> bool:
-		try:
-			checkpoint_key = f"{STATE_PREFIX}/{self.pipeline_name}/{self.entity_id}/checkpoints/{step_name}.json"
-			self.s3_client.head_object(Bucket=S3_BUCKET, Key=checkpoint_key)
-			return True
-		except:
-			return False
+		checkpoint_key = f"{STATE_PREFIX}/{self.pipeline_name}/{self.entity_id}/checkpoints/{step_name}.json"
+		legacy_checkpoint_key = f"{LEGACY_STATE_PREFIX}/{self.pipeline_name}/{self.entity_id}/checkpoints/{step_name}.json"
+		for bucket, key in ((S3_BUCKET, checkpoint_key), (LEGACY_STATE_BUCKET, legacy_checkpoint_key)):
+			try:
+				self.s3_client.head_object(Bucket=bucket, Key=key)
+				return True
+			except Exception:
+				continue
+		return False
 
 	def mark_step_completed(self, step_name: str, metadata: Optional[Dict] = None):
 		if not self.is_step_completed(step_name):
@@ -305,7 +328,7 @@ class PipelineState:
 
 			s3_client.head_object(Bucket=bucket, Key=key)
 			return True
-		except:
+		except Exception:
 			return False
 
 
@@ -323,7 +346,7 @@ class GlobalPipelineTracker:
 		try:
 			response = self.s3_client.get_object(Bucket=S3_BUCKET, Key=self.tracker_key)
 			return json.loads(response['Body'].read().decode('utf-8'))
-		except:
+		except Exception:
 			return {
 				'pipeline_name': self.pipeline_name,
 				'started_at': datetime.utcnow().isoformat(),
