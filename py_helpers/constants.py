@@ -11,6 +11,7 @@ PGX_TARGET_CPT_CODES = os.environ.get("PGX_TARGET_CPT_CODES", "")
 PGX_TARGET_ICD_PREFIXES = os.environ.get("PGX_TARGET_ICD_PREFIXES", "")
 PGX_TARGET_CPT_PREFIXES = os.environ.get("PGX_TARGET_CPT_PREFIXES", "")
 OPIOID_ICD_CODES = tuple(code.strip() for code in PGX_TARGET_ICD_CODES.split(",") if code.strip())
+OPIOID_ICD_PREFIXES = tuple(code.strip() for code in PGX_TARGET_ICD_PREFIXES.split(",") if code.strip())
 
 # Richmond, VA zip codes
 RICHMOND_ZIP_CODES = {
@@ -93,6 +94,41 @@ ALL_ICD_DIAGNOSIS_COLUMNS = [
 ]
 
 
+def _normalize_icd_value(value):
+    return "".join(char for char in str(value).upper() if char.isalnum())
+
+
+def _sql_tuple(values):
+    cleaned = tuple(_normalize_icd_value(value).replace("'", "''") for value in values if str(value).strip())
+    return "(" + ", ".join(f"'{value}'" for value in cleaned) + ")"
+
+
+def _is_falls_target():
+    target_name = PGX_TARGET_NAME.strip().lower()
+    configured_values = {
+        _normalize_icd_value(value)
+        for value in OPIOID_ICD_PREFIXES + OPIOID_ICD_CODES
+    }
+    injury_prefixes = {_normalize_icd_value(value) for value in FALL_INJURY_ICD_PREFIXES}
+    external_prefixes = {_normalize_icd_value(value) for value in FALL_EXTERNAL_CAUSE_PREFIXES}
+    return target_name in {"falls", "fall_injury_any", "fall_injury"} or (
+        bool(configured_values & injury_prefixes) and bool(configured_values & external_prefixes)
+    )
+
+
+def _icd_prefix_sql_condition(prefixes, table_alias=None):
+    prefix = f"{table_alias}." if table_alias else ""
+    values = tuple(_normalize_icd_value(value).replace("'", "''") for value in prefixes if str(value).strip())
+    if not values:
+        return "FALSE"
+    conditions = [
+        f"regexp_replace(upper(COALESCE({prefix}{col}, '')), '[^A-Z0-9]', '', 'g') LIKE '{value}%'"
+        for col in ALL_ICD_DIAGNOSIS_COLUMNS
+        for value in values
+    ]
+    return "(" + " OR ".join(conditions) + ")"
+
+
 def get_icd_codes_sql_condition(icd_codes, table_alias=None):
     """
     Generate SQL condition to check for specific ICD codes across ALL diagnosis code positions.
@@ -105,13 +141,26 @@ def get_icd_codes_sql_condition(icd_codes, table_alias=None):
         SQL WHERE condition string checking all 10 ICD diagnosis columns
     """
     prefix = f"{table_alias}." if table_alias else ""
-    codes_tuple = tuple(icd_codes)
+    codes_tuple = _sql_tuple(icd_codes)
     
-    conditions = [f"{prefix}{col} IN {codes_tuple}" for col in ALL_ICD_DIAGNOSIS_COLUMNS]
+    conditions = [
+        f"regexp_replace(upper(COALESCE({prefix}{col}, '')), '[^A-Z0-9]', '', 'g') IN {codes_tuple}"
+        for col in ALL_ICD_DIAGNOSIS_COLUMNS
+    ]
     return "(" + " OR ".join(conditions) + ")"
 
 
 def get_opioid_icd_sql_condition(table_alias=None):
+    if _is_falls_target():
+        return (
+            "("
+            + _icd_prefix_sql_condition(FALL_INJURY_ICD_PREFIXES, table_alias)
+            + " AND "
+            + _icd_prefix_sql_condition(FALL_EXTERNAL_CAUSE_PREFIXES, table_alias)
+            + ")"
+        )
+    if OPIOID_ICD_PREFIXES:
+        return _icd_prefix_sql_condition(OPIOID_ICD_PREFIXES, table_alias)
     return get_icd_codes_sql_condition(OPIOID_ICD_CODES, table_alias) if OPIOID_ICD_CODES else "FALSE"
 
 

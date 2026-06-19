@@ -1217,7 +1217,7 @@ def run_phase3_step3_final_cohort_fact(context):
             )
         
         # target ICD-specific checks in cohorts (all 10 ICD diagnosis columns — matches exclusion logic)
-        f1120_condition = get_icd_codes_sql_condition(["target ICD"])
+        f1120_condition = get_opioid_icd_sql_condition()
         # Use fetchdf() to avoid INT32 overflow in COUNT queries
         f1120_opioid_check_df = cohort_conn_duckdb.sql(f"""
         SELECT 
