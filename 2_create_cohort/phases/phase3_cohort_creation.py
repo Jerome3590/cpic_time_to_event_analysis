@@ -27,8 +27,11 @@ from py_helpers.constants import (
     S3_BUCKET,
     get_opioid_icd_sql_condition,
     get_icd_codes_sql_condition,
+    get_icd_prefixes_sql_condition,
     ALL_ICD_DIAGNOSIS_COLUMNS,
     OPIOID_ICD_CODES,
+    FALL_EXTERNAL_CAUSE_PREFIXES,
+    FALL_INJURY_ICD_PREFIXES,
     NON_FALLS_MAX_ED_VISITS_PER_YEAR,
 )
 import os
@@ -89,6 +92,56 @@ def run_phase3_step3_final_cohort_fact(context):
         # HIGH-IMPACT FIX #3: Materialize target_patients once and reuse
         # This avoids recomputing the expensive ICD condition check multiple times
         opioid_icd_condition = get_opioid_icd_sql_condition()
+        try:
+            total_rows_df = cohort_conn_duckdb.sql("""
+            SELECT
+                CAST(COUNT(*) AS BIGINT) AS row_count,
+                CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) AS patient_count
+            FROM unified_event_fact_table
+            """).fetchdf()
+            total_rows = int(total_rows_df.iloc[0]["row_count"]) if not total_rows_df.empty else 0
+            total_patients = int(total_rows_df.iloc[0]["patient_count"]) if not total_rows_df.empty else 0
+            logger.info(
+                "→ [PHASE 3 STEP 3 DEBUG] unified_event_fact_table rows=%s distinct_patients=%s",
+                f"{total_rows:,}",
+                f"{total_patients:,}",
+            )
+
+            event_class_df = cohort_conn_duckdb.sql("""
+            SELECT event_classification, CAST(COUNT(*) AS BIGINT) AS row_count,
+                   CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) AS patient_count
+            FROM unified_event_fact_table
+            GROUP BY event_classification
+            ORDER BY row_count DESC
+            """).fetchdf()
+            logger.info("→ [PHASE 3 STEP 3 DEBUG] event_classification counts:\n%s", event_class_df.to_string(index=False))
+
+            injury_condition = get_icd_prefixes_sql_condition(FALL_INJURY_ICD_PREFIXES)
+            external_condition = get_icd_prefixes_sql_condition(FALL_EXTERNAL_CAUSE_PREFIXES)
+            debug_counts_df = cohort_conn_duckdb.sql(f"""
+            SELECT
+                CAST(COUNT(DISTINCT CASE WHEN {injury_condition} THEN mi_person_key END) AS BIGINT) AS injury_prefix_patients,
+                CAST(COUNT(DISTINCT CASE WHEN {external_condition} THEN mi_person_key END) AS BIGINT) AS external_cause_prefix_patients,
+                CAST(COUNT(DISTINCT CASE WHEN ({injury_condition}) AND ({external_condition}) THEN mi_person_key END) AS BIGINT) AS same_row_falls_patients,
+                CAST(COUNT(DISTINCT CASE WHEN {opioid_icd_condition} THEN mi_person_key END) AS BIGINT) AS target_condition_patients
+            FROM unified_event_fact_table
+            """).fetchdf()
+            logger.info("→ [PHASE 3 STEP 3 DEBUG] falls target prefix counts:\n%s", debug_counts_df.to_string(index=False))
+
+            sample_df = cohort_conn_duckdb.sql(f"""
+            SELECT mi_person_key, event_date, event_classification,
+                   primary_icd_diagnosis_code, two_icd_diagnosis_code, three_icd_diagnosis_code,
+                   four_icd_diagnosis_code, five_icd_diagnosis_code, six_icd_diagnosis_code,
+                   seven_icd_diagnosis_code, eight_icd_diagnosis_code, nine_icd_diagnosis_code,
+                   ten_icd_diagnosis_code
+            FROM unified_event_fact_table
+            WHERE ({injury_condition}) OR ({external_condition})
+            LIMIT 10
+            """).fetchdf()
+            logger.info("→ [PHASE 3 STEP 3 DEBUG] sample injury/external ICD rows:\n%s", sample_df.to_string(index=False))
+        except Exception as debug_exc:
+            logger.warning("→ [PHASE 3 STEP 3 DEBUG] target debug logging failed: %s", debug_exc)
+
         logger.info("→ [PHASE 3 STEP 3] Materializing target_patients view (computed once, reused everywhere)...")
         materialize_target_patients_sql = f"""
         CREATE OR REPLACE TEMP VIEW target_patients_materialized AS

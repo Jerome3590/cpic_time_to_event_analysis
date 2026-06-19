@@ -129,6 +129,10 @@ def _icd_prefix_sql_condition(prefixes, table_alias=None):
     return "(" + " OR ".join(conditions) + ")"
 
 
+def get_icd_prefixes_sql_condition(icd_prefixes, table_alias=None):
+    return _icd_prefix_sql_condition(icd_prefixes, table_alias)
+
+
 def get_icd_codes_sql_condition(icd_codes, table_alias=None):
     """
     Generate SQL condition to check for specific ICD codes across ALL diagnosis code positions.
