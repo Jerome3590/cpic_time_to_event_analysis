@@ -23,13 +23,12 @@ except ImportError:
     s3_client = boto3.client('s3')
 
 try:
-    from py_helpers.constants import CHECKPOINT_BUCKET, PROJECT_SLUG
+    from py_helpers.constants import LOG_BUCKET, LOG_PREFIX
 except ImportError:
-    CHECKPOINT_BUCKET = "pgxdatalake"
-    PROJECT_SLUG = "cpic_time_to_event"
+    LOG_BUCKET = "mushin-solutions-project-metadata"
+    LOG_PREFIX = "notebooks"
 
-# Log key prefix: gold/{PROJECT_SLUG}/logs/...
-_LOG_PREFIX = f"gold/{PROJECT_SLUG}/logs"
+_LOG_PREFIX = LOG_PREFIX.strip("/")
 
 
 class AutoFlushHandler(logging.StreamHandler):
@@ -158,9 +157,9 @@ def save_logs_to_s3(log_buffer, cohort_name, band, year, pipeline_phase="apcd_in
 
         # Create checkpoint-specific filename if provided
         if checkpoint_name:
-            log_path = f"s3://{CHECKPOINT_BUCKET}/{_LOG_PREFIX}/{pipeline_phase}/{cohort_name}/{band}/{year}/log_{timestamp}_{checkpoint_name}.txt"
+            log_path = f"s3://{LOG_BUCKET}/{_LOG_PREFIX}/{pipeline_phase}/{cohort_name}/{band}/{year}/log_{timestamp}_{checkpoint_name}.txt"
         else:
-            log_path = f"s3://{CHECKPOINT_BUCKET}/{_LOG_PREFIX}/{pipeline_phase}/{cohort_name}/{band}/{year}/log_{timestamp}.txt"
+            log_path = f"s3://{LOG_BUCKET}/{_LOG_PREFIX}/{pipeline_phase}/{cohort_name}/{band}/{year}/log_{timestamp}.txt"
 
         log_content = log_buffer.getvalue()
         save_to_s3_text(log_content, log_path, logger=logger)
@@ -221,7 +220,7 @@ def save_logs_checkpoint(log_buffer, cohort_name, band, year, step_name, pipelin
             description = description.strip('_')
 
         checkpoint_name = f"step{step_num}_{description}"
-        log_path = f"s3://{CHECKPOINT_BUCKET}/{_LOG_PREFIX}/{pipeline_phase}/{cohort_name}/{band}/{year}/log_{timestamp}_{checkpoint_name}.txt"
+        log_path = f"s3://{LOG_BUCKET}/{_LOG_PREFIX}/{pipeline_phase}/{cohort_name}/{band}/{year}/log_{timestamp}_{checkpoint_name}.txt"
 
         log_content = log_buffer.getvalue()
         save_to_s3_text(log_content, log_path, logger=logger)
@@ -296,7 +295,7 @@ def save_logs_immediate(log_buffer, cohort_name, band, year, pipeline_phase="apc
             year = year.replace('event_year=', '')
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        log_path = f"s3://{CHECKPOINT_BUCKET}/{_LOG_PREFIX}/{pipeline_phase}/{cohort_name}/{band}/{year}/log_{timestamp}_{reason}.txt"
+        log_path = f"s3://{LOG_BUCKET}/{_LOG_PREFIX}/{pipeline_phase}/{cohort_name}/{band}/{year}/log_{timestamp}_{reason}.txt"
 
         log_content = log_buffer.getvalue()
         save_to_s3_text(log_content, log_path, logger=logger)
