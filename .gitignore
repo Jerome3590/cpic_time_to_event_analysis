@@ -74,3 +74,6 @@ tmp/
 **/package-lock.json
 npm-debug.log*
 yarn-error.log*
+
+# ── Local AWS operations ──────────────────────────────────────────────────────
+aws/
