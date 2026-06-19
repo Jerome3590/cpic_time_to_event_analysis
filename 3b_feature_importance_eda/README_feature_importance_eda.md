@@ -9,7 +9,7 @@ Feature Importance EDA performs additional exploratory data analysis on **alread
 
 **Note**: This is NOT a DTW filter. Feature Importance EDA uses BupaR process mining and code research to filter already-processed aggregated feature importances, not raw event data. DTW is used separately in Step 4b (protocol filtering) and Step 9 (dashboard visualizations).
 
-Based on this EDA, we filter and update the aggregated feature importances to produce refined `cohort_feature_importance` files. **Step 3c** (in `2_feature_importance.ipynb`) is the final update: it strips any remaining BupaR-identified leakage from these CSVs; Step 4 uses only the Step 3c output to create model data.
+Based on this EDA, we filter and update the aggregated feature importances to produce refined `cohort_feature_importance` files. Step 4 uses the refined output to create model data.
 
 ## Purpose
 
@@ -17,7 +17,7 @@ Based on this EDA, we filter and update the aggregated feature importances to pr
 - **Research and validate codes**: Identify and validate administrative, scheduling, and non-medical codes through code research (actual event-level filtering happens in Step 4b)
 - **Apply safe feature filtering**: Exclude post-target leakage features from aggregated feature importance list while keeping all pre-target features to maximize information available to the algorithm
 - **Refine feature importances**: Update already-processed aggregated feature importances based on BupaR and code research findings
-- **Output refined features**: Generate `cohort_feature_importance` files; Step 3c (2_feature_importance.ipynb) performs the final update before Step 4
+- **Output refined features**: Generate `cohort_feature_importance` files before Step 4
 
 **Key Point**: Feature Importance EDA filters **aggregated feature importances** (already processed from Step 3), not raw event data. It uses BupaR process mining and code research, not DTW.
 
@@ -25,7 +25,7 @@ Based on this EDA, we filter and update the aggregated feature importances to pr
 
 - **Aggregated feature importances from Step 3 (required, not optional):**
   - Path: `3a_feature_importance/outputs/{cohort}/{age_band}/{cohort}_{age_band}_aggregated_feature_importance.csv`
-  - These define the feature set and include features that may be target leakage. Any step that uses them will **fail early** if they are not ready (workflow, BupaR R scripts, create_bupar_input_from_cohort, control cohort creation, filter_and_refine). Run Step 3a (2_feature_importance.ipynb) first; do not continue without them.
+  - These define the feature set and include features that may be target leakage. Any step that uses them will **fail early** if they are not ready (workflow, BupaR R scripts, create_bupar_input_from_cohort, control cohort creation, filter_and_refine). Run Step 3a (`3a_feature_importance/feature_importance_cohort_runner.ipynb`) first; do not continue without them.
 - **Model events data** (for BupaR analysis): Step 3b uses **only Step 1, Step 2, and Step 3 artifacts**. We do not read or write 4_model_data (that is created after target leakage removal).
   - Target: `3b_feature_importance_eda/outputs/cohorts/input_model_data/cohort_name={slug}/age_band={age_band}/model_events.parquet` (built from Step 2 cohort + Step 3 3a FI + target via `create_bupar_input_from_cohort.py`)
   - Control (if used): same directory tree under 3b `outputs/`; created via `4_model_data/create_control_cohort_model_data.py --output-root 3b_feature_importance_eda/outputs --aggregated-fi-csv <path>`. **3a aggregated feature importance is required** (not optional); control events are filtered to the same feature set as target (admin codes removed) to reduce noise in BupaR.

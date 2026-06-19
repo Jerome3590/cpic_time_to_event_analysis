@@ -38,8 +38,8 @@ Use project utility commands for notebook output sync when S3 output pointers ar
 
 ```bash
 python cursor_setup.py status
-python cursor_setup.py push-outputs 5_pgx_analysis/pgx_cohort_runner.ipynb
-python cursor_setup.py fetch-outputs 5_pgx_analysis/pgx_cohort_runner.ipynb
+python cursor_setup.py push-outputs 3_model_train_shap_ffa.ipynb
+python cursor_setup.py fetch-outputs 3_model_train_shap_ffa.ipynb
 ```
 
 ## Known Patterns

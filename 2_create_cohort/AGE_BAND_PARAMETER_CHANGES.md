@@ -59,10 +59,9 @@ COHORT_NAMES <- c("falls", "ed")
 2_create_cohort/run_series_ed.py     →  AGE_BANDS_ORDERED = ["65-74", "75-84"]
 ```
 
-### All step-level runner notebooks
+### Archived step-level runner notebooks
 
-`5_pgx_analysis/pgx_cohort_runner.ipynb`, `6_final_model/final_model_cohort_runner.ipynb`,
-`7_shap_analysis/shap_cohort_runner.ipynb` — all filter `REQUIRED_COHORTS` to `["65-74", "75-84"]`.
+Standalone runner notebooks for `5_pgx_analysis`, `6_final_model`, and `7_shap_analysis` have been moved to `archive/inactive_notebooks/`. The active consolidated workflow is `3_model_train_shap_ffa.ipynb`, which uses `REQUIRED_COHORTS = ["65-74", "75-84"]` through the shared constants.
 
 ---
 
@@ -83,7 +82,7 @@ uniform ED filtering parameters apply:
 | Parameter | Value |
 |-----------|-------|
 | Injury ICD criterion | S00–S99, T07, T14, T20–T34, T79 (any position) |
-| External cause criterion | W00–W19 (any position, same encounter) |
+| External cause criterion | W00–W19 (any position; same patient within `CPIC_FALL_TARGET_WINDOW_DAYS`, default 7 days) |
 | Auxiliary: `fall_injury_serious` | + fracture codes T02, S12/22/32/42/52/62/72/82/92 |
 | Auxiliary: `fall_injury_head` | + S00–S09 |
 | Feature flags (NOT outcomes) | R29.6 (tendency to fall), Z91.81 (history of falls), CPT 1100F |
