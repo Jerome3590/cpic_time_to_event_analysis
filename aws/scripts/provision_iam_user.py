@@ -4,7 +4,7 @@ import os
 import secrets
 import string
 import sys
-from typing import Optional
+from pathlib import Path
 
 import boto3
 from botocore.exceptions import ClientError
@@ -12,7 +12,8 @@ from botocore.exceptions import ClientError
 
 DEFAULT_USERNAME = "srhashimi2"
 DEFAULT_EMAIL = "srhashimi2@vcu.edu"
-DEFAULT_POLICY_ARN = "arn:aws:iam::aws:policy/ReadOnlyAccess"
+DEFAULT_POLICY_NAME = "CpicTimeToEventArtifactAccess"
+DEFAULT_POLICY_FILE = Path(__file__).resolve().parents[1] / "config" / "cpic-time-to-event-artifact-access-policy-v2.json"
 DEFAULT_REGION = os.getenv("AWS_REGION") or os.getenv("AWS_DEFAULT_REGION") or "us-east-1"
 
 
@@ -48,6 +49,30 @@ def ensure_user(iam, username: str, execute: bool) -> None:
 
     iam.create_user(UserName=username)
     print(f"Created IAM user: {username}")
+
+
+def ensure_managed_policy(iam, account_id: str, policy_name: str, policy_file: Path, execute: bool) -> str:
+    policy_arn = f"arn:aws:iam::{account_id}:policy/{policy_name}"
+    if not execute:
+        print(f"DRY RUN: would create or reuse managed policy {policy_arn} from {policy_file}")
+        return policy_arn
+
+    try:
+        iam.get_policy(PolicyArn=policy_arn)
+        print(f"Managed policy exists: {policy_arn}")
+        return policy_arn
+    except ClientError as exc:
+        if exc.response.get("Error", {}).get("Code") != "NoSuchEntity":
+            raise
+
+    policy_document = policy_file.read_text(encoding="utf-8")
+    iam.create_policy(
+        PolicyName=policy_name,
+        PolicyDocument=policy_document,
+        Description="S3 plus Athena/Glue access to CPIC time-to-event artifacts only",
+    )
+    print(f"Created managed policy: {policy_arn}")
+    return policy_arn
 
 
 def ensure_policy_attached(iam, username: str, policy_arn: str, execute: bool) -> None:
@@ -131,7 +156,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Provision an IAM user and email a temporary password.")
     parser.add_argument("--username", default=DEFAULT_USERNAME)
     parser.add_argument("--email", default=DEFAULT_EMAIL)
-    parser.add_argument("--policy-arn", default=DEFAULT_POLICY_ARN)
+    parser.add_argument("--policy-arn", default=None, help="Optional existing policy ARN to attach instead of creating the scoped CPIC policy.")
+    parser.add_argument("--policy-name", default=DEFAULT_POLICY_NAME)
+    parser.add_argument("--policy-file", default=str(DEFAULT_POLICY_FILE))
     parser.add_argument("--sender", default=os.getenv("AWS_SES_SENDER"))
     parser.add_argument("--region", default=DEFAULT_REGION)
     parser.add_argument("--execute", action="store_true", help="Create/update IAM resources and send email.")
@@ -164,12 +191,18 @@ def main() -> int:
         ses = None
         account_id = "<aws-account-id>"
 
+    policy_file = Path(args.policy_file).resolve()
+    if args.policy_arn:
+        policy_arn = args.policy_arn
+    else:
+        policy_arn = ensure_managed_policy(iam, account_id, args.policy_name, policy_file, execute)
+
     ensure_user(iam, args.username, execute)
     if execute:
-        ensure_policy_attached(iam, args.username, args.policy_arn, execute)
+        ensure_policy_attached(iam, args.username, policy_arn, execute)
         set_login_profile(iam, args.username, password, execute)
     else:
-        ensure_policy_attached(iam, args.username, args.policy_arn, execute)
+        ensure_policy_attached(iam, args.username, policy_arn, execute)
         set_login_profile(iam, args.username, "<generated-temp-password>", execute)
 
     if args.skip_email:

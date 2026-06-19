@@ -1,0 +1,81 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListCpicTimeToEventArtifactPrefixOnly",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetBucketLocation"
+      ],
+      "Resource": "arn:aws:s3:::pgxdatalake",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "gold/cpic_time_to_event",
+            "gold/cpic_time_to_event/*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ReadCpicTimeToEventArtifacts",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ],
+      "Resource": "arn:aws:s3:::pgxdatalake/gold/cpic_time_to_event/*"
+    },
+    {
+      "Sid": "AthenaQueryAccess",
+      "Effect": "Allow",
+      "Action": [
+        "athena:BatchGetNamedQuery",
+        "athena:BatchGetPreparedStatement",
+        "athena:BatchGetQueryExecution",
+        "athena:GetDatabase",
+        "athena:GetDataCatalog",
+        "athena:GetNamedQuery",
+        "athena:GetPreparedStatement",
+        "athena:GetQueryExecution",
+        "athena:GetQueryResults",
+        "athena:GetQueryResultsStream",
+        "athena:GetTableMetadata",
+        "athena:GetWorkGroup",
+        "athena:ListDatabases",
+        "athena:ListDataCatalogs",
+        "athena:ListNamedQueries",
+        "athena:ListPreparedStatements",
+        "athena:ListQueryExecutions",
+        "athena:ListTableMetadata",
+        "athena:ListWorkGroups",
+        "athena:StartQueryExecution",
+        "athena:StopQueryExecution"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "GlueCatalogReadAccess",
+      "Effect": "Allow",
+      "Action": [
+        "glue:BatchGetPartition",
+        "glue:GetCatalogImportStatus",
+        "glue:GetColumnStatisticsForPartition",
+        "glue:GetColumnStatisticsForTable",
+        "glue:GetDatabase",
+        "glue:GetDatabases",
+        "glue:GetPartition",
+        "glue:GetPartitions",
+        "glue:GetTable",
+        "glue:GetTableVersion",
+        "glue:GetTableVersions",
+        "glue:GetTables",
+        "glue:GetUserDefinedFunction",
+        "glue:GetUserDefinedFunctions",
+        "glue:SearchTables"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

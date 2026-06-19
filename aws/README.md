@@ -10,8 +10,10 @@ Default requested user:
 
 - **IAM username:** `srhashimi2`
 - **Email:** `srhashimi2@vcu.edu`
+- **Access:** S3 bucket/folder visibility plus object access for CPIC time-to-event artifacts; Athena/Glue catalog/query access
+- **Excluded:** EC2, Lambda, and unrelated AWS services
 
-Use the IAM runbook in `IAM.md` and the provisioning script in `scripts/provision_iam_user.py`.
+Use the IAM runbook in `IAM.md`, the scoped policy in `config/cpic-time-to-event-artifact-access-policy-v2.json`, and the provisioning script in `scripts/provision_iam_user.py`.
 
 ## Safety
 
