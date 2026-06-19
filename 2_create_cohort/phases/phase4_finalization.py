@@ -31,6 +31,7 @@ def run_phase4_complete_pipeline(context):
     cohort_conn_duckdb = context["cohort_conn_duckdb"]
     age_band = context["age_band"]
     event_year = context["event_year"]
+    requested_cohort = context.get("cohort", "both")
     pipeline_state = context.get("pipeline_state")
     
     step_name = "phase4_complete_pipeline"
@@ -46,7 +47,8 @@ def run_phase4_complete_pipeline(context):
         # Ensure required views exist if earlier phases were skipped
         ensure_gold_views(cohort_conn_duckdb, logger, age_band, event_year)
         ensure_unified_views(cohort_conn_duckdb, logger)
-        ensure_cohort_views(cohort_conn_duckdb, logger)
+        if requested_cohort == "both":
+            ensure_cohort_views(cohort_conn_duckdb, logger)
         
         # Note: We now write to local NVMe first, then use aws s3 sync
         # This is faster and more reliable than DuckDB's direct S3 COPY
@@ -76,23 +78,24 @@ def run_phase4_complete_pipeline(context):
         # HIGH-IMPACT FIX #1: Check cohort views exist (not just row counts)
         # This prevents silent partial pipeline success if views are missing
         # Use fetchdf() for consistency (though these counts are small)
-        cohort_exists_check_df = cohort_conn_duckdb.sql("""
-        SELECT 
-            COUNT(*) as view_count
-        FROM information_schema.tables
-        WHERE table_schema = 'main'
-          AND (table_name = 'falls_cohort' OR table_name = 'ed_cohort')
-        """).fetchdf()
-        cohort_exists_check = int(cohort_exists_check_df.iloc[0]['view_count']) if not cohort_exists_check_df.empty else 0
-        
-        if cohort_exists_check < 2:
-            missing_views = []
-            opioid_check_df = cohort_conn_duckdb.sql("SELECT COUNT(*) AS count FROM information_schema.tables WHERE table_schema = 'main' AND table_name = 'falls_cohort'").fetchdf()
-            if int(opioid_check_df.iloc[0]['count']) if not opioid_check_df.empty else 0 == 0:
-                missing_views.append("falls_cohort")
-            ed_check_df = cohort_conn_duckdb.sql("SELECT COUNT(*) AS count FROM information_schema.tables WHERE table_schema = 'main' AND table_name = 'ed_cohort'").fetchdf()
-            if int(ed_check_df.iloc[0]['count']) if not ed_check_df.empty else 0 == 0:
-                missing_views.append("ed_cohort")
+        required_views = []
+        if requested_cohort in ("falls", "both"):
+            required_views.append("falls_cohort")
+        if requested_cohort in ("ed", "both"):
+            required_views.append("ed_cohort")
+
+        missing_views = []
+        view_exists_sql = {
+            "falls_cohort": "SELECT COUNT(*) AS count FROM information_schema.tables WHERE table_schema = 'main' AND table_name = 'falls_cohort'",
+            "ed_cohort": "SELECT COUNT(*) AS count FROM information_schema.tables WHERE table_schema = 'main' AND table_name = 'ed_cohort'",
+        }
+        for view_name in required_views:
+            check_df = cohort_conn_duckdb.sql(view_exists_sql[view_name]).fetchdf()
+            view_count = int(check_df.iloc[0]['count']) if not check_df.empty else 0
+            if view_count == 0:
+                missing_views.append(view_name)
+
+        if missing_views:
             logger.error(f"❌ [PHASE 4] Missing cohort views: {missing_views}")
             raise Exception(f"Cohort views missing: {missing_views}. Phase 3 may have failed silently.")
         
@@ -101,14 +104,28 @@ def run_phase4_complete_pipeline(context):
         # Event-level COUNT(*) can explode to billions of rows due to multiple time windows
         # Patient-level counts are stable and prevent INT32 overflow
         # Use fetchdf() to avoid Python connector's INT32 casting issue
-        falls_count_df = cohort_conn_duckdb.sql("SELECT CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) AS count FROM falls_cohort").fetchdf()
-        falls_count = int(falls_count_df.iloc[0]['count']) if not falls_count_df.empty else 0
+        if requested_cohort in ("falls", "both"):
+            falls_count_df = cohort_conn_duckdb.sql("SELECT CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) AS count FROM falls_cohort").fetchdf()
+            falls_count = int(falls_count_df.iloc[0]['count']) if not falls_count_df.empty else 0
+        else:
+            falls_count = 0
         
-        ed_count_df = cohort_conn_duckdb.sql("SELECT CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) AS count FROM ed_cohort").fetchdf()
-        ed_count = int(ed_count_df.iloc[0]['count']) if not ed_count_df.empty else 0
+        if requested_cohort in ("ed", "both"):
+            ed_count_df = cohort_conn_duckdb.sql("SELECT CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) AS count FROM ed_cohort").fetchdf()
+            ed_count = int(ed_count_df.iloc[0]['count']) if not ed_count_df.empty else 0
+        else:
+            ed_count = 0
         
-        logger.info(f"→ [PHASE 4] QA: FALLS cohort patients: {falls_count:,}")
-        logger.info(f"→ [PHASE 4] QA: ED cohort patients: {ed_count:,}")
+        if requested_cohort in ("falls", "both"):
+            logger.info(f"→ [PHASE 4] QA: FALLS cohort patients: {falls_count:,}")
+        else:
+            logger.info("→ [PHASE 4] Skipping FALLS QA/write for ed-only run")
+            cohort_conn_duckdb.sql("CREATE OR REPLACE TEMP VIEW falls_cohort AS SELECT * FROM ed_cohort WHERE 1=0")
+        if requested_cohort in ("ed", "both"):
+            logger.info(f"→ [PHASE 4] QA: ED cohort patients: {ed_count:,}")
+        else:
+            logger.info("→ [PHASE 4] Skipping ED QA/write for falls-only run")
+            cohort_conn_duckdb.sql("CREATE OR REPLACE TEMP VIEW ed_cohort AS SELECT * FROM falls_cohort WHERE 1=0")
         
         # Cohort-specific QA checks
         # FALLS cohort: Check target ICD (opioid ICD codes) - all 10 ICD columns
@@ -203,13 +220,13 @@ def run_phase4_complete_pipeline(context):
                 logger.warning(f"⚠️ Could not calculate target case counts: {e}")
         
         # Warn if cohorts are empty
-        if falls_count == 0:
+        if requested_cohort in ("falls", "both") and falls_count == 0:
             logger.warning(f"⚠️ [PHASE 4] WARNING: FALLS cohort is empty for {age_band}/{event_year}")
-        if ed_count == 0:
+        if requested_cohort in ("ed", "both") and ed_count == 0:
             logger.warning(f"⚠️ [PHASE 4] WARNING: ED cohort is empty for {age_band}/{event_year}")
         
         # Save cohorts: Write to local NVMe first, then sync to S3
-        from py_helpers.s3_utils import get_output_paths, get_cohort_parquet_path
+        from py_helpers.s3_utils import get_cohort_parquet_path
         # Determine local staging directory (prefer NVMe on Linux)
         if is_linux():
             local_staging = get_project_data_root() / "cohorts_staging"
@@ -221,7 +238,9 @@ def run_phase4_complete_pipeline(context):
         # Save FALLS cohort (always save, even if control-only)
         falls_s3_path = get_cohort_parquet_path("falls", age_band, event_year)
         falls_local = None
-        if falls_count > 0:
+        if requested_cohort not in ("falls", "both"):
+            logger.info("→ [PHASE 4] Skipping FALLS cohort save because requested cohort is ed")
+        elif falls_count > 0:
             # Write to local NVMe first (much faster)
             falls_local = local_staging / f"falls_{age_band}_{event_year}.parquet"
             logger.info(f"→ [PHASE 4] Writing FALLS cohort ({falls_count:,} patients) to local: {falls_local}")
@@ -284,7 +303,7 @@ def run_phase4_complete_pipeline(context):
 
         # Optional: run QA notebook for falls cohort if configured
         qa_nb = os.environ.get("PGX_QA_NOTEBOOK")
-        if qa_nb:
+        if qa_nb and requested_cohort in ("falls", "both"):
             try:
                 out_nb = f"/tmp/Cohort_QA_falls_{age_band}_{event_year}.ipynb"
                 cmd = [
@@ -303,7 +322,9 @@ def run_phase4_complete_pipeline(context):
         # Save ED cohort (always save, even if control-only)
         ed_s3_path = get_cohort_parquet_path("ed", age_band, event_year)
         ed_local = None
-        if ed_count > 0:
+        if requested_cohort not in ("ed", "both"):
+            logger.info("→ [PHASE 4] Skipping ED cohort save because requested cohort is falls")
+        elif ed_count > 0:
             # Write to local NVMe first (much faster, especially for large cohorts)
             ed_local = local_staging / f"ed_{age_band}_{event_year}.parquet"
             logger.info(f"→ [PHASE 4] Writing ED cohort ({ed_count:,} patients) to local: {ed_local}")
@@ -366,7 +387,7 @@ def run_phase4_complete_pipeline(context):
 
         # Optional: run QA notebook for ed cohort if configured
         qa_nb = os.environ.get("PGX_QA_NOTEBOOK")
-        if qa_nb:
+        if qa_nb and requested_cohort in ("ed", "both"):
             try:
                 out_nb = f"/tmp/Cohort_QA_ed_{age_band}_{event_year}.ipynb"
                 cmd = [
