@@ -12,7 +12,7 @@ Flow:
      **baseline** pass first (baseline=True). The baseline now builds a full feature matrix from
      **cohort-derived ICD/CPT/drug codes** (minus admin/Z), not just n_events, so the resulting
      aggregated FI has many features. That baseline is then used for the second pass.
-  4. **Second-pass FI are always saved to pgxdatalake** (gold/feature_importance/{cohort}/{age_band}/).
+  4. **Second-pass FI are always saved to pgxdatalake** (gold/{PROJECT_SLUG}/feature_importance/{cohort}/{age_band}/).
   5. **Final model training** uses these second-pass feature importances from pgxdatalake for
      train features (Step 6 build_final_cohort_model_features / run_final_model).
 
