@@ -10,7 +10,7 @@ This document provides a **complete reference** for the Cohort Creation Pipeline
 
 The Cohort Pipeline builds **event-based fact tables** for analytical cohorts used in geriatric fall injury and ED visit risk prediction. It generates two main cohorts for **age bands 65–74 and 75–84 only**:
 
-- **falls:** Patients with fall-related injury encounters (`fall_injury_any = 1`). Requires BOTH an injury ICD code (S00–S99, T07, T14, T20–T34, T79) AND an external cause fall code (W00–W19) on the same encounter.
+- **falls:** Patients with fall-related injury encounters (`fall_injury_any = 1`). Requires BOTH an injury ICD code (S00–S99, T07, T14, T20–T34, T79) AND an external cause fall code (W00–W19) on the same encounter. This cohort does **not** require separate ED visit evidence unless an explicit ED restriction is added in a future definition.
 - **ed:** Patients with emergency department visits (`ed_event = 1`). Identified by CMS place of service code 23 or revenue codes 045x / 0981.
 
 Each cohort includes **target cases** and **5 matching controls** per case. Age bands processed: `65-74`, `75-84`. Event years: 2016–2019.
@@ -124,7 +124,7 @@ DuckDB handling has been fully aligned with the standardized system from the pha
 ### Cohort Classification Column
 
 The `cohort` column tracks:
-- **falls:** Target cases with `fall_injury_any = 1` (injury ICD + W00–W19 external cause on same encounter)
+- **falls:** Target cases with `fall_injury_any = 1` (injury ICD + W00–W19 external cause on same encounter; ED visit evidence is not required by the current definition)
 - **ed:** Target cases with `ed_event = 1` (POS=23 or revenue code 045x/0981)
 - **control:** Non-target patients matched 5:1 by age/gender/race/ZIP/payer
 
@@ -136,8 +136,8 @@ The pipeline includes temporal analysis fields that differ between cohorts:
 
 | Field | Type | Description | falls | ed |
 | :-- | :-- | :-- | :-- | :-- |
-| `first_falls_date` | STRING | Date of first opioid ED event (if any) | ✅ Populated | ❌ NULL |
-| `first_ed_date` | STRING | Date of first non-opioid ED event (if any) | ❌ NULL | ✅ Populated |
+| `first_falls_date` | STRING | Date of first qualifying fall injury event (if any) | ✅ Populated | ❌ NULL |
+| `first_ed_date` | STRING | Date of first qualifying ED event (if any) | ❌ NULL | ✅ Populated |
 | `days_to_target_event` | INTEGER | Days from event to first target event | ❌ NULL* | ✅ Calculated |
 | `event_date` | STRING | Date of the event | ✅ All events | ✅ All events |
 | `event_sequence` | INTEGER | Sequential order of events per patient (globally ordered across medical and pharmacy) | ✅ All events | ✅ All events |
@@ -159,6 +159,7 @@ The pipeline includes temporal analysis fields that differ between cohorts:
 #### Cohort-Specific Temporal Behavior
 
 **falls Cohort:**
+- **Target Definition:** A target case has a qualifying fall injury event (`fall_injury_any = 1`), defined by injury ICD prefixes AND W00–W19 external fall-cause prefixes on the same encounter; the current falls cohort does not require a separate ED visit.
 - **Complete Drug History:** Includes ALL drug events for target cases (no time restriction)
 - **No Drug Window Filtering:** All pharmacy events are included regardless of timing
 - **Temporal Analysis:** Use `event_date` and `event_sequence` for temporal analysis
@@ -185,7 +186,7 @@ The pipeline includes temporal analysis fields that differ between cohorts:
 - **Filter Pipeline:** The filtering logic uses a linear, sequential CTE approach for clarity and maintainability:
   - Each filter step is a separate CTE that builds on the previous step
   - This makes the logic easy to follow, debug, and modify
-  - See [Filter Pipeline Diagram](#ed-non-opioid-filter-pipeline) below for visual representation
+  - See [Filter Pipeline Diagram](#ed-filter-pipeline) below for visual representation
 - **21-Day Time Window:** Single window captures ~90.5% of adverse drug events (excluding 0-day discharge prescriptions) based on distribution analysis
 - **Time Window Lookback:** Applied to BOTH target cases AND controls for balanced comparison
 - **Target Cases:** 
@@ -207,7 +208,7 @@ The pipeline includes temporal analysis fields that differ between cohorts:
   - Zero: Event occurred on reference date (excluded for adverse drug event identification - likely discharge prescriptions)
   - Negative values: Event occurred after reference date (filtered out for drug events)
 
-#### ed Filter Pipeline {#ed-non-opioid-filter-pipeline}
+#### ed Filter Pipeline {#ed-filter-pipeline}
 
 The ed cohort uses a sequential filtering approach to identify true adverse drug events. The pipeline applies two filters in sequence:
 
@@ -325,7 +326,7 @@ Control selection ensures matched demographics:
 - Age, gender, and race matching
 - Geographical alignment (ZIP/county)
 - Payer-type consistency
-- **Target cases:** No overlap (opioid patients excluded from ed - **checked across ALL 10 ICD diagnosis columns**)
+- **Target cases:** No overlap (patients meeting the falls target definition are excluded from ed target/control construction; falls ICD logic is checked across ALL 10 ICD diagnosis columns)
 - **Controls:** Can be reused across cohorts (same control can appear in both falls and ed)
 
 ### Statistical Independence
@@ -457,12 +458,12 @@ python 0_create_cohort.py \
 Cohorts are organized **by cohort name first, then by year and age-band partitions**:
 
 ```
-s3://pgxdatalake/gold/cohorts_{TARGET_NAME}/
+s3://pgxdatalake/gold/{PROJECT_SLUG}/cohorts/
 ├── cohort_name=falls/
 │   ├── event_year=2019/
-│   │   ├── age_band=45-54/
+│   │   ├── age_band=65-74/
 │   │   │   └── cohort.parquet
-│   │   ├── age_band=55-64/
+│   │   ├── age_band=75-84/
 │   │   │   └── cohort.parquet
 │   │   └── ...
 │   ├── event_year=2020/
@@ -470,15 +471,15 @@ s3://pgxdatalake/gold/cohorts_{TARGET_NAME}/
 │   └── ...
 └── cohort_name=ed/
     ├── event_year=2019/
-    │   ├── age_band=45-54/
+    │   ├── age_band=65-74/
     │   │   └── cohort.parquet
     │   └── ...
     └── ...
 ```
 
-**Example:** `s3://pgxdatalake/gold/cohorts/cohort_name=falls/event_year=2019/age_band=65-74/cohort.parquet`
+**Example:** `s3://pgxdatalake/gold/cpic_time_to_event/cohorts/cohort_name=falls/event_year=2019/age_band=65-74/cohort.parquet`
 
-**Path Structure:** `gold/cohorts/cohort_name={cohort}/event_year={year}/age_band={age_band}/cohort.parquet`
+**Path Structure:** `gold/{PROJECT_SLUG}/cohorts/cohort_name={cohort}/event_year={year}/age_band={age_band}/cohort.parquet`
 
 **Note:** All cohorts are saved (including control-only cohorts) to ensure complete coverage. Control-only cohorts are clearly logged with "CONTROL-ONLY" status.
 
@@ -531,7 +532,7 @@ The pipeline has been optimized based on deep technical reviews to ensure correc
 - **NOT EXISTS instead of NOT IN:** All subqueries use `NOT EXISTS` for safer NULL handling and better DuckDB performance
 - **Hash-based deterministic sampling:** Replaced `ORDER BY RANDOM()` with hash-based sampling (`ABS(hash(mi_person_key)) % 10000`) for faster, deterministic control selection
 - **Global event ordering:** `event_sequence` is now computed AFTER `UNION ALL` to ensure true chronological ordering across medical and pharmacy events
-- **Materialized CTEs:** Frequently used subqueries (e.g., `opioid_patients`) are materialized once to avoid repeated computation
+- **Materialized CTEs:** Frequently used subqueries (e.g., falls target patients) are materialized once to avoid repeated computation
 
 **Code Quality Improvements:**
 - **ICD normalization consistency:** Centralized normalization logic to prevent silent cohort drift across phases
@@ -563,7 +564,7 @@ Taking `falls 65–74` as baseline: **75–84 ≈ 0.43×** the event workload. B
 
 ### ed Cohort Sizes (65-74, 75-84 — 2016–2019)
 
-For the ed cohort (`cohort_name=ed`), cohort parquets in `gold/cohorts/cohort_name=ed/` are the primary input to downstream feature-importance analysis:
+For the ed cohort (`cohort_name=ed`), cohort parquets in `gold/{PROJECT_SLUG}/cohorts/cohort_name=ed/` are the primary input to downstream feature-importance analysis:
 
 - **Event-level row counts (workload), train = 2016–2018, test = 2019:**
   - **65–74**: train = 135,465,040, test = 50,047,383 (heaviest partition)
@@ -655,7 +656,7 @@ The pipeline uses two independent target identification methods:
 1. **ICD/External Cause Targets** (falls cohort):
    - Injury ICD (S00–S99, T07, T14, T20–T34, T79) + external cause W00–W19 on same encounter
    - Configurable via environment variables (see below)
-   - Codes normalized to F1120 format in gold tier (no dots, no spaces)
+   - Codes are normalized before matching (uppercase, punctuation removed)
    - **Comprehensive checking:** All 10 ICD diagnosis columns are checked (primary through ten), not just `primary_icd_diagnosis_code`
 
 2. **HCG-Based ED Visit Targets** (ed cohort):
@@ -665,11 +666,11 @@ The pipeline uses two independent target identification methods:
        - **Excludes:** Observation care visits (P51a) - these are not true ED visits for adverse drug event identification
      - `O11 - Emergency Room` (all details)
      - `P33 - Urgent Care Visits` (all details)
-   - **Naming:** We use **O11_P** as the canonical identifier for the model_events target-date column (e.g. `first_o11_p_date` in Step 4), to match the style of F11.20 for falls. **O11_P includes all qualifying ED HCG codes** (P51b, O11, P33) as defined in the cohort logic above.
+   - **Naming:** We use **O11_P** as the canonical identifier for the model_events target-date column (e.g. `first_o11_p_date` in Step 4). **O11_P includes all qualifying ED HCG codes** (P51b, O11, P33) as defined in the cohort logic above.
    - **Precision:** Uses `hcg_detail` field to distinguish actual ED visits from observation care
    - Identifies ED visits regardless of diagnosis codes
    - Always classified as `'ed'` in event classification
-   - **Opioid exclusion:** All opioid patients are excluded by checking ALL 10 ICD diagnosis columns
+   - Patients who meet the falls target definition are excluded from ED cohort target/control construction to keep target populations distinct
 
 ### Classification Priority
 
@@ -678,7 +679,7 @@ Event classification follows this priority:
 2. **HCG ED visits** → `'ed'`
 3. **Other events** → `'non_target'` (or `'ed'` if default mode)
 
-**Important:** The implementation uses a helper function `get_opioid_icd_sql_condition()` from `helpers_1997_13/constants.py` to generate comprehensive SQL that checks all 10 ICD diagnosis columns (`primary_icd_diagnosis_code`, `two_icd_diagnosis_code`, ..., `ten_icd_diagnosis_code`). This ensures no opioid-related events are missed regardless of which diagnosis position the code appears in.
+**Important:** The implementation uses `get_opioid_icd_sql_condition()` from `py_helpers/constants.py` for the current dynamic target condition. For falls, this means normalized prefix matching across all 10 ICD diagnosis columns, requiring injury prefixes AND W00–W19 external fall-cause prefixes on the same event row.
 
 ### Environment Variables for Dynamic Targeting
 
@@ -686,25 +687,25 @@ The pipeline supports dynamic target selection via environment variables:
 
 | Variable | Description | Example |
 | :-- | :-- | :-- |
-| `PGX_TARGET_NAME` | Human-readable target name | `F1120` |
-| `PGX_TARGET_ICD_CODES` | Comma-separated ICD codes | `F1120,F1121` |
-| `PGX_TARGET_CPT_CODES` | Comma-separated CPT codes | `99281,99282` |
-| `PGX_TARGET_ICD_PREFIXES` | Comma-separated ICD prefixes | `F11,F12` |
+| `PGX_TARGET_NAME` | Human-readable target name | `falls` |
+| `PGX_TARGET_ICD_CODES` | Comma-separated exact ICD codes | `T079,T149` |
+| `PGX_TARGET_CPT_CODES` | Comma-separated exact CPT codes | `99281,99282` |
+| `PGX_TARGET_ICD_PREFIXES` | Comma-separated ICD prefixes | `S,T07,T14,W00,W01` |
 | `PGX_TARGET_CPT_PREFIXES` | Comma-separated CPT prefixes | `9928` |
 
 **Usage Examples:**
 
 ```bash
-# Set F1120 as target
-export PGX_TARGET_NAME="F1120"
-export PGX_TARGET_ICD_CODES="F1120"
+# Set falls as target
+export PGX_TARGET_NAME="falls"
+export PGX_TARGET_ICD_PREFIXES="S,T07,T14,T20,T21,T22,T23,T24,T25,T26,T27,T28,T29,T30,T31,T32,T33,T34,T79,W00,W01,W02,W03,W04,W05,W06,W07,W08,W09,W10,W11,W12,W13,W14,W15,W16,W17,W18,W19"
 
 # Or use command-line arguments
 python 0_create_cohort.py \
   --age-band "65-74" \
   --event-year 2019 \
-  --target-name "F1120" \
-  --target-icd-codes "F1120"
+  --target-name "falls" \
+  --target-icd-prefixes "S,T07,T14,T20,T21,T22,T23,T24,T25,T26,T27,T28,T29,T30,T31,T32,T33,T34,T79,W00,W01,W02,W03,W04,W05,W06,W07,W08,W09,W10,W11,W12,W13,W14,W15,W16,W17,W18,W19"
 ```
 
 **Note:** When environment variables are set, the pipeline uses generic `'target'`/`'non_target'` classification labels. When unset, it defaults to `'falls'`/`'ed'` classification.
@@ -804,7 +805,7 @@ The **Cohort Creation Pipeline v4.3+** now features:
 - **Modular, checkpoint-enabled architecture** with 4 clean phases
 - **Dual-target system** (ICD codes + HCG ED visits) for comprehensive cohort identification
 - **Precise HCG identification:** Uses `hcg_detail` to distinguish actual ED visits (P51b) from observation care (P51a)
-- **Comprehensive ICD diagnosis checking** across all 10 ICD diagnosis columns (primary through ten) to ensure no opioid patients are missed or misclassified
+- **Comprehensive ICD diagnosis checking** across all 10 ICD diagnosis columns (primary through ten) to ensure falls target events are not missed or misclassified
 - **Control-only cohort logic** ensuring complete partition coverage for model training
 - **Pre-computed averages** for efficient control-only cohort sizing
 - **HCG field integration** (hcg_setting, hcg_line, hcg_detail) from gold tier
@@ -885,7 +886,7 @@ WHERE mi_person_key IS NOT NULL
 ```
 
 **Parameters:**
-- `{age_band}`: Age band partition (e.g., "45-54", "65-74")
+- `{age_band}`: Age band partition (e.g., "65-74", "75-84")
 - `{event_year}`: Event year partition (e.g., 2019, 2020)
 
 **Purpose:** Loads raw medical data from S3 and normalizes column names.
@@ -973,17 +974,16 @@ The classification logic uses a priority-based CASE statement:
 2. **HCG ED visits** → `'ed'`
 3. **Other events** → `'non_target'` (or `'ed'` if default mode)
 
-**Important:** ICD code checking now includes **ALL 10 ICD diagnosis columns** (primary through ten), not just `primary_icd_diagnosis_code`. This ensures no opioid-related events are missed regardless of which diagnosis position the code appears in.
+**Important:** ICD checking includes **ALL 10 ICD diagnosis columns** (primary through ten), not just `primary_icd_diagnosis_code`. For falls, matching is prefix-based after normalization and requires injury-prefix evidence AND W00–W19 external fall-cause evidence on the same event row.
 
-**Dynamic Classification (when `PGX_TARGET_ICD_CODES` is set):**
+**Dynamic Classification (current falls/ed setup):**
 
 ```sql
 CASE 
-    WHEN (primary_icd_diagnosis_code IN ('F1120', ...) 
-          OR two_icd_diagnosis_code IN ('F1120', ...)
-          OR three_icd_diagnosis_code IN ('F1120', ...)
-          -- ... through ten_icd_diagnosis_code
-          OR procedure_code IN (...)) THEN 'target'
+    WHEN (
+        any_diagnosis_column LIKE injury_prefix
+        AND any_diagnosis_column LIKE external_fall_cause_prefix
+    ) THEN 'target'
     WHEN (hcg_line = 'P51 - ER Visits and Observation Care' AND hcg_detail = 'P51b - PHY ED Visits and Observation Care - ED Visits')
          OR hcg_line = 'O11 - Emergency Room'
          OR hcg_line = 'P33 - Urgent Care Visits' THEN 'ed'
@@ -991,23 +991,7 @@ CASE
 END
 ```
 
-**Default Classification (opioid-specific):**
-
-```sql
-CASE 
-    WHEN primary_icd_diagnosis_code IN ('F1120', 'F1121', ...)
-         OR two_icd_diagnosis_code IN ('F1120', 'F1121', ...)
-         OR three_icd_diagnosis_code IN ('F1120', 'F1121', ...)
-         -- ... through ten_icd_diagnosis_code
-         THEN 'falls'
-    WHEN (hcg_line = 'P51 - ER Visits and Observation Care' AND hcg_detail = 'P51b - PHY ED Visits and Observation Care - ED Visits')
-         OR hcg_line = 'O11 - Emergency Room'
-         OR hcg_line = 'P33 - Urgent Care Visits' THEN 'ed'
-    ELSE 'ed'
-END
-```
-
-**Note:** The actual implementation uses a helper function `get_opioid_icd_sql_condition()` from `helpers_1997_13/constants.py` to generate the comprehensive SQL condition across all 10 ICD diagnosis columns.
+**Note:** The actual implementation uses `get_opioid_icd_sql_condition()` from `py_helpers/constants.py` to generate the comprehensive normalized SQL condition across all 10 ICD diagnosis columns.
 
 ---
 
@@ -1090,12 +1074,12 @@ WHERE drug_name IS NOT NULL;
 ## Phase 3: Cohort Creation
 
 ### Overview
-Creates two cohorts (falls and ed) with a target 5:1 control-to-target ratio. Patients with opioid ICD codes are completely excluded from ed cohort.
+Creates two cohorts (falls and ed) with a target 5:1 control-to-target ratio. Falls target cases are qualifying fall injury encounters and do not require separate ED visit evidence. Patients who meet the falls target definition are excluded from ED cohort target/control construction to keep target populations distinct.
 
 **Key Features:**
 - **Statistical Independence:** Controls are sampled without replacement (no reuse)
 - **Temporal Fields:** Calculates `first_falls_date`, `first_ed_date`, and `days_to_target_event`
-- **Balanced Windows:** ed applies same 30-day lookback window to both targets and controls
+- **Balanced Windows:** ed applies the configured drug-to-ED lookback window to both targets and controls
 - **Column Matching:** All columns match between target cases and controls
 - **Ratio Warnings:** Logs warnings when ratio falls below 5:1
 
@@ -1172,8 +1156,8 @@ WHERE tc.mi_person_key IS NOT NULL OR sc.mi_person_key IS NOT NULL;
 ```
 
 **Logic:**
-- **Target cases:** Patients with `event_classification = 'target'` (opioid ICD codes)
-- **Controls:** Random sample of up to 5x target count from non-target patients (without replacement)
+- **Target cases:** Patients with `event_classification = 'target'`, where falls target events are injury ICD prefixes AND W00–W19 external fall-cause prefixes on the same encounter; separate ED visit evidence is not required
+- **Controls:** Hash-sampled controls up to 5x target count from non-target patients
 - **Statistical Independence:** No control reuse - each control patient appears only once
 - **Temporal Fields:** 
   - `first_falls_date`: Populated for targets only (NULL for controls)
@@ -1226,15 +1210,12 @@ The filtering uses a sequential CTE approach for clarity and maintainability. Ea
 
 ```sql
 CREATE OR REPLACE VIEW ed_cohort AS
-WITH opioid_patients AS (
-    -- Patients with opioid ICD codes (F1120, etc.) - exclude from ed entirely
-    -- Checks ALL 10 ICD diagnosis columns to ensure complete opioid patient exclusion
+WITH falls_target_patients AS (
+    -- Patients meeting the falls target definition are excluded from ed entirely
+    -- Actual implementation uses get_opioid_icd_sql_condition() for normalized all-diagnosis-column matching
     SELECT DISTINCT mi_person_key
     FROM unified_event_fact_table
-    WHERE primary_icd_diagnosis_code IN ('F1120', 'F1121', 'F1122', ...)
-       OR two_icd_diagnosis_code IN ('F1120', 'F1121', 'F1122', ...)
-       OR three_icd_diagnosis_code IN ('F1120', 'F1121', 'F1122', ...)
-       -- ... through ten_icd_diagnosis_code IN (...)
+    WHERE event_classification = 'target'
 ),
 hcg_patients_with_visit_counts AS (
     -- Count ED visits per patient per year (for filtering)
@@ -1246,13 +1227,13 @@ hcg_patients_with_visit_counts AS (
     WHERE uef.event_classification = 'ed'
       AND NOT EXISTS (
           SELECT 1
-          FROM opioid_patients_materialized op
+          FROM falls_target_patients op
           WHERE op.mi_person_key = uef.mi_person_key
       )
     GROUP BY uef.mi_person_key, uef.event_year
 ),
 hcg_index AS (
-    -- First ed (index) date per patient (opioid patients excluded)
+    -- First ed (index) date per patient (falls target patients excluded)
     -- FILTER: Only include patients with <7 ED visits per year (true adverse drug events)
     -- This anchors all time windows to a single index event per patient
     SELECT
@@ -1265,7 +1246,7 @@ hcg_index AS (
       AND vc.ed_visit_count < 7
       AND NOT EXISTS (
           SELECT 1
-          FROM opioid_patients_materialized op
+          FROM falls_target_patients op
           WHERE op.mi_person_key = uef.mi_person_key
       )
     GROUP BY uef.mi_person_key
@@ -1281,7 +1262,7 @@ first_target_dates AS (
         MIN(event_date) as first_ed_date
     FROM unified_event_fact_table
     WHERE event_classification = 'ed'
-      AND mi_person_key NOT IN (SELECT mi_person_key FROM opioid_patients)
+      AND mi_person_key NOT IN (SELECT mi_person_key FROM falls_target_patients)
     GROUP BY mi_person_key
 ),
 control_candidates AS (
@@ -1289,7 +1270,7 @@ control_candidates AS (
     FROM unified_event_fact_table
     WHERE event_classification != 'ed'
       AND mi_person_key NOT IN (SELECT mi_person_key FROM target_cases)
-      AND mi_person_key NOT IN (SELECT mi_person_key FROM opioid_patients)  -- Exclude opioid patients from controls
+      AND mi_person_key NOT IN (SELECT mi_person_key FROM falls_target_patients)  -- Exclude falls target patients from controls
 ),
 sampled_controls AS (
     -- Sample distinct controls only (no reuse to maintain statistical independence)
@@ -1405,10 +1386,10 @@ WHERE (tc.mi_person_key IS NOT NULL OR sc.mi_person_key IS NOT NULL)
 
 **Key Features:**
 - **Target cases:** Patients with HCG ED visits (`event_classification = 'ed'`)
-- **Exclusion:** Opioid patients are excluded from both targets AND controls
-- **Complete separation for targets:** Ensures no opioid patients in ed targets (controls can overlap)
+- **Exclusion:** Patients meeting the falls target definition are excluded from ED targets and controls
+- **Complete separation for targets:** Ensures falls target patients do not enter the ed cohort target/control construction
 - **Statistical Independence:** Controls sampled without replacement WITHIN cohort (can reuse across cohorts)
-- **Balanced Temporal Windows:** Both targets and controls use 30-day lookback window
+- **Balanced Temporal Windows:** Both targets and controls use the configured drug-to-ED lookback window
   - Targets: Reference date = first ed event
   - Controls: Reference date = first non-ED medical event
 - **Temporal Fields:**
@@ -1451,21 +1432,18 @@ WHERE (tc.mi_person_key IS NOT NULL OR sc.mi_person_key IS NOT NULL)
 
 ```sql
 CREATE OR REPLACE VIEW ed_cohort AS
-WITH opioid_patients AS (
-    -- Patients with opioid ICD codes (F1120, etc.) - exclude from ed entirely
-    -- Checks ALL 10 ICD diagnosis columns to ensure complete opioid patient exclusion
+WITH falls_target_patients AS (
+    -- Patients meeting the falls target definition are excluded from ed entirely
+    -- Actual implementation uses get_opioid_icd_sql_condition() for normalized all-diagnosis-column matching
     SELECT DISTINCT mi_person_key
     FROM unified_event_fact_table
-    WHERE primary_icd_diagnosis_code IN ('F1120', 'F1121', ...)
-       OR two_icd_diagnosis_code IN ('F1120', 'F1121', ...)
-       OR three_icd_diagnosis_code IN ('F1120', 'F1121', ...)
-       -- ... through ten_icd_diagnosis_code IN (...)
+    WHERE event_classification = 'target'
 ),
 control_candidates AS (
     SELECT DISTINCT mi_person_key
     FROM unified_event_fact_table
     WHERE event_classification != 'ed'
-      AND mi_person_key NOT IN (SELECT mi_person_key FROM opioid_patients)  -- Exclude opioid patients
+      AND mi_person_key NOT IN (SELECT mi_person_key FROM falls_target_patients)  -- Exclude falls target patients
 ),
 sampled_controls AS (
     SELECT mi_person_key
@@ -1483,7 +1461,7 @@ FROM unified_event_fact_table uef
 INNER JOIN sampled_controls sc ON uef.mi_person_key = sc.mi_person_key;
 ```
 
-**Purpose:** Creates a control-only cohort when no HCG ED targets are found, excluding opioid patients.
+**Purpose:** Creates a control-only cohort when no HCG ED targets are found, excluding falls target patients.
 
 ---
 
@@ -1495,24 +1473,24 @@ Validates cohorts and saves them to S3 in Parquet format.
 ### Save falls Cohort
 
 ```sql
-COPY falls_cohort TO 's3://pgxdatalake/gold/cohorts_{TARGET_NAME}/cohort_name=falls/event_year={event_year}/age_band={age_band}/cohort.parquet' 
+COPY falls_cohort TO 's3://pgxdatalake/gold/{PROJECT_SLUG}/cohorts/cohort_name=falls/event_year={event_year}/age_band={age_band}/cohort.parquet' 
 (FORMAT PARQUET, COMPRESSION SNAPPY);
 ```
 
-**Path Structure:** `cohorts_{TARGET_NAME}/cohort_name={cohort}/event_year={year}/age_band={age_band}/cohort.parquet`
+**Path Structure:** `gold/{PROJECT_SLUG}/cohorts/cohort_name={cohort}/event_year={year}/age_band={age_band}/cohort.parquet`
 
-**Example:** `s3://pgxdatalake/gold/cohorts_F1120/cohort_name=falls/event_year=2019/age_band=45-54/cohort.parquet`
+**Example:** `s3://pgxdatalake/gold/cpic_time_to_event/cohorts/cohort_name=falls/event_year=2019/age_band=65-74/cohort.parquet`
 
 ---
 
 ### Save ed Cohort
 
 ```sql
-COPY ed_cohort TO 's3://pgxdatalake/gold/cohorts_{TARGET_NAME}/cohort_name=ed/event_year={event_year}/age_band={age_band}/cohort.parquet' 
+COPY ed_cohort TO 's3://pgxdatalake/gold/{PROJECT_SLUG}/cohorts/cohort_name=ed/event_year={event_year}/age_band={age_band}/cohort.parquet' 
 (FORMAT PARQUET, COMPRESSION SNAPPY);
 ```
 
-**Example:** `s3://pgxdatalake/gold/cohorts_F1120/cohort_name=ed/event_year=2019/age_band=45-54/cohort.parquet`
+**Example:** `s3://pgxdatalake/gold/cpic_time_to_event/cohorts/cohort_name=ed/event_year=2019/age_band=65-74/cohort.parquet`
 
 ---
 
@@ -1567,47 +1545,26 @@ FROM ed_cohort
 GROUP BY is_target_case;
 ```
 
-**Check F1120 presence (across ALL 10 ICD diagnosis columns):**
+**Check falls target distribution:**
 
 ```sql
 SELECT 
-    COUNT(*) as total_f1120_records,
-    COUNT(DISTINCT mi_person_key) as distinct_f1120_patients,
-    COUNT(DISTINCT CASE WHEN is_target_case = 1 THEN mi_person_key END) as f1120_target_patients,
-    COUNT(DISTINCT CASE WHEN is_target_case = 0 THEN mi_person_key END) as f1120_control_patients
-FROM falls_cohort
-WHERE primary_icd_diagnosis_code = 'F1120'
-   OR two_icd_diagnosis_code = 'F1120'
-   OR three_icd_diagnosis_code = 'F1120'
-   OR four_icd_diagnosis_code = 'F1120'
-   OR five_icd_diagnosis_code = 'F1120'
-   OR six_icd_diagnosis_code = 'F1120'
-   OR seven_icd_diagnosis_code = 'F1120'
-   OR eight_icd_diagnosis_code = 'F1120'
-   OR nine_icd_diagnosis_code = 'F1120'
-   OR ten_icd_diagnosis_code = 'F1120';
+    COUNT(DISTINCT mi_person_key) as distinct_falls_patients,
+    COUNT(DISTINCT CASE WHEN is_target_case = 1 THEN mi_person_key END) as falls_target_patients,
+    COUNT(DISTINCT CASE WHEN is_target_case = 0 THEN mi_person_key END) as falls_control_patients
+FROM falls_cohort;
 ```
 
-**Verify cohort separation (no overlap - checks ALL 10 ICD diagnosis columns):**
+**Verify cohort separation:**
 
 ```sql
--- Check if any opioid patients appear in ed cohort
--- Checks all 10 ICD diagnosis columns to ensure complete separation
-SELECT COUNT(DISTINCT mi_person_key) as opioid_patients_in_ed
+-- Check if any falls target patients appear in ed cohort
+SELECT COUNT(DISTINCT mi_person_key) as falls_target_patients_in_ed
 FROM ed_cohort
 WHERE mi_person_key IN (
     SELECT DISTINCT mi_person_key
     FROM unified_event_fact_table
-    WHERE primary_icd_diagnosis_code IN ('F1120', 'F1121', ...)
-       OR two_icd_diagnosis_code IN ('F1120', 'F1121', ...)
-       OR three_icd_diagnosis_code IN ('F1120', 'F1121', ...)
-       OR four_icd_diagnosis_code IN ('F1120', 'F1121', ...)
-       OR five_icd_diagnosis_code IN ('F1120', 'F1121', ...)
-       OR six_icd_diagnosis_code IN ('F1120', 'F1121', ...)
-       OR seven_icd_diagnosis_code IN ('F1120', 'F1121', ...)
-       OR eight_icd_diagnosis_code IN ('F1120', 'F1121', ...)
-       OR nine_icd_diagnosis_code IN ('F1120', 'F1121', ...)
-       OR ten_icd_diagnosis_code IN ('F1120', 'F1121', ...)
+    WHERE event_classification = 'target'
 );
 -- Should return 0
 ```
@@ -1648,10 +1605,10 @@ This precision ensures that only actual ED visits (not observation care) are use
 
 ### Cohort Separation
 
-- **falls cohort:** Patients with opioid ICD codes (F1120, etc.) in **ANY of the 10 ICD diagnosis columns**
-- **ed cohort:** Patients with HCG ED visits (using `hcg_detail` for precision: P51b only, excludes P51a observation care), **excluding** all opioid patients (checked across all 10 ICD diagnosis columns)
-- **Complete separation:** Opioid patients cannot appear in ed as targets or controls
-- **Comprehensive checking:** All 10 ICD diagnosis columns (`primary_icd_diagnosis_code` through `ten_icd_diagnosis_code`) are checked to ensure no opioid patients are missed or misclassified
+- **falls cohort:** Patients with qualifying fall injury target events (`fall_injury_any = 1`) using injury ICD prefixes AND W00–W19 external fall-cause prefixes on the same encounter.
+- **ed cohort:** Patients with HCG ED visits (using `hcg_detail` for precision: P51b only, excludes P51a observation care), excluding patients who meet the falls target definition.
+- **Complete separation:** Falls target patients cannot appear in ed as targets or controls.
+- **Comprehensive checking:** All 10 ICD diagnosis columns (`primary_icd_diagnosis_code` through `ten_icd_diagnosis_code`) are checked for falls target matching.
 
 ### Control-Only Cohorts
 
@@ -1687,8 +1644,8 @@ The pipeline calculates temporal relationships between events and target events,
 
 | Field | Type | falls | ed | Description |
 | :-- | :-- | :-- | :-- | :-- |
-| `first_falls_date` | STRING | ✅ Populated | ❌ NULL | Date of first opioid ED event per patient |
-| `first_ed_date` | STRING | ❌ NULL | ✅ Populated | Date of first non-opioid ED event per patient |
+| `first_falls_date` | STRING | ✅ Populated | ❌ NULL | Date of first qualifying fall injury event per patient |
+| `first_ed_date` | STRING | ❌ NULL | ✅ Populated | Date of first qualifying ED event per patient |
 | `days_to_target_event` | INTEGER | ❌ NULL | ✅ Calculated | Days from event to first target event |
 | `event_date` | STRING | ✅ All | ✅ All | Date of the event |
 | `event_sequence` | INTEGER | ✅ All | ✅ All | Sequential order of events per patient |
@@ -1697,7 +1654,7 @@ The pipeline calculates temporal relationships between events and target events,
 
 - **Complete Drug History:** All drug events included (no time restriction)
 - **No Filtering:** All pharmacy and medical events included regardless of timing
-- **First Target Date:** Calculated as `MIN(event_date)` where `event_classification = 'falls'`
+- **First Target Date:** Calculated as `MIN(event_date)` where `event_classification = 'target'` in dynamic targeting mode
 - **Days Calculation:** `days_to_target_event` is NULL; calculate manually if needed:
   ```sql
   SELECT 
@@ -1753,7 +1710,7 @@ The pipeline calculates temporal relationships between events and target events,
     ))
   )
   ```
-- **First Target Date:** Calculated as `MIN(event_date)` where `event_classification = 'ed'` (excluding opioid patients)
+- **First Target Date:** Calculated as `MIN(event_date)` where `event_classification = 'ed'` (excluding falls target patients)
 - **Control Reference Date:** Calculated as `MIN(event_date)` for first non-ED medical event per control
 - **Days Calculation:** Pre-calculated as `datediff(reference_date::DATE, event_date::DATE)`
   - For targets: Days to first ed event
@@ -1795,10 +1752,10 @@ The following environment variables control dynamic targeting:
 
 | Variable | Description | Example |
 | :-- | :-- | :-- |
-| `PGX_TARGET_NAME` | Human-readable target name | `F1120` |
-| `PGX_TARGET_ICD_CODES` | Comma-separated ICD codes | `F1120,F1121` |
-| `PGX_TARGET_CPT_CODES` | Comma-separated CPT codes | `99281,99282` |
-| `PGX_TARGET_ICD_PREFIXES` | Comma-separated ICD prefixes | `F11,F12` |
+| `PGX_TARGET_NAME` | Human-readable target name | `falls` |
+| `PGX_TARGET_ICD_CODES` | Comma-separated exact ICD codes | `T079,T149` |
+| `PGX_TARGET_CPT_CODES` | Comma-separated exact CPT codes | `99281,99282` |
+| `PGX_TARGET_ICD_PREFIXES` | Comma-separated ICD prefixes | `S,T07,T14,W00,W01` |
 | `PGX_TARGET_CPT_PREFIXES` | Comma-separated CPT prefixes | `9928` |
 
 When set, the pipeline uses generic `'target'`/`'non_target'` classification. When unset, it defaults to `'falls'`/`'ed'` classification.
