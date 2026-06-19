@@ -128,6 +128,39 @@ def run_phase3_step3_final_cohort_fact(context):
             """).fetchdf()
             logger.info("→ [PHASE 3 STEP 3 DEBUG] falls target prefix counts:\n%s", debug_counts_df.to_string(index=False))
 
+            cross_row_debug_df = cohort_conn_duckdb.sql(f"""
+            WITH injury_events AS (
+                SELECT DISTINCT mi_person_key, CAST(event_date AS DATE) AS injury_date
+                FROM unified_event_fact_table
+                WHERE {injury_condition}
+            ),
+            external_events AS (
+                SELECT DISTINCT mi_person_key, CAST(event_date AS DATE) AS external_date
+                FROM unified_event_fact_table
+                WHERE {external_condition}
+            )
+            SELECT
+                CAST(COUNT(DISTINCT i.mi_person_key) AS BIGINT) AS same_patient_any_date_patients,
+                CAST(COUNT(DISTINCT CASE WHEN i.injury_date = e.external_date THEN i.mi_person_key END) AS BIGINT) AS same_patient_same_date_patients,
+                CAST(COUNT(DISTINCT CASE WHEN ABS(datediff('day', i.injury_date, e.external_date)) <= 7 THEN i.mi_person_key END) AS BIGINT) AS same_patient_within_7d_patients,
+                CAST(COUNT(DISTINCT CASE WHEN ABS(datediff('day', i.injury_date, e.external_date)) <= 30 THEN i.mi_person_key END) AS BIGINT) AS same_patient_within_30d_patients
+            FROM injury_events i
+            INNER JOIN external_events e ON i.mi_person_key = e.mi_person_key
+            """).fetchdf()
+            logger.info("→ [PHASE 3 STEP 3 DEBUG] falls cross-row overlap counts:\n%s", cross_row_debug_df.to_string(index=False))
+
+            external_sample_df = cohort_conn_duckdb.sql(f"""
+            SELECT mi_person_key, event_date, event_classification,
+                   primary_icd_diagnosis_code, two_icd_diagnosis_code, three_icd_diagnosis_code,
+                   four_icd_diagnosis_code, five_icd_diagnosis_code, six_icd_diagnosis_code,
+                   seven_icd_diagnosis_code, eight_icd_diagnosis_code, nine_icd_diagnosis_code,
+                   ten_icd_diagnosis_code
+            FROM unified_event_fact_table
+            WHERE {external_condition}
+            LIMIT 10
+            """).fetchdf()
+            logger.info("→ [PHASE 3 STEP 3 DEBUG] sample external fall-cause ICD rows:\n%s", external_sample_df.to_string(index=False))
+
             sample_df = cohort_conn_duckdb.sql(f"""
             SELECT mi_person_key, event_date, event_classification,
                    primary_icd_diagnosis_code, two_icd_diagnosis_code, three_icd_diagnosis_code,
