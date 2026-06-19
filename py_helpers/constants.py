@@ -59,6 +59,7 @@ FALL_EXTERNAL_CAUSE_PREFIXES = (
     'W00', 'W01', 'W02', 'W03', 'W04', 'W05', 'W06', 'W07', 'W08', 'W09',
     'W10', 'W11', 'W12', 'W13', 'W14', 'W15', 'W16', 'W17', 'W18', 'W19',
 )
+FALL_TARGET_WINDOW_DAYS = int(os.environ.get("CPIC_FALL_TARGET_WINDOW_DAYS", "7"))
 
 # Fall injury auxiliary outcome codes
 FALL_FRACTURE_CODES = ('T02', 'S12', 'S22', 'S32', 'S42', 'S52', 'S62', 'S72', 'S82', 'S92')

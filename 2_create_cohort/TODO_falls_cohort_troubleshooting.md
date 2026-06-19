@@ -20,7 +20,7 @@ Observed diagnostic counts from the EC2 run:
 - **Same-patient within 7 days:** `60`
 - **Same-patient within 30 days:** `72`
 
-The strict target condition currently requires injury-prefix evidence and W00-W19 external fall-cause evidence on the same `unified_event_fact_table` row.
+The previous strict target condition required injury-prefix evidence and W00-W19 external fall-cause evidence on the same `unified_event_fact_table` row.
 
 ## Working hypothesis
 
@@ -38,33 +38,31 @@ The W00-W19 external fall-cause code may be present on a different claim row fro
    - `sample external fall-cause ICD rows`
 4. Use those counts to choose the cohort definition.
 
-## Candidate correction logic
+## Selected correction logic
 
-Preferred decision order:
-
-1. If same-date overlap is meaningful, define falls as same patient with injury-prefix and W00-W19 evidence on the same `event_date`.
-2. If same-date overlap is too sparse but 7-day overlap is meaningful, define falls as same patient with injury-prefix and W00-W19 evidence within +/- 7 days.
-3. If W00-W19 overlap remains near zero, decide whether the dataset cannot support mechanism-confirmed falls and document any injury-only proxy separately.
+Define falls as same patient with injury-prefix and W00-W19 evidence within +/- 7 days by default (`CPIC_FALL_TARGET_WINDOW_DAYS=7`). This preserves mechanism-confirmed falls while allowing injury and external-cause codes to arrive on separate claim rows.
 
 Avoid changing to a simple OR unless the cohort is explicitly redefined as a broad injury proxy rather than falls.
 
-## Code areas to update after definition decision
+## Implemented code changes
 
 - `py_helpers/constants.py`
-  - Update `get_opioid_icd_sql_condition()` or add a new helper if cross-row/date-window logic is required.
-- `2_create_cohort/phases/phase2_event_processing.py`
-  - Keep event classification aligned with the authoritative target logic.
+  - `FALL_TARGET_WINDOW_DAYS` defaults to 7 and is overrideable with `CPIC_FALL_TARGET_WINDOW_DAYS`.
 - `2_create_cohort/phases/common.py`
-  - Keep fallback unified view classification aligned with Phase 2.
+  - Dynamic falls detection now considers both `PGX_TARGET_ICD_CODES` and `PGX_TARGET_ICD_PREFIXES`.
+  - Falls targets use `event_classification = 'falls'` consistently when detected from env configuration.
 - `2_create_cohort/phases/phase3_cohort_creation.py`
-  - Update `target_patients_materialized` if target logic requires patient-level cross-row matching.
+  - `target_patients_materialized` uses patient-level injury/external-cause matching within the configured window.
+  - Phase 3 uses explicit `is_falls_target` config for the falls materialization branch.
+  - Debug output includes `selected_window_target_patients` for the configured window.
 - `2_create_cohort/README.md`
-  - Update the documented falls definition after final logic is chosen.
+  - Documented falls definition now uses the configured window.
 
 ## Validation checklist
 
 - `python -m py_compile py_helpers/constants.py 2_create_cohort/phases/phase2_event_processing.py 2_create_cohort/phases/common.py 2_create_cohort/phases/phase3_cohort_creation.py`
 - Re-run Phase 2 Step 1 through Phase 3 Step 3 on EC2 for `falls/65-74/2016`.
-- Confirm non-zero falls target patients or document why the dataset does not support mechanism-confirmed falls.
+- Confirm `Falls target mode: True` in Phase 3 logs.
+- Confirm `selected_window_target_patients` and `Materialized ... target patients` are non-zero or document why the dataset does not support mechanism-confirmed falls.
 - Confirm ED cohort counts remain reasonable and target patients are excluded from ED controls.
 - Commit and push all final logic/doc changes.

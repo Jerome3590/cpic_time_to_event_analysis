@@ -32,6 +32,7 @@ from py_helpers.constants import (
     OPIOID_ICD_CODES,
     FALL_EXTERNAL_CAUSE_PREFIXES,
     FALL_INJURY_ICD_PREFIXES,
+    FALL_TARGET_WINDOW_DAYS,
     NON_FALLS_MAX_ED_VISITS_PER_YEAR,
 )
 import os
@@ -98,11 +99,13 @@ def run_phase3_step3_final_cohort_fact(context):
         target_icd = os.getenv("PGX_TARGET_ICD_CODES", "").strip() or os.getenv("PGX_TARGET_ICD_PREFIXES", "").strip()
         target_cpt = os.getenv("PGX_TARGET_CPT_CODES", "").strip() or os.getenv("PGX_TARGET_CPT_PREFIXES", "").strip()
         dynamic_targeting = bool(target_icd or target_cpt)
+        is_falls_target = bool(config.get("is_falls_target"))
         label_target = config["target_event_classification"] if dynamic_targeting else 'falls'
         label_ed = 'ed'
         
         # Log resolved dynamic targeting state for clarity and reproducibility
         logger.info(f"→ [PHASE 3 STEP 3] Dynamic targeting: {dynamic_targeting}")
+        logger.info(f"→ [PHASE 3 STEP 3] Falls target mode: {is_falls_target}")
         logger.info(f"→ [PHASE 3 STEP 3] Target label: '{label_target}', ED label: '{label_ed}'")
         if dynamic_targeting:
             logger.info(f"→ [PHASE 3 STEP 3] Target ICD codes: {target_icd or 'none'}")
@@ -168,7 +171,8 @@ def run_phase3_step3_final_cohort_fact(context):
                 CAST(COUNT(DISTINCT i.mi_person_key) AS BIGINT) AS same_patient_any_date_patients,
                 CAST(COUNT(DISTINCT CASE WHEN i.injury_date = e.external_date THEN i.mi_person_key END) AS BIGINT) AS same_patient_same_date_patients,
                 CAST(COUNT(DISTINCT CASE WHEN ABS(datediff('day', i.injury_date, e.external_date)) <= 7 THEN i.mi_person_key END) AS BIGINT) AS same_patient_within_7d_patients,
-                CAST(COUNT(DISTINCT CASE WHEN ABS(datediff('day', i.injury_date, e.external_date)) <= 30 THEN i.mi_person_key END) AS BIGINT) AS same_patient_within_30d_patients
+                CAST(COUNT(DISTINCT CASE WHEN ABS(datediff('day', i.injury_date, e.external_date)) <= 30 THEN i.mi_person_key END) AS BIGINT) AS same_patient_within_30d_patients,
+                CAST(COUNT(DISTINCT CASE WHEN ABS(datediff('day', i.injury_date, e.external_date)) <= {FALL_TARGET_WINDOW_DAYS} THEN i.mi_person_key END) AS BIGINT) AS selected_window_target_patients
             FROM injury_events i
             INNER JOIN external_events e ON i.mi_person_key = e.mi_person_key
             """).fetchdf()
@@ -206,12 +210,50 @@ def run_phase3_step3_final_cohort_fact(context):
 
         logger.info("→ [PHASE 3 STEP 3] Materializing target_patients view (computed once, reused everywhere)...")
         _save_phase3_log_checkpoint(context, "phase3_step3_before_target_materialization")
-        materialize_target_patients_sql = f"""
-        CREATE OR REPLACE TEMP VIEW target_patients_materialized AS
-        SELECT DISTINCT mi_person_key
-        FROM unified_event_fact_table
-        WHERE {opioid_icd_condition}
-        """
+        if is_falls_target:
+            injury_condition = get_icd_prefixes_sql_condition(FALL_INJURY_ICD_PREFIXES)
+            external_condition = get_icd_prefixes_sql_condition(FALL_EXTERNAL_CAUSE_PREFIXES)
+            logger.info(
+                "→ [PHASE 3 STEP 3] FALLS target definition: same patient injury + W00-W19 external cause within +/- %s days",
+                FALL_TARGET_WINDOW_DAYS,
+            )
+            materialize_target_patients_sql = f"""
+            CREATE OR REPLACE TEMP VIEW target_patients_materialized AS
+            WITH injury_events AS (
+                SELECT DISTINCT mi_person_key, CAST(event_date AS DATE) AS injury_date
+                FROM unified_event_fact_table
+                WHERE {injury_condition}
+            ),
+            external_events AS (
+                SELECT DISTINCT mi_person_key, CAST(event_date AS DATE) AS external_date
+                FROM unified_event_fact_table
+                WHERE {external_condition}
+            ),
+            falls_pairs AS (
+                SELECT
+                    i.mi_person_key,
+                    i.injury_date,
+                    e.external_date
+                FROM injury_events i
+                INNER JOIN external_events e ON i.mi_person_key = e.mi_person_key
+                WHERE ABS(datediff('day', i.injury_date, e.external_date)) <= {FALL_TARGET_WINDOW_DAYS}
+            )
+            SELECT
+                mi_person_key,
+                MIN(injury_date) AS first_falls_date
+            FROM falls_pairs
+            GROUP BY mi_person_key
+            """
+        else:
+            materialize_target_patients_sql = f"""
+            CREATE OR REPLACE TEMP VIEW target_patients_materialized AS
+            SELECT
+                mi_person_key,
+                MIN(CAST(event_date AS DATE)) AS first_falls_date
+            FROM unified_event_fact_table
+            WHERE {opioid_icd_condition}
+            GROUP BY mi_person_key
+            """
         execute_sql_with_dev_validation(cohort_conn_duckdb, logger, materialize_target_patients_sql)
         # Cast COUNT(*) to BIGINT to avoid INT32 overflow for large counts
         # Use fetchdf() to avoid Python connector's INT32 casting issue
@@ -222,10 +264,9 @@ def run_phase3_step3_final_cohort_fact(context):
         
         # Check target case counts BEFORE creating cohorts
         # Use fetchdf() to avoid INT32 overflow
-        target_case_count_df = cohort_conn_duckdb.sql(f"""
+        target_case_count_df = cohort_conn_duckdb.sql("""
         SELECT CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) AS count
-        FROM unified_event_fact_table
-        WHERE event_classification = '{label_target}'
+        FROM target_patients_materialized
         """).fetchdf()
         target_case_count = int(target_case_count_df.iloc[0]['count']) if not target_case_count_df.empty else 0
         
@@ -398,22 +439,19 @@ def run_phase3_step3_final_cohort_fact(context):
             CREATE OR REPLACE TABLE falls_cohort AS
             WITH target_cases AS (
                 SELECT DISTINCT mi_person_key
-                FROM unified_event_fact_table
-                WHERE event_classification = '{label_target}'
+                FROM target_patients_materialized
             ),
             first_target_dates AS (
                 SELECT 
                     mi_person_key,
-                    MIN(event_date) as first_falls_date
-                FROM unified_event_fact_table
-                WHERE event_classification = '{label_target}'
+                    MIN(first_falls_date) as first_falls_date
+                FROM target_patients_materialized
                 GROUP BY mi_person_key
             ),
             control_candidates AS (
                 SELECT DISTINCT mi_person_key
                 FROM unified_event_fact_table uef
-                WHERE event_classification != '{label_target}'
-                  AND NOT EXISTS (
+                WHERE NOT EXISTS (
                       SELECT 1
                       FROM target_cases tc
                       WHERE tc.mi_person_key = uef.mi_person_key
@@ -480,8 +518,12 @@ def run_phase3_step3_final_cohort_fact(context):
             CREATE OR REPLACE TABLE falls_cohort AS
             WITH control_candidates AS (
                 SELECT DISTINCT mi_person_key
-                FROM unified_event_fact_table
-                WHERE event_classification != '{label_target}'
+                FROM unified_event_fact_table uef
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM target_patients_materialized tp
+                    WHERE tp.mi_person_key = uef.mi_person_key
+                )
             ),
             sampled_controls AS (
                 SELECT mi_person_key

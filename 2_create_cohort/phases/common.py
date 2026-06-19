@@ -504,8 +504,12 @@ def get_dynamic_targeting_config():
         target_icd_codes, target_cpt_codes, target_icd_prefixes, target_cpt_prefixes
     """
     target_name = os.getenv("PGX_TARGET_NAME", "").strip().lower()
+    target_icd_codes = [c.strip() for c in os.getenv("PGX_TARGET_ICD_CODES", "").split(',') if c.strip()]
     target_icd_prefixes = [p.strip() for p in os.getenv("PGX_TARGET_ICD_PREFIXES", "").split(',') if p.strip()]
-    normalized_prefixes = {p.upper().replace(".", "").replace(" ", "") for p in target_icd_prefixes}
+    normalized_targets = {
+        value.upper().replace(".", "").replace(" ", "")
+        for value in target_icd_codes + target_icd_prefixes
+    }
     falls_prefixes = {
         "S", "T07", "T14", "T20", "T21", "T22", "T23", "T24", "T25", "T26",
         "T27", "T28", "T29", "T30", "T31", "T32", "T33", "T34", "T79",
@@ -514,12 +518,13 @@ def get_dynamic_targeting_config():
         "W18", "W19",
     }
     is_falls_target = target_name in {"falls", "fall_injury_any", "fall_injury"} or bool(
-        normalized_prefixes & falls_prefixes
+        normalized_targets & falls_prefixes
     )
     return {
         "target_name": target_name,
+        "is_falls_target": is_falls_target,
         "target_event_classification": "falls" if is_falls_target else "target",
-        "target_icd_codes": [c.strip() for c in os.getenv("PGX_TARGET_ICD_CODES", "").split(',') if c.strip()],
+        "target_icd_codes": target_icd_codes,
         "target_cpt_codes": [c.strip() for c in os.getenv("PGX_TARGET_CPT_CODES", "").split(',') if c.strip()],
         "target_icd_prefixes": target_icd_prefixes,
         "target_cpt_prefixes": [p.strip() for p in os.getenv("PGX_TARGET_CPT_PREFIXES", "").split(',') if p.strip()]

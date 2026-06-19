@@ -273,6 +273,8 @@ def main():
     parser.add_argument("--target-name", default=None, help="Optional target name to set (overrides PGX_TARGET_NAME env)")
     parser.add_argument("--target-icd-codes", default=None, help="Optional ICD codes string (comma-separated) to set PGX_TARGET_ICD_CODES")
     parser.add_argument("--target-cpt-codes", default=None, help="Optional CPT codes string (comma-separated) to set PGX_TARGET_CPT_CODES")
+    parser.add_argument("--target-icd-prefixes", default=None, help="Optional ICD prefixes string (comma-separated) to set PGX_TARGET_ICD_PREFIXES")
+    parser.add_argument("--target-cpt-prefixes", default=None, help="Optional CPT prefixes string (comma-separated) to set PGX_TARGET_CPT_PREFIXES")
     parser.add_argument("--time-window-days", type=int, default=None, choices=[7, 14, 21, 30, 45],
                        help="DEPRECATED: Time window is fixed at 21 days. This argument is ignored.")
     parser.add_argument("--concurrent-workers", type=int, default=None,
@@ -282,13 +284,17 @@ def main():
     
     args = parser.parse_args()
     # If target overrides provided on CLI, set environment variables *before* reloading constants/s3_utils
-    if args.target_name or args.target_icd_codes or args.target_cpt_codes:
+    if args.target_name or args.target_icd_codes or args.target_cpt_codes or args.target_icd_prefixes or args.target_cpt_prefixes:
         if args.target_name:
             os.environ["PGX_TARGET_NAME"] = args.target_name
         if args.target_icd_codes:
             os.environ["PGX_TARGET_ICD_CODES"] = args.target_icd_codes
         if args.target_cpt_codes:
             os.environ["PGX_TARGET_CPT_CODES"] = args.target_cpt_codes
+        if args.target_icd_prefixes:
+            os.environ["PGX_TARGET_ICD_PREFIXES"] = args.target_icd_prefixes
+        if args.target_cpt_prefixes:
+            os.environ["PGX_TARGET_CPT_PREFIXES"] = args.target_cpt_prefixes
 
         # reload the modules so module-level constants derived from env are refreshed
         try:

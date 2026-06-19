@@ -10,7 +10,7 @@ This document provides a **complete reference** for the Cohort Creation Pipeline
 
 The Cohort Pipeline builds **event-based fact tables** for analytical cohorts used in geriatric fall injury and ED visit risk prediction. It generates two main cohorts for **age bands 65–74 and 75–84 only**:
 
-- **falls:** Patients with fall-related injury encounters (`fall_injury_any = 1`). Requires BOTH an injury ICD code (S00–S99, T07, T14, T20–T34, T79) AND an external cause fall code (W00–W19) on the same encounter. This cohort does **not** require separate ED visit evidence unless an explicit ED restriction is added in a future definition.
+- **falls:** Patients with fall-related injury evidence (`fall_injury_any = 1`). Requires BOTH an injury ICD code (S00–S99, T07, T14, T20–T34, T79) AND an external cause fall code (W00–W19) for the same patient within the configured falls target window (`CPIC_FALL_TARGET_WINDOW_DAYS`, default 7 days). This cohort does **not** require separate ED visit evidence unless an explicit ED restriction is added in a future definition.
 - **ed:** Patients with emergency department visits (`ed_event = 1`). Identified by CMS place of service code 23 or revenue codes 045x / 0981.
 
 Each cohort includes **target cases** and **5 matching controls** per case. Age bands processed: `65-74`, `75-84`. Event years: 2016–2019.
@@ -124,7 +124,7 @@ DuckDB handling has been fully aligned with the standardized system from the pha
 ### Cohort Classification Column
 
 The `cohort` column tracks:
-- **falls:** Target cases with `fall_injury_any = 1` (injury ICD + W00–W19 external cause on same encounter; ED visit evidence is not required by the current definition)
+- **falls:** Target cases with `fall_injury_any = 1` (injury ICD + W00–W19 external cause for the same patient within the configured falls target window; ED visit evidence is not required by the current definition)
 - **ed:** Target cases with `ed_event = 1` (POS=23 or revenue code 045x/0981)
 - **control:** Non-target patients matched 5:1 by age/gender/race/ZIP/payer
 
@@ -159,7 +159,7 @@ The pipeline includes temporal analysis fields that differ between cohorts:
 #### Cohort-Specific Temporal Behavior
 
 **falls Cohort:**
-- **Target Definition:** A target case has a qualifying fall injury event (`fall_injury_any = 1`), defined by injury ICD prefixes AND W00–W19 external fall-cause prefixes on the same encounter; the current falls cohort does not require a separate ED visit.
+- **Target Definition:** A target case has qualifying fall injury evidence (`fall_injury_any = 1`), defined by injury ICD prefixes AND W00–W19 external fall-cause prefixes for the same patient within the configured falls target window; the current falls cohort does not require a separate ED visit.
 - **Complete Drug History:** Includes ALL drug events for target cases (no time restriction)
 - **No Drug Window Filtering:** All pharmacy events are included regardless of timing
 - **Temporal Analysis:** Use `event_date` and `event_sequence` for temporal analysis
@@ -491,7 +491,7 @@ s3://pgxdatalake/gold/{PROJECT_SLUG}/cohorts/
 - 100% imputed demographics
 - 5:1 control ratio (or control-only cohorts when targets = 0)
 - Event classification integrity
-- **falls target validation:** injury ICD (S/T codes) + external cause W00–W19 on same encounter
+- **falls target validation:** injury ICD (S/T codes) + external cause W00–W19 for the same patient within `CPIC_FALL_TARGET_WINDOW_DAYS` (default 7 days)
 - **ed target validation:** POS=23 or revenue code 045x/0981
 - **Cohort column values:** `falls`, `ed`, `control`
 - QA summary logged in checkpoints
@@ -654,7 +654,7 @@ print(state.get_progress())
 The pipeline uses two independent target identification methods:
 
 1. **ICD/External Cause Targets** (falls cohort):
-   - Injury ICD (S00–S99, T07, T14, T20–T34, T79) + external cause W00–W19 on same encounter
+   - Injury ICD (S00–S99, T07, T14, T20–T34, T79) + external cause W00–W19 for the same patient within `CPIC_FALL_TARGET_WINDOW_DAYS` (default 7 days)
    - Configurable via environment variables (see below)
    - Codes are normalized before matching (uppercase, punctuation removed)
    - **Comprehensive checking:** All 10 ICD diagnosis columns are checked (primary through ten), not just `primary_icd_diagnosis_code`
@@ -679,7 +679,7 @@ Event classification follows this priority:
 2. **HCG ED visits** → `'ed'`
 3. **Other events** → `'non_target'` (or `'ed'` if default mode)
 
-**Important:** The implementation uses `get_opioid_icd_sql_condition()` from `py_helpers/constants.py` for the current dynamic target condition. For falls, this means normalized prefix matching across all 10 ICD diagnosis columns, requiring injury prefixes AND W00–W19 external fall-cause prefixes on the same event row.
+**Important:** Phase 3 materializes falls target patients using normalized prefix matching across all 10 ICD diagnosis columns, requiring injury prefixes AND W00–W19 external fall-cause prefixes for the same patient within `CPIC_FALL_TARGET_WINDOW_DAYS` (default 7 days).
 
 ### Environment Variables for Dynamic Targeting
 
@@ -974,7 +974,7 @@ The classification logic uses a priority-based CASE statement:
 2. **HCG ED visits** → `'ed'`
 3. **Other events** → `'non_target'` (or `'ed'` if default mode)
 
-**Important:** ICD checking includes **ALL 10 ICD diagnosis columns** (primary through ten), not just `primary_icd_diagnosis_code`. For falls, matching is prefix-based after normalization and requires injury-prefix evidence AND W00–W19 external fall-cause evidence on the same event row.
+**Important:** ICD checking includes **ALL 10 ICD diagnosis columns** (primary through ten), not just `primary_icd_diagnosis_code`. For falls, Phase 3 uses prefix-based matching after normalization and requires injury-prefix evidence AND W00–W19 external fall-cause evidence for the same patient within `CPIC_FALL_TARGET_WINDOW_DAYS` (default 7 days).
 
 **Dynamic Classification (current falls/ed setup):**
 
@@ -1156,7 +1156,7 @@ WHERE tc.mi_person_key IS NOT NULL OR sc.mi_person_key IS NOT NULL;
 ```
 
 **Logic:**
-- **Target cases:** Patients with `event_classification = 'falls'`, where falls target events are injury ICD prefixes AND W00–W19 external fall-cause prefixes on the same encounter; separate ED visit evidence is not required
+- **Target cases:** Patients in `target_patients_materialized`, where falls target evidence is injury ICD prefixes AND W00–W19 external fall-cause prefixes for the same patient within `CPIC_FALL_TARGET_WINDOW_DAYS` (default 7 days); separate ED visit evidence is not required
 - **Controls:** Hash-sampled controls up to 5x target count from non-target patients
 - **Statistical Independence:** No control reuse - each control patient appears only once
 - **Temporal Fields:** 
@@ -1605,7 +1605,7 @@ This precision ensures that only actual ED visits (not observation care) are use
 
 ### Cohort Separation
 
-- **falls cohort:** Patients with qualifying fall injury target events (`fall_injury_any = 1`) using injury ICD prefixes AND W00–W19 external fall-cause prefixes on the same encounter.
+- **falls cohort:** Patients with qualifying fall injury target evidence (`fall_injury_any = 1`) using injury ICD prefixes AND W00–W19 external fall-cause prefixes for the same patient within `CPIC_FALL_TARGET_WINDOW_DAYS` (default 7 days).
 - **ed cohort:** Patients with HCG ED visits (using `hcg_detail` for precision: P51b only, excludes P51a observation care), excluding patients who meet the falls target definition.
 - **Complete separation:** Falls target patients cannot appear in ed as targets or controls.
 - **Comprehensive checking:** All 10 ICD diagnosis columns (`primary_icd_diagnosis_code` through `ten_icd_diagnosis_code`) are checked for falls target matching.
