@@ -50,6 +50,7 @@ def run_phase2_step1_event_fact_table(context):
         target_cpt_codes = config["target_cpt_codes"]
         target_icd_prefixes = config["target_icd_prefixes"]
         target_cpt_prefixes = config["target_cpt_prefixes"]
+        target_event_classification = config["target_event_classification"]
 
         # Compose SQL condition for ICD-based targeting
         # Codes are normalized to F1120 format (no dots, no prefixes) via 7_update_codes.py
@@ -106,8 +107,9 @@ def run_phase2_step1_event_fact_table(context):
             END
         """
 
-        # If any env targets are provided, build a generic target/non_target classification
-        # Priority: 1) Target ICD/CPT codes → target, 2) HCG ED visits → ed, 3) Other → non_target
+        # If any env targets are provided, build explicit target/non_target classification.
+        # For the production falls target, use event_classification='falls' consistently.
+        # Priority: 1) Target ICD/CPT codes → target_event_classification, 2) HCG ED visits → ed, 3) Other → non_target
         # IMPORTANT: 'non_target' is intentionally excluded from ED-based cohorts in later phases
         if icd_conditions or cpt_conditions:
             target_conditions = []
@@ -117,7 +119,7 @@ def run_phase2_step1_event_fact_table(context):
             where_clause = " OR ".join(filter(None, target_conditions)) or "1=0"
             classification_sql = f"""
                 CASE 
-                    WHEN ({where_clause}) THEN 'target'
+                    WHEN ({where_clause}) THEN '{target_event_classification}'
                     WHEN {ed_hcg_condition} THEN 'ed'
                     ELSE 'non_target'
                 END
@@ -257,7 +259,7 @@ def run_phase2_step1_event_fact_table(context):
         logger.info(f"→ [PHASE 2 STEP 1] QA: Total events: {total_events:,}")
         logger.info(f"→ [PHASE 2 STEP 1] QA: Event type distribution: {dict(event_type_dist)}")
         
-        target_classification = 'target' if (icd_conditions or cpt_conditions) else 'falls'
+        target_classification = target_event_classification if (icd_conditions or cpt_conditions) else 'falls'
         target_total = cohort_conn_duckdb.sql(f"""
         SELECT
             COUNT(*) as total_target_records,

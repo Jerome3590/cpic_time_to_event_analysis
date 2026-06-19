@@ -61,7 +61,7 @@ final_cohort_schema = [
     ("hcg_detail", "str", "Healthcare detail (medical events only)"),
     
     # Event classification and sequence
-    ("event_classification", "str", "Event classification: 'falls', 'ed', 'target', 'non_target'"),
+    ("event_classification", "str", "Event classification: 'falls', 'ed', or 'non_target'"),
     ("event_sequence", "int", "Sequential order of events per patient (globally ordered across medical and pharmacy)"),
     
     # Cohort metadata

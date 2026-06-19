@@ -8,7 +8,7 @@ title: Falls cohort troubleshooting TODO
 
 Phase 3 is materializing zero falls target patients for `falls/65-74/2016` under the current strict falls definition.
 
-Latest S3 state check (`pgx-repository/pgx-pipeline-status/create_cohort/falls_65-74_2016/`) shows the current EC2 run is still `running` after `phase2_step2_drug_exposure`; no Phase 3 checkpoint or Phase 3 debug log was present yet. Do not change the falls definition until the Phase 3 debug block below has run.
+Latest notebook output reached the Phase 3 debug block. The current code path used the generic dynamic target label `target`; update pipeline labeling so this cohort uses `event_classification = 'falls'` consistently.
 
 Observed diagnostic counts from the EC2 run:
 
@@ -16,6 +16,9 @@ Observed diagnostic counts from the EC2 run:
 - **External fall-cause-prefix patients:** `122`
 - **Same-row falls patients:** `0`
 - **Target-condition patients:** `0`
+- **Same-patient same-date patients:** `42`
+- **Same-patient within 7 days:** `60`
+- **Same-patient within 30 days:** `72`
 
 The strict target condition currently requires injury-prefix evidence and W00-W19 external fall-cause evidence on the same `unified_event_fact_table` row.
 

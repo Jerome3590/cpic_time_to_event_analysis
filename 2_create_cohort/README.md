@@ -983,7 +983,7 @@ CASE
     WHEN (
         any_diagnosis_column LIKE injury_prefix
         AND any_diagnosis_column LIKE external_fall_cause_prefix
-    ) THEN 'target'
+    ) THEN 'falls'
     WHEN (hcg_line = 'P51 - ER Visits and Observation Care' AND hcg_detail = 'P51b - PHY ED Visits and Observation Care - ED Visits')
          OR hcg_line = 'O11 - Emergency Room'
          OR hcg_line = 'P33 - Urgent Care Visits' THEN 'ed'
@@ -1092,7 +1092,7 @@ CREATE OR REPLACE VIEW falls_cohort AS
 WITH target_cases AS (
     SELECT DISTINCT mi_person_key
     FROM unified_event_fact_table
-    WHERE event_classification = 'target'  -- or 'falls' if no dynamic targeting
+    WHERE event_classification = 'falls'
 ),
 first_target_dates AS (
     -- Find first target event date per patient
@@ -1100,13 +1100,13 @@ first_target_dates AS (
         mi_person_key,
         MIN(event_date) as first_falls_date
     FROM unified_event_fact_table
-    WHERE event_classification = 'target'
+    WHERE event_classification = 'falls'
     GROUP BY mi_person_key
 ),
 control_candidates AS (
     SELECT DISTINCT mi_person_key
     FROM unified_event_fact_table
-    WHERE event_classification != 'target'
+    WHERE event_classification != 'falls'
       AND mi_person_key NOT IN (SELECT mi_person_key FROM target_cases)
 ),
 sampled_controls AS (
@@ -1156,7 +1156,7 @@ WHERE tc.mi_person_key IS NOT NULL OR sc.mi_person_key IS NOT NULL;
 ```
 
 **Logic:**
-- **Target cases:** Patients with `event_classification = 'target'`, where falls target events are injury ICD prefixes AND W00–W19 external fall-cause prefixes on the same encounter; separate ED visit evidence is not required
+- **Target cases:** Patients with `event_classification = 'falls'`, where falls target events are injury ICD prefixes AND W00–W19 external fall-cause prefixes on the same encounter; separate ED visit evidence is not required
 - **Controls:** Hash-sampled controls up to 5x target count from non-target patients
 - **Statistical Independence:** No control reuse - each control patient appears only once
 - **Temporal Fields:** 
@@ -1176,7 +1176,7 @@ CREATE OR REPLACE VIEW falls_cohort AS
 WITH control_candidates AS (
     SELECT DISTINCT mi_person_key
     FROM unified_event_fact_table
-    WHERE event_classification != 'target'
+    WHERE event_classification != 'falls'
 ),
 sampled_controls AS (
     SELECT mi_person_key
@@ -1215,7 +1215,7 @@ WITH falls_target_patients AS (
     -- Actual implementation uses get_opioid_icd_sql_condition() for normalized all-diagnosis-column matching
     SELECT DISTINCT mi_person_key
     FROM unified_event_fact_table
-    WHERE event_classification = 'target'
+    WHERE event_classification = 'falls'
 ),
 hcg_patients_with_visit_counts AS (
     -- Count ED visits per patient per year (for filtering)
@@ -1437,7 +1437,7 @@ WITH falls_target_patients AS (
     -- Actual implementation uses get_opioid_icd_sql_condition() for normalized all-diagnosis-column matching
     SELECT DISTINCT mi_person_key
     FROM unified_event_fact_table
-    WHERE event_classification = 'target'
+    WHERE event_classification = 'falls'
 ),
 control_candidates AS (
     SELECT DISTINCT mi_person_key
@@ -1564,7 +1564,7 @@ FROM ed_cohort
 WHERE mi_person_key IN (
     SELECT DISTINCT mi_person_key
     FROM unified_event_fact_table
-    WHERE event_classification = 'target'
+    WHERE event_classification = 'falls'
 );
 -- Should return 0
 ```
@@ -1654,7 +1654,7 @@ The pipeline calculates temporal relationships between events and target events,
 
 - **Complete Drug History:** All drug events included (no time restriction)
 - **No Filtering:** All pharmacy and medical events included regardless of timing
-- **First Target Date:** Calculated as `MIN(event_date)` where `event_classification = 'target'` in dynamic targeting mode
+- **First Target Date:** Calculated as `MIN(event_date)` where `event_classification = 'falls'`
 - **Days Calculation:** `days_to_target_event` is NULL; calculate manually if needed:
   ```sql
   SELECT 

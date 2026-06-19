@@ -93,10 +93,12 @@ def run_phase3_step3_final_cohort_fact(context):
         ensure_unified_views(cohort_conn_duckdb, logger)
 
         # Determine classification labels based on dynamic targeting env
+        from .common import get_dynamic_targeting_config
+        config = get_dynamic_targeting_config()
         target_icd = os.getenv("PGX_TARGET_ICD_CODES", "").strip() or os.getenv("PGX_TARGET_ICD_PREFIXES", "").strip()
         target_cpt = os.getenv("PGX_TARGET_CPT_CODES", "").strip() or os.getenv("PGX_TARGET_CPT_PREFIXES", "").strip()
         dynamic_targeting = bool(target_icd or target_cpt)
-        label_target = 'target' if dynamic_targeting else 'falls'
+        label_target = config["target_event_classification"] if dynamic_targeting else 'falls'
         label_ed = 'ed'
         
         # Log resolved dynamic targeting state for clarity and reproducibility

@@ -500,12 +500,28 @@ def get_dynamic_targeting_config():
     Centralize environment variable parsing for dynamic targeting configuration.
     
     Returns:
-        dict with keys: target_icd_codes, target_cpt_codes, target_icd_prefixes, target_cpt_prefixes
+        dict with keys: target_name, target_event_classification,
+        target_icd_codes, target_cpt_codes, target_icd_prefixes, target_cpt_prefixes
     """
+    target_name = os.getenv("PGX_TARGET_NAME", "").strip().lower()
+    target_icd_prefixes = [p.strip() for p in os.getenv("PGX_TARGET_ICD_PREFIXES", "").split(',') if p.strip()]
+    normalized_prefixes = {p.upper().replace(".", "").replace(" ", "") for p in target_icd_prefixes}
+    falls_prefixes = {
+        "S", "T07", "T14", "T20", "T21", "T22", "T23", "T24", "T25", "T26",
+        "T27", "T28", "T29", "T30", "T31", "T32", "T33", "T34", "T79",
+        "W00", "W01", "W02", "W03", "W04", "W05", "W06", "W07", "W08",
+        "W09", "W10", "W11", "W12", "W13", "W14", "W15", "W16", "W17",
+        "W18", "W19",
+    }
+    is_falls_target = target_name in {"falls", "fall_injury_any", "fall_injury"} or bool(
+        normalized_prefixes & falls_prefixes
+    )
     return {
+        "target_name": target_name,
+        "target_event_classification": "falls" if is_falls_target else "target",
         "target_icd_codes": [c.strip() for c in os.getenv("PGX_TARGET_ICD_CODES", "").split(',') if c.strip()],
         "target_cpt_codes": [c.strip() for c in os.getenv("PGX_TARGET_CPT_CODES", "").split(',') if c.strip()],
-        "target_icd_prefixes": [p.strip() for p in os.getenv("PGX_TARGET_ICD_PREFIXES", "").split(',') if p.strip()],
+        "target_icd_prefixes": target_icd_prefixes,
         "target_cpt_prefixes": [p.strip() for p in os.getenv("PGX_TARGET_CPT_PREFIXES", "").split(',') if p.strip()]
     }
 
@@ -523,6 +539,7 @@ def ensure_unified_views(conn, logger):
         target_cpt_codes = config["target_cpt_codes"]
         target_icd_prefixes = config["target_icd_prefixes"]
         target_cpt_prefixes = config["target_cpt_prefixes"]
+        target_event_classification = config["target_event_classification"]
 
         icd_conditions = []
         if target_icd_codes:
@@ -574,8 +591,9 @@ def ensure_unified_views(conn, logger):
             END
         """
         
-        # If any env targets are provided, build a generic target/non_target classification
-        # Priority: 1) Target ICD/CPT codes → target, 2) HCG ED visits → ed, 3) Other → non_target
+        # If any env targets are provided, build explicit target/non_target classification.
+        # For the production falls target, use event_classification='falls' consistently.
+        # Priority: 1) Target ICD/CPT codes → target_event_classification, 2) HCG ED visits → ed, 3) Other → non_target
         if icd_conditions or cpt_conditions:
             target_conditions = []
             if target_icd_codes or target_icd_prefixes:
@@ -584,7 +602,7 @@ def ensure_unified_views(conn, logger):
             where_clause = " OR ".join(filter(None, target_conditions)) or "1=0"
             classification_sql = f"""
                 CASE 
-                    WHEN ({where_clause}) THEN 'target'
+                    WHEN ({where_clause}) THEN '{target_event_classification}'
                     WHEN {ed_hcg_condition} THEN 'ed'
                     ELSE 'non_target'
                 END
@@ -745,10 +763,11 @@ def ensure_cohort_views(conn, logger):
         "Missing: time windows, drug lookbacks, multi-window targets, proper control ratios."
     )
     # Determine classification labels based on dynamic targeting env (same logic as Phase 3)
+    config = get_dynamic_targeting_config()
     target_icd = os.getenv("PGX_TARGET_ICD_CODES", "").strip() or os.getenv("PGX_TARGET_ICD_PREFIXES", "").strip()
     target_cpt = os.getenv("PGX_TARGET_CPT_CODES", "").strip() or os.getenv("PGX_TARGET_CPT_PREFIXES", "").strip()
     dynamic_targeting = bool(target_icd or target_cpt)
-    label_target = 'target' if dynamic_targeting else 'falls'
+    label_target = config["target_event_classification"] if dynamic_targeting else 'falls'
     # ED always uses 'ed' because HCG ED visits are always classified as 'ed'
     # regardless of dynamic targeting (see Phase 2 classification logic)
     label_ed = 'ed'
