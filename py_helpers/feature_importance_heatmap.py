@@ -132,7 +132,7 @@ def get_aggregated_fi_heatmap_data(
     filter_final: bool = True,
 ) -> Optional[Dict[str, Any]]:
     """
-    Build feature x age_band heatmap data from Step 3b cohort_feature_importance only (final FI after BupaR).
+    Build feature x age_band heatmap data from Step 3b cohort_feature_importance only (final FI after leakage filtering).
     No fallback to 3a; raises FileNotFoundError if any 3b artifact is missing.
     Returns a dict suitable for JSON and client-side Plotly: row_labels, column_labels, matrix, metric.
     Returns None only if < 2 age bands have data after loading.
