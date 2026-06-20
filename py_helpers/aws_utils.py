@@ -65,15 +65,15 @@ def enable_signal_debugging(logger=None):
 
         # Log detailed signal information
         if _signal_debug_logger:
-            _signal_debug_logger.error(f"🔍 SIGNAL DEBUG: Received signal {signum} (SIGTERM={signal.SIGTERM})")
-            _signal_debug_logger.error(f"🔍 Process ID: {process.pid}")
-            _signal_debug_logger.error(f"🔍 Memory Usage: {memory_info.rss / 1024 / 1024:.2f} MB")
-            _signal_debug_logger.error(f"🔍 CPU Usage: {process.cpu_percent()}%")
-            _signal_debug_logger.error(f"🔍 Open Files: {len(process.open_files())}")
-            _signal_debug_logger.error(f"🔍 Threads: {process.num_threads()}")
-            _signal_debug_logger.error(f"🔍 Stack Trace:")
+            _signal_debug_logger.error(f"[CHECK] SIGNAL DEBUG: Received signal {signum} (SIGTERM={signal.SIGTERM})")
+            _signal_debug_logger.error(f"[CHECK] Process ID: {process.pid}")
+            _signal_debug_logger.error(f"[CHECK] Memory Usage: {memory_info.rss / 1024 / 1024:.2f} MB")
+            _signal_debug_logger.error(f"[CHECK] CPU Usage: {process.cpu_percent()}%")
+            _signal_debug_logger.error(f"[CHECK] Open Files: {len(process.open_files())}")
+            _signal_debug_logger.error(f"[CHECK] Threads: {process.num_threads()}")
+            _signal_debug_logger.error(f"[CHECK] Stack Trace:")
             for i, line in enumerate(stack_trace[-10:]):  # Last 10 lines
-                _signal_debug_logger.error(f"🔍   {i}: {line.strip()}")
+                _signal_debug_logger.error(f"[CHECK]   {i}: {line.strip()}")
 
         # Call original signal handler if it exists
         if hasattr(debug_signal_handler, 'original_handler'):
@@ -85,7 +85,7 @@ def enable_signal_debugging(logger=None):
         debug_signal_handler.original_handler = signal.signal(signal.SIGTERM, debug_signal_handler)
         signal.signal(signal.SIGINT, debug_signal_handler)
         if _signal_debug_logger:
-            _signal_debug_logger.info("🔍 Signal debugging enabled")
+            _signal_debug_logger.info("[CHECK] Signal debugging enabled")
     except Exception as e:
         if _signal_debug_logger:
             _signal_debug_logger.warning(f"Could not register signal debug handlers: {e}")
@@ -403,7 +403,7 @@ def notify_error(step_name, error_msg, logger):
     try:
         if hasattr(logger, 'save_logs_now'):
             logger.save_logs_now(f"error_{step_name}")
-            logger.info("✓ Logs saved immediately due to error")
+            logger.info("[1] Logs saved immediately due to error")
     except Exception as log_error:
         logger.warning(f"Could not save logs immediately: {log_error}")
 

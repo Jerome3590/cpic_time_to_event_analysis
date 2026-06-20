@@ -210,7 +210,7 @@ def parse_encoding(encoding: str) -> List[int]:
         int(encoding[13:15]), # chemical suffixes
         int(encoding[15:17]), # consonant clusters
         int(encoding[17:19]), # repetition factor
-        int(encoding[19:23]), # support (×1000)
+        int(encoding[19:23]), # support (x1000)
         int(encoding[23:26]), # number of rules
         int(encoding[26:29])  # number of drugs in rules
     ]
@@ -257,11 +257,11 @@ def save_drug_encoding_map(
         save_to_s3_json(drug_encodings, json_path, logger=logger, partition_cols=partition_cols)
 
         if logger:
-            logger.info(f"✓ Successfully saved drug encoding map to {parquet_path}")
+            logger.info(f"[1] Successfully saved drug encoding map to {parquet_path}")
         return True
 
     except Exception as e:
-        msg = f"✗ Error saving drug encoding map: {str(e)}"
+        msg = f"[X] Error saving drug encoding map: {str(e)}"
         if logger:
             logger.error(msg)
         return False
@@ -421,9 +421,9 @@ def encode_drug_name(drug_name: str, fpgrowth_metrics: dict, logger: Optional[lo
     - Length (2-digit)
     - Syllables (2-digit)
     - Consonants (2-digit)
-    - Support (4-digit, scaled ×1000)
-    - Confidence (4-digit, scaled ×1000)
-    - Certainty (4-digit, scaled ×1000)
+    - Support (4-digit, scaled x1000)
+    - Confidence (4-digit, scaled x1000)
+    - Certainty (4-digit, scaled x1000)
     Total: 3 + 2 + 2 + 2 + 4 + 4 + 4 = 21 characters
     """
     try:
@@ -461,9 +461,9 @@ def parse_encoding(encoding: str) -> List[int]:
         int(encoding[3:5]),   # length
         int(encoding[5:7]),   # syllables
         int(encoding[7:9]),   # consonants
-        int(encoding[9:13]),  # support (×1000)
-        int(encoding[13:17]), # confidence (×1000)
-        int(encoding[17:21])  # certainty (×1000)
+        int(encoding[9:13]),  # support (x1000)
+        int(encoding[13:17]), # confidence (x1000)
+        int(encoding[17:21])  # certainty (x1000)
     ]
 
 
@@ -508,11 +508,11 @@ def save_drug_encoding_map(
         save_to_s3_json(drug_encodings, json_path, logger=logger, partition_cols=partition_cols)
 
         if logger:
-            logger.info(f"✓ Successfully saved drug encoding map to {parquet_path}")
+            logger.info(f"[1] Successfully saved drug encoding map to {parquet_path}")
         return True
 
     except Exception as e:
-        msg = f"✗ Error saving drug encoding map: {str(e)}"
+        msg = f"[X] Error saving drug encoding map: {str(e)}"
         if logger:
             logger.error(msg)
         return False

@@ -2,7 +2,7 @@
 Idempotent upload of Step 6 local outputs to S3 gold/final_model.
 
 Uses ``upload_file_to_s3`` (skip if object already exists) with **explicit**
-(local_path, s3_uri) pairs matching ``6_final_model/run_final_model.py`` — no
+(local_path, s3_uri) pairs matching ``6_final_model/run_final_model.py`` - no
 ``aws s3 sync`` of whole trees, so keys cannot drift to the wrong prefix.
 
 CLI: ``python -m py_helpers.final_model_s3_upload --cohort X --age-band Y``
@@ -69,7 +69,7 @@ def build_step6_gold_upload_pairs(
     """
     (local file, s3://bucket/gold/final_model/...) pairs for Step 6.
 
-    ``upload_bins``: include ``bin_models/{bin}/…`` joblibs and native binaries
+    ``upload_bins``: include ``bin_models/{bin}/...`` joblibs and native binaries
     (same layout as ``run_final_model`` idempotent repair block).
     """
     out_base = resolve_step6_cohort_age_dir(project_root, cohort, age_band)
@@ -117,7 +117,7 @@ def build_step6_gold_upload_pairs(
         out_base / f"{cohort}_{abf}_train_final_features_no_leakage.csv",
         f"{s3_root}/{cohort}_{abf}_train_final_features_no_leakage.csv",
     )
-    # Native binaries (SHAP) — same keys as train_and_evaluate save_model_idempotent
+    # Native binaries (SHAP) - same keys as train_and_evaluate save_model_idempotent
     add(out_base / "models" / "xgboost_model.ubj", f"{s3_root}/xgboost_model.ubj")
     add(out_base / "models" / "catboost_model.cbm", f"{s3_root}/catboost_model.cbm")
 
@@ -201,7 +201,7 @@ def upload_step6_outputs_to_s3(
 
 def _parse_args(argv: Optional[Iterable[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description="Idempotent Step 6 upload to s3://…/gold/final_model/ (explicit keys, no sync)."
+        description="Idempotent Step 6 upload to s3://.../gold/final_model/ (explicit keys, no sync)."
     )
     p.add_argument("--cohort", help="Cohort name (e.g. falls)")
     p.add_argument("--age-band", help="Age band with hyphens (e.g. 65-74)")
@@ -253,7 +253,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             return 1
         total = 0
         for cohort, age_band in pairs_list:
-            log.info("Uploading Step 6 → S3: %s / %s", cohort, age_band)
+            log.info("Uploading Step 6 --> S3: %s / %s", cohort, age_band)
             n = upload_step6_outputs_to_s3(
                 cohort,
                 age_band,
@@ -263,7 +263,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
                 check_exists=not args.force,
                 save_checkpoint=not args.no_checkpoint,
             )
-            log.info("  → %d object(s) present or uploaded", len(n))
+            log.info("  --> %d object(s) present or uploaded", len(n))
             total += len(n)
         log.info("Done. Total uploads/skips: %d", total)
         return 0

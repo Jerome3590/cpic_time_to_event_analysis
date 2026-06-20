@@ -12,11 +12,11 @@ from datetime import datetime
 # Windows emoji compatibility
 IS_WINDOWS = platform.system() == 'Windows'
 SYMBOLS = {
-    'arrow': '->' if IS_WINDOWS else '→',
-    'success': '[PASS]' if IS_WINDOWS else '✅',
-    'fail': '[FAIL]' if IS_WINDOWS else '❌',
-    'info': '[INFO]' if IS_WINDOWS else '📊',
-    'check': '[CHECK]' if IS_WINDOWS else '🔍'
+    'arrow': '-->',
+    'success': '[1]',
+    'fail': '[X]',
+    'info': '[INFO]',
+    'check': '[CHECK]'
 }
 
 # Set root of project
@@ -52,11 +52,11 @@ def cleanup_duckdb_temp_files(logger):
         # This handles leftover directories from previous runs or crashes
         cleaned_count = cleanup_old_duckdb_temp_dirs(max_age_hours=1)
         if cleaned_count > 0:
-            logger.info(f"→ [CLEANUP] Cleaned up {cleaned_count} old DuckDB temp directories")
+            logger.info(f"--> [CLEANUP] Cleaned up {cleaned_count} old DuckDB temp directories")
         else:
-            logger.debug("→ [CLEANUP] No old DuckDB temp directories to clean")
+            logger.debug("--> [CLEANUP] No old DuckDB temp directories to clean")
     except Exception as e:
-        logger.warning(f"→ [CLEANUP] Could not clean DuckDB temp files: {e}")
+        logger.warning(f"--> [CLEANUP] Could not clean DuckDB temp files: {e}")
 
 def enable_query_profiling(conn, logger, profile_format="json", output_path="/tmp/duckdb_profiling.json"):
     """
@@ -371,7 +371,7 @@ def sync_gold_data_to_local(dataset: str, age_band: str, event_year: int, logger
             if local_path.exists():
                 file_size = local_path.stat().st_size
                 if file_size > 0:
-                    logger.info(f"[SYNC] ✓ Successfully synced {dataset} data to: {local_path} ({file_size:,} bytes)")
+                    logger.info(f"[SYNC] [1] Successfully synced {dataset} data to: {local_path} ({file_size:,} bytes)")
                     return True
                 else:
                     logger.warning(f"[SYNC] Synced file exists but is empty (0 bytes), may be corrupted: {local_path}")
@@ -589,7 +589,7 @@ def ensure_unified_views(conn, logger):
         """
         
         # Default classification falls back to falls vs ed
-        # Priority: 1) Opioid ICD codes (ANY position) → falls, 2) HCG ED visits → ed, 3) Other → ed
+        # Priority: 1) Opioid ICD codes (ANY position) --> falls, 2) HCG ED visits --> ed, 3) Other --> ed
         # CRITICAL: Check ALL 10 ICD diagnosis columns for opioid codes
         opioid_icd_condition = get_opioid_icd_sql_condition()
         default_case = f"""
@@ -602,7 +602,7 @@ def ensure_unified_views(conn, logger):
         
         # If any env targets are provided, build explicit target/non_target classification.
         # For the production falls target, use event_classification='falls' consistently.
-        # Priority: 1) Target ICD/CPT codes → target_event_classification, 2) HCG ED visits → ed, 3) Other → non_target
+        # Priority: 1) Target ICD/CPT codes --> target_event_classification, 2) HCG ED visits --> ed, 3) Other --> non_target
         if icd_conditions or cpt_conditions:
             target_conditions = []
             if target_icd_codes or target_icd_prefixes:

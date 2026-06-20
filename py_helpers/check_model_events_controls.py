@@ -98,14 +98,14 @@ def main():
     print(f'Valid (with controls): {len(valid)}')
     for k in valid:
         r = results[k]
-        print(f'  ✓ {k}: {r["n_controls"]:,} controls, {r["n_cases"]:,} cases')
+        print(f'  [1] {k}: {r["n_controls"]:,} controls, {r["n_cases"]:,} cases')
     
     if invalid:
         print(f'')
         print(f'Invalid (no controls): {len(invalid)}')
         for k in invalid:
             r = results[k]
-            print(f'  ✗ {k}: {r.get("n_controls", 0):,} controls, {r.get("n_cases", 0):,} cases')
+            print(f'  [X] {k}: {r.get("n_controls", 0):,} controls, {r.get("n_cases", 0):,} cases')
     
     if missing:
         print(f'')

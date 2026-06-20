@@ -149,7 +149,7 @@ def s3_exists(bucket: str, key: str) -> bool:
         return resp.get("ContentLength", 0) > 0
     except s3.exceptions.ClientError as e:
         code = e.response.get("Error", {}).get("Code", "")
-        # If 404/NoSuchKey → definitely absent; if 403, assume present (skip) to avoid reprocessing
+        # If 404/NoSuchKey --> definitely absent; if 403, assume present (skip) to avoid reprocessing
         if code in ("404", "NoSuchKey"):
             return False
         if code == "403":
@@ -234,7 +234,7 @@ def convert_one_with_duckdb(input_uri: str, output_uri: str, logger: Optional[lo
 
     con = _WORKER_CONN
 
-    logger.info(f"Converting → {input_uri} → {output_uri}")
+    logger.info(f"Converting --> {input_uri} --> {output_uri}")
     _log_system_metrics(logger, "before_copy")
 
     # Convert with robust fallbacks for encoding/delimiter issues
@@ -355,7 +355,7 @@ def convert_one_with_duckdb(input_uri: str, output_uri: str, logger: Optional[lo
             _exec_copy(make_copy_sql_forced(delim='|', enc='CP1252'))
             return
     except Exception as forced_e:
-        logger.warning(f"Forced layout path failed, falling back ({str(forced_e)[:220]}…)")
+        logger.warning(f"Forced layout path failed, falling back ({str(forced_e)[:220]}...)")
 
     # Attempt 1: Default (UTF-8, auto delimiter). If it fails, log a concise sample of the error.
     try:
@@ -363,7 +363,7 @@ def convert_one_with_duckdb(input_uri: str, output_uri: str, logger: Optional[lo
         return
     except Exception as e1:
         msg = str(e1)
-        logger.warning(f"Default read_csv_auto failed, retrying with encoding + delimiter based on preview... ({msg[:220]}…)")
+        logger.warning(f"Default read_csv_auto failed, retrying with encoding + delimiter based on preview... ({msg[:220]}...)")
 
     # Use quiet heuristic for delimiter preference (no preview logging)
     tcnt, pcnt = _infer_delim_counts()
@@ -376,7 +376,7 @@ def convert_one_with_duckdb(input_uri: str, output_uri: str, logger: Optional[lo
             _exec_copy(make_copy_sql(enc=enc, delim=preferred_delim))
             return
         except Exception as e_enc_pref:
-            logger.warning(f"{enc} + '{preferred_delim}' failed ({str(e_enc_pref)[:120]}…). Trying ALL_VARCHAR…")
+            logger.warning(f"{enc} + '{preferred_delim}' failed ({str(e_enc_pref)[:120]}...). Trying ALL_VARCHAR...")
             try:
                 _exec_copy(make_copy_sql(enc=enc, delim=preferred_delim, all_varchar=True))
                 return
@@ -389,7 +389,7 @@ def convert_one_with_duckdb(input_uri: str, output_uri: str, logger: Optional[lo
             _exec_copy(make_copy_sql(enc=enc, delim=alt_delim))
             return
         except Exception as e_enc_alt:
-            logger.warning(f"{enc} + '{alt_delim}' failed ({str(e_enc_alt)[:120]}…). Trying ALL_VARCHAR…")
+            logger.warning(f"{enc} + '{alt_delim}' failed ({str(e_enc_alt)[:120]}...). Trying ALL_VARCHAR...")
             try:
                 _exec_copy(make_copy_sql(enc=enc, delim=alt_delim, all_varchar=True))
                 return
@@ -640,7 +640,7 @@ def _convert_worker(task: Tuple[str, str, bool, int, Optional[str], bool, Option
                         logger.info(f"Staged good rows: {staged_good}; rejects: {staged_bad}")
                         source_uri = staged_good
                     except Exception as split_err:
-                        logger.warning(f"split_error: {split_err}; attempting sanitize fallback…")
+                        logger.warning(f"split_error: {split_err}; attempting sanitize fallback...")
                         fixed_uri, rej2_uri, st = _sanitize_to_s3(input_uri, dataset, bronze_root, logger)
                         logger.info(f"Sanitized: {fixed_uri} (unfixable: {st['unfixable']})")
                         source_uri = fixed_uri
@@ -700,11 +700,11 @@ def process_dataset(dataset: str, input_root: str, bronze_root: str, limit: int,
         # Early skip
         check_uri = out_uri
         exists = s3_exists(out_bucket, out_key)
-        logger.info(f"Idempotency check → {check_uri} exists={exists} overwrite={overwrite}")
+        logger.info(f"Idempotency check --> {check_uri} exists={exists} overwrite={overwrite}")
         if exists and not overwrite:
             logger.info(f"Skip (exists): {out_uri}")
             continue
-        logger.info(f"Plan: {in_uri} → {out_uri}")
+        logger.info(f"Plan: {in_uri} --> {out_uri}")
         tasks.append((in_uri, out_uri, overwrite, duckdb_threads, tmp_dir, proceed_on_errors, log_queue, dataset, bronze_root, split_rejects))
         if limit and len(tasks) >= limit:
             break
@@ -721,52 +721,52 @@ def process_dataset(dataset: str, input_root: str, bronze_root: str, limit: int,
     errors = 0
     # First process backlog (convert existing staged goods) if any
     if backlog_tasks:
-        logger.info(f"Converting staged backlog ({len(backlog_tasks)}) before processing new splits…")
+        logger.info(f"Converting staged backlog ({len(backlog_tasks)}) before processing new splits...")
         import concurrent.futures as cf
         with cf.ProcessPoolExecutor(max_workers=workers or 1) as ex:
             for output_uri, success, msg in ex.map(_convert_worker, backlog_tasks):
                 if success:
                     if msg == "converted":
-                        logger.info(f"✓ {output_uri}")
+                        logger.info(f"[1] {output_uri}")
                         processed += 1
 
                     elif msg == "skipped_exists":
-                        logger.info(f"↷ Skipped (exists): {output_uri}")
+                        logger.info(f"[SKIP] Skipped (exists): {output_uri}")
                         skipped += 1
                 else:
-                    logger.error(f"✗ {output_uri} -> {msg}")
+                    logger.error(f"[X] {output_uri} -> {msg}")
                     errors += 1
 
     # Now process new tasks
     if workers and workers > 1:
         import concurrent.futures as cf
-        logger.info(f"Starting parallel conversion with {workers} workers…")
+        logger.info(f"Starting parallel conversion with {workers} workers...")
         with cf.ProcessPoolExecutor(max_workers=workers) as ex:
             for output_uri, success, msg in ex.map(_convert_worker, tasks):
                 if success:
                     if msg == "converted":
-                        logger.info(f"✓ {output_uri}")
+                        logger.info(f"[1] {output_uri}")
                         processed += 1
 
                     elif msg == "skipped_exists":
-                        logger.info(f"↷ Skipped (exists): {output_uri}")
+                        logger.info(f"[SKIP] Skipped (exists): {output_uri}")
                         skipped += 1
                 else:
-                    logger.error(f"✗ {output_uri} -> {msg}")
+                    logger.error(f"[X] {output_uri} -> {msg}")
                     errors += 1
     else:
         for t in tasks:
             output_uri, success, msg = _convert_worker(t)
             if success:
                 if msg == "converted":
-                    logger.info(f"✓ {output_uri}")
+                    logger.info(f"[1] {output_uri}")
                     processed += 1
 
                 elif msg == "skipped_exists":
-                    logger.info(f"↷ Skipped (exists): {output_uri}")
+                    logger.info(f"[SKIP] Skipped (exists): {output_uri}")
                     skipped += 1
             else:
-                logger.error(f"✗ {output_uri} -> {msg}")
+                logger.error(f"[X] {output_uri} -> {msg}")
                 errors += 1
 
     return {"dataset": dataset, "planned": len(backlog_tasks) + len(tasks), "converted": processed, "skipped": skipped, "errors": errors}
@@ -813,11 +813,11 @@ def main(argv: List[str] | None = None) -> int:
         logger.info(f"Using tmp_dir: {args.tmp_dir}")
 
     try:
-        logger.info("🚀 Starting TXT→Parquet bronze conversion")
-        logger.info(f"📁 Medical input: {args.medical_input}")
-        logger.info(f"📁 Pharmacy input: {args.pharmacy_input}")
-        logger.info(f"📁 Bronze root: {args.bronze_root}")
-        logger.info(f"⚙️  Workers={args.workers}, DuckDB threads/worker={args.duckdb_threads}, Limit={args.limit or 'none'}, Overwrite={args.overwrite}, DryRun={args.dry_run}, SplitRejects={args.split_rejects}, ProceedOnErrors={args.proceed_on_errors}, Shard={args.shard_index}/{args.shard_count}")
+        logger.info("[START] Starting TXT-->Parquet bronze conversion")
+        logger.info(f"[PATH] Medical input: {args.medical_input}")
+        logger.info(f"[PATH] Pharmacy input: {args.pharmacy_input}")
+        logger.info(f"[PATH] Bronze root: {args.bronze_root}")
+        logger.info(f"[CONFIG]  Workers={args.workers}, DuckDB threads/worker={args.duckdb_threads}, Limit={args.limit or 'none'}, Overwrite={args.overwrite}, DryRun={args.dry_run}, SplitRejects={args.split_rejects}, ProceedOnErrors={args.proceed_on_errors}, Shard={args.shard_index}/{args.shard_count}")
 
         _run_started = time.time()
         run_summary = {
@@ -903,7 +903,7 @@ def main(argv: List[str] | None = None) -> int:
             run_summary["status"] = "success"
             run_summary["status_code"] = 0
 
-        logger.info(f"✅ Completed. Files processed: {run_summary['totals']['converted']}")
+        logger.info(f"[1] Completed. Files processed: {run_summary['totals']['converted']}")
         if listener and stop_mp_logging is not None:
             stop_mp_logging(listener)
 
@@ -921,14 +921,14 @@ def main(argv: List[str] | None = None) -> int:
         agg_key = f"{agg_key_root.rstrip('/')}/txt_to_parquet/run_id={run_id}/summary.json" if agg_key_root else f"txt_to_parquet/run_id={run_id}/summary.json"
         try:
             boto3.client('s3').put_object(Bucket=agg_bucket, Key=agg_key, Body=json.dumps(run_summary, indent=2).encode('utf-8'), ContentType='application/json')
-            logger.info(f"📊 Aggregated summary saved: s3://{agg_bucket}/{agg_key}")
+            logger.info(f"[INFO] Aggregated summary saved: s3://{agg_bucket}/{agg_key}")
         except Exception as e:
-            logger.warning(f"⚠️ Could not save aggregated summary: {e}")
+            logger.warning(f"[WARN] Could not save aggregated summary: {e}")
         if ps:
             ps.mark_pipeline_completed(run_summary["totals"]) 
         return 0
     except Exception as e:
-        logger.error(f"❌ Conversion failed: {e}")
+        logger.error(f"[X] Conversion failed: {e}")
         if save_logs_to_s3 and setup_logging:
             try:
                 save_logs_to_s3(log_buffer, "txt_to_parquet", args.dataset, run_id, "apcd_input_data", logger=logger)

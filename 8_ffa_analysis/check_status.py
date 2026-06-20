@@ -41,7 +41,7 @@ if causal_file.exists():
     size = causal_file.stat().st_size
     mtime = causal_file.stat().st_mtime
     age = time.time() - mtime
-    print(f"  ✓ EXISTS")
+    print(f"  [1] EXISTS")
     print(f"  Size: {size/1024:.1f} KB")
     print(f"  Last modified: {age/60:.1f} minutes ago")
     

@@ -5,7 +5,7 @@ Build a global APCD drug name -> CPIC drug name mapping from final feature impor
 This script:
 1. Scans final (cohort) feature importance CSVs (cohort_feature_importance.csv) across cohorts/age bands;
    falls back to aggregated feature importance if no cohort FI found.
-2. Extracts unique drug names (features with DRUG:, item_drug_*, etc. — APCD drug names from the pipeline).
+2. Extracts unique drug names (features with DRUG:, item_drug_*, etc. - APCD drug names from the pipeline).
 3. Matches them to CPIC drug names using fuzzy matching (95%+ threshold).
 4. Creates a global lookup table: 5_pgx_analysis/outputs/global/drug_cpic_mapping_global.csv
 5. Idempotent: skips rebuild if output exists and is newer than all source FI files (use --force to rebuild).
@@ -208,7 +208,7 @@ def build_global_drug_mapping(
     Build global APCD drug -> CPIC drug mapping from final (cohort) or aggregated feature importance files.
     Prefers cohort_feature_importance.csv (final FI); falls back to aggregated if none found.
     """
-    # Prefer final (cohort) feature importance — same source as Cohort PGx
+    # Prefer final (cohort) feature importance - same source as Cohort PGx
     fi_files = find_all_cohort_fi_files(cohort=cohort, age_band=age_band)
     source_label = "cohort (final) feature importance"
     if not fi_files:
@@ -305,12 +305,12 @@ def build_global_drug_mapping(
     logger.info(f"Mapping summary:")
     logger.info(f"  Total drugs: {len(mapping_df)}")
     logger.info(f"  Exact matches: {exact_matches}")
-    logger.info(f"  Fuzzy matches (≥95%): {fuzzy_matches}")
+    logger.info(f"  Fuzzy matches (>=95%): {fuzzy_matches}")
     logger.info(f"  CPIC list matches: {cpic_list_matches}")
     logger.info(f"  Needs review (<95%): {low_score_count}")
     
     if needs_review:
-        logger.warning(f"\n⚠️  {len(needs_review)} drugs need manual review:")
+        logger.warning(f"\n[WARN]  {len(needs_review)} drugs need manual review:")
         for item in needs_review[:10]:  # Show first 10
             logger.warning(
                 f"  '{item['drug_name']}' -> '{item['cpic_drug_name']}' "
@@ -422,12 +422,12 @@ def main():
     if not validation_df.empty:
         validation_df.to_csv(validation_path, index=False)
         logger.info(f"Saved validation file (drugs needing review) to {validation_path}")
-        logger.warning(f"\n⚠️  {len(validation_df)} drugs need manual review. Please check: {validation_path}")
+        logger.warning(f"\n[WARN]  {len(validation_df)} drugs need manual review. Please check: {validation_path}")
         
         # Validate that no matches are below threshold
         low_scores = validation_df[validation_df['fuzzy_score'] < args.fuzzy_threshold]
         if not low_scores.empty:
-            logger.error(f"\n❌ ERROR: {len(low_scores)} drugs have scores below {args.fuzzy_threshold}% threshold:")
+            logger.error(f"\n[X] ERROR: {len(low_scores)} drugs have scores below {args.fuzzy_threshold}% threshold:")
             for _, row in low_scores.iterrows():
                 logger.error(
                     f"  '{row['drug_name']}' -> '{row['cpic_drug_name']}' "
@@ -436,9 +436,9 @@ def main():
             logger.error(f"\nPlease review and fix matches in: {validation_path}")
             sys.exit(1)
     else:
-        logger.info("✓ All drug matches meet threshold requirements")
+        logger.info("[1] All drug matches meet threshold requirements")
     
-    logger.info("\n✅ Global drug-to-CPIC mapping complete!")
+    logger.info("\n[1] Global drug-to-CPIC mapping complete!")
     logger.info(f"  Mapping file: {output_path}")
     logger.info(f"  Validation file: {validation_path}")
     logger.info(f"  Total drugs mapped: {len(mapping_df)}")

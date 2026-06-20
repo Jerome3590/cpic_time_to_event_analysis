@@ -53,16 +53,16 @@ def run_script(script_path: Path, args: list, description: str) -> bool:
             text=True,
             check=True
         )
-        logger.info(f"✓ {description} completed successfully")
+        logger.info(f"[1] {description} completed successfully")
         if result.stdout:
             logger.debug(result.stdout)
         return True
     except subprocess.CalledProcessError as e:
-        logger.error(f"✗ {description} failed")
+        logger.error(f"[X] {description} failed")
         logger.error(f"  Error: {e.stderr}")
         return False
     except Exception as e:
-        logger.error(f"✗ {description} failed with exception: {e}")
+        logger.error(f"[X] {description} failed with exception: {e}")
         return False
 
 
@@ -271,7 +271,7 @@ def build_model_data(
         logger.info("Skipping train/test split (using existing splits)")
     
     logger.info("\n" + "=" * 80)
-    logger.info("✓ Model Data Build Complete!")
+    logger.info("[1] Model Data Build Complete!")
     logger.info("=" * 80)
     logger.info(f"\nSummary:")
     logger.info(f"  Cohort: {cohort_name}")

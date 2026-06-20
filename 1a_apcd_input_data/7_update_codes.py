@@ -297,8 +297,8 @@ def _upload_to_s3_with_retry(local_path: str, s3_path: str, max_retries: int = 3
     if total_workers_env and total_workers_env.isdigit():
         total_workers = int(total_workers_env)
         # Scale down concurrency for high worker counts:
-        # ≥24 workers: cap at 4
-        # ≥12 workers: cap at 6
+        # >=24 workers: cap at 4
+        # >=12 workers: cap at 6
         # <12 workers: use base (up to 10)
         if total_workers >= 24:
             max_upload_concurrency = min(4, base_concurrency)
@@ -391,7 +391,7 @@ def _cleanup_orphaned_staging_files(max_age_hours: int = 24) -> int:
         pass
     
     if cleaned_count > 0:
-        print(f"🧹 Cleaned up {cleaned_count} orphaned staging files older than {max_age_hours} hours")
+        print(f"[CLEAN] Cleaned up {cleaned_count} orphaned staging files older than {max_age_hours} hours")
     
     return cleaned_count
 
@@ -671,7 +671,7 @@ def load_mapping(path: Optional[str]) -> Dict[str, str]:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
-        print(f"⚠️ Failed to load mapping {path}: {e}")
+        print(f"[WARN] Failed to load mapping {path}: {e}")
         return {}
 
 
@@ -700,7 +700,7 @@ def _process_medical_partition(filename: str, icd_map: Dict[str, str], cpt_map: 
     
     try:
         worker_start_time = time.time()
-        print(f"[medical-worker] 🚀 START processing: {os.path.basename(filename)}")
+        print(f"[medical-worker] [START] START processing: {os.path.basename(filename)}")
         sys.stdout.flush()  # Ensure worker output is immediately visible
         
         # Initialize metrics tracking
@@ -716,32 +716,32 @@ def _process_medical_partition(filename: str, icd_map: Dict[str, str], cpt_map: 
         
         # Load mappings from temp files if provided (reduces memory duplication in spawn mode)
         if mapping_temp_dir:
-            print(f"[medical-worker] 📥 Loading mappings from temp directory...")
+            print(f"[medical-worker] [LOAD] Loading mappings from temp directory...")
             sys.stdout.flush()
             try:
                 icd_map, cpt_map, icd_target_map, _ = load_mappings_from_temp(mapping_temp_dir)
-                print(f"[medical-worker] ✅ Mappings loaded from temp directory")
+                print(f"[medical-worker] [1] Mappings loaded from temp directory")
                 sys.stdout.flush()
             except Exception as e:
-                print(f"[medical-worker] ❌ ERROR loading mappings: {e}", file=sys.stderr)
+                print(f"[medical-worker] [X] ERROR loading mappings: {e}", file=sys.stderr)
                 print(tb_module.format_exc(), file=sys.stderr)
                 sys.stderr.flush()
                 raise
         
         # Enforce threads=1 to avoid oversubscription (process-level parallelism is sufficient)
         if threads > 1:
-            print(f"[medical-worker] ⚠️ Warning: threads={threads} > 1 may cause CPU oversubscription. Using 1 thread per worker.")
+            print(f"[medical-worker] [WARN] Warning: threads={threads} > 1 may cause CPU oversubscription. Using 1 thread per worker.")
             sys.stdout.flush()
             threads = 1
         
-        print(f"[medical-worker] 🔌 Creating DuckDB connection...")
+        print(f"[medical-worker] [CONNECT] Creating DuckDB connection...")
         sys.stdout.flush()
         try:
             con = create_duckdb_conn(threads=threads, total_workers=total_workers, use_temp_db=use_temp_db)
-            print(f"[medical-worker] ✅ DuckDB connection established and configured")
+            print(f"[medical-worker] [1] DuckDB connection established and configured")
             sys.stdout.flush()
         except Exception as e:
-            print(f"[medical-worker] ❌ ERROR creating DuckDB connection: {e}", file=sys.stderr)
+            print(f"[medical-worker] [X] ERROR creating DuckDB connection: {e}", file=sys.stderr)
             print(tb_module.format_exc(), file=sys.stderr)
             sys.stderr.flush()
             raise
@@ -756,8 +756,8 @@ def _process_medical_partition(filename: str, icd_map: Dict[str, str], cpt_map: 
     try:
         # Checkpoint short-circuit
         if resume and _marker_exists(filename, marker_suffix):
-            print(f"[medical-worker] ↩ Skipped (checkpoint exists): {os.path.basename(filename)}")
-            return f"↩ Skipped (checkpoint) {filename}"
+            print(f"[medical-worker] [SKIP] Skipped (checkpoint exists): {os.path.basename(filename)}")
+            return f"[SKIP] Skipped (checkpoint) {filename}"
         if log_cpu:
             log_cpu_context(prefix="[medical-worker]", threads=threads)
         s3_info_pre = None
@@ -775,25 +775,25 @@ def _process_medical_partition(filename: str, icd_map: Dict[str, str], cpt_map: 
             except Exception:
                 s3_info_pre = None
         # Register mapping tables using chunked streaming to avoid materializing full lists
-        print(f"[medical-worker] 📋 Loading mapping dictionaries into DuckDB...")
+        print(f"[medical-worker] [CHECK] Loading mapping dictionaries into DuckDB...")
         mapping_start = time.time()
         # Note: With multiprocessing 'spawn' context, each worker gets a copy of mappings.
         # For very large mappings, consider using shared memory or loading from S3 per worker.
         if icd_map:
-            print(f"[medical-worker]   → Loading ICD map ({len(icd_map)} entries)...")
+            print(f"[medical-worker]   --> Loading ICD map ({len(icd_map)} entries)...")
             load_mapping_into_duckdb_chunked(con, icd_map, "icd_map", chunk_size=10000)
         if icd_target_map:
-            print(f"[medical-worker]   → Loading ICD target map ({len(icd_target_map)} entries)...")
+            print(f"[medical-worker]   --> Loading ICD target map ({len(icd_target_map)} entries)...")
             # Transform keys: uppercase, remove dots and spaces
             def transform_icd_target_key(k):
                 return k.upper().replace('.', '').replace(' ', '')
             load_mapping_into_duckdb_chunked(con, icd_target_map, "icd_target_map", transform_key=transform_icd_target_key, chunk_size=10000)
         if cpt_map:
-            print(f"[medical-worker]   → Loading CPT map ({len(cpt_map)} entries)...")
+            print(f"[medical-worker]   --> Loading CPT map ({len(cpt_map)} entries)...")
             load_mapping_into_duckdb_chunked(con, cpt_map, "cpt_map", chunk_size=10000)
         mapping_elapsed = time.time() - mapping_start
         metrics["mapping_load_time"] = mapping_elapsed
-        print(f"[medical-worker] ✅ Mappings loaded in {mapping_elapsed:.2f}s")
+        print(f"[medical-worker] [1] Mappings loaded in {mapping_elapsed:.2f}s")
 
         icd_cols = [
             "primary_icd_diagnosis_code",
@@ -925,7 +925,7 @@ def _process_medical_partition(filename: str, icd_map: Dict[str, str], cpt_map: 
         # Use sampling to avoid loading entire file into memory
         skip_sample_check = os.getenv("PGX_SKIP_SAMPLE_CHECK", "0") == "1"
         if apply and change_conds and not (chunked and chunk_rows and chunk_rows > 0) and not skip_sample_check:
-            print(f"[medical-worker] 🔍 Starting pre-check (sampling for changes)...")
+            print(f"[medical-worker] [CHECK] Starting pre-check (sampling for changes)...")
             precheck_start = time.time()
             or_cond = " OR ".join(change_conds)
             # Sample first 100k rows to check for changes (much faster and lower memory)
@@ -958,15 +958,15 @@ def _process_medical_partition(filename: str, icd_map: Dict[str, str], cpt_map: 
                         })
                     except Exception:
                         pass
-                return f"↩ Skipped (no changes) {filename}"
+                return f"[SKIP] Skipped (no changes) {filename}"
         if apply and chunked:
-            print(f"[medical-worker] 📦 Starting chunked processing mode...")
+            print(f"[medical-worker] [PACKAGE] Starting chunked processing mode...")
             chunked_start = time.time()
             # Use local staging for better performance and reliability
             use_local_staging = os.getenv("PGX_USE_LOCAL_STAGING", "1") == "1"
             
             # Row-group aligned chunk planning
-            print(f"[medical-worker]   → Computing chunk plan...")
+            print(f"[medical-worker]   --> Computing chunk plan...")
             # Derive chunk_rows from target size if not provided
             # Reduced default chunk size for faster processing (since we're only replacing column values)
             effective_chunk_rows = chunk_rows
@@ -990,8 +990,8 @@ def _process_medical_partition(filename: str, icd_map: Dict[str, str], cpt_map: 
                 metrics["records_processed"] = total_rows
                 metrics["chunks_processed"] = total_chunks
                 metrics["file_size_bytes"] = _get_object_size_bytes(filename)
-                print(f"[medical-worker]   → Chunk plan: {total_chunks} chunks, {total_rows:,} total rows")
-                print(f"[medical-worker] 🚀 Starting chunk processing ({total_chunks} chunks)...")
+                print(f"[medical-worker]   --> Chunk plan: {total_chunks} chunks, {total_rows:,} total rows")
+                print(f"[medical-worker] [START] Starting chunk processing ({total_chunks} chunks)...")
                 chunk_processing_start = time.time()
                 chunks_completed = 0
                 for i, (offset, limit) in enumerate(chunks):
@@ -1000,7 +1000,7 @@ def _process_medical_partition(filename: str, icd_map: Dict[str, str], cpt_map: 
                     s3_dest_path = _final_chunk_path_for(filename, i) if no_merge else _chunk_path_for(filename, staging_suffix, i)
                     
                     if resume and _object_exists(s3_dest_path):
-                        print(f"[medical-worker] ↩ Skipped chunk {i+1}/{total_chunks} (exists) {filename}")
+                        print(f"[medical-worker] [SKIP] Skipped chunk {i+1}/{total_chunks} (exists) {filename}")
                         chunks_completed += 1
                         continue
                     
@@ -1008,7 +1008,7 @@ def _process_medical_partition(filename: str, icd_map: Dict[str, str], cpt_map: 
                     if use_local_staging and s3_dest_path.startswith("s3://"):
                         local_dest = _local_staging_path(s3_dest_path)
                         chunk_start = time.time()
-                        print(f"[medical-worker]   [Chunk {i+1}/{total_chunks}] ▶ Writing to local staging (rows={limit:,}, offset={offset:,})...")
+                        print(f"[medical-worker]   [Chunk {i+1}/{total_chunks}] [START] Writing to local staging (rows={limit:,}, offset={offset:,})...")
                         
                         try:
                             # Write to local disk (fast) - using explicit LEFT JOINs
@@ -1016,21 +1016,21 @@ def _process_medical_partition(filename: str, icd_map: Dict[str, str], cpt_map: 
                             query = build_join_query(read_expr, limit=limit, offset=offset)
                             con.sql(f"COPY ({query}) TO '{local_dest}' (FORMAT PARQUET)")
                             write_elapsed = time.time() - chunk_start
-                            print(f"[medical-worker]   [Chunk {i+1}/{total_chunks}] ✅ Local write complete ({write_elapsed:.2f}s)")
+                            print(f"[medical-worker]   [Chunk {i+1}/{total_chunks}] [1] Local write complete ({write_elapsed:.2f}s)")
                             
                             # Upload to S3 (with retry)
                             upload_start = time.time()
-                            print(f"[medical-worker]   [Chunk {i+1}/{total_chunks}] ↗ Uploading to S3...")
+                            print(f"[medical-worker]   [Chunk {i+1}/{total_chunks}] [UPLOAD] Uploading to S3...")
                             _upload_to_s3_with_retry(local_dest, s3_dest_path)
                             upload_elapsed = time.time() - upload_start
-                            print(f"[medical-worker]   [Chunk {i+1}/{total_chunks}] ✅ Upload complete ({upload_elapsed:.2f}s)")
+                            print(f"[medical-worker]   [Chunk {i+1}/{total_chunks}] [1] Upload complete ({upload_elapsed:.2f}s)")
                             chunks_completed += 1
                             metrics["upload_time"] += upload_elapsed
                         except Exception as chunk_err:
                             # Check for DuckDB buffer allocation error (4GB limit)
                             error_msg = str(chunk_err)
                             if "4294967296" in error_msg or "Information loss on integer cast" in error_msg or "outside of target range" in error_msg:
-                                print(f"[medical-worker] ⚠️ Buffer allocation error detected. This may indicate chunk size is too large for JOIN operations.")
+                                print(f"[medical-worker] [WARN] Buffer allocation error detected. This may indicate chunk size is too large for JOIN operations.")
                                 print(f"[medical-worker]   Error: {error_msg[:200]}")
                                 # Re-raise to trigger retry with smaller chunk size
                                 raise
@@ -1043,84 +1043,84 @@ def _process_medical_partition(filename: str, icd_map: Dict[str, str], cpt_map: 
                                 if os.path.exists(local_dest):
                                     os.remove(local_dest)
                             except Exception as cleanup_err:
-                                print(f"[medical-worker] ⚠️ Warning: Could not clean up {local_dest}: {cleanup_err}")
+                                print(f"[medical-worker] [WARN] Warning: Could not clean up {local_dest}: {cleanup_err}")
                     else:
                         # Direct write (original behavior) - using explicit LEFT JOINs
                         chunk_start = time.time()
                         read_expr = get_read_parquet_expr([])
-                        print(f"[medical-worker]   [Chunk {i+1}/{total_chunks}] ▶ Writing directly to S3 (rows={limit:,}, offset={offset:,})...")
+                        print(f"[medical-worker]   [Chunk {i+1}/{total_chunks}] [START] Writing directly to S3 (rows={limit:,}, offset={offset:,})...")
                         query = build_join_query(read_expr, limit=limit, offset=offset)
                         con.sql(f"COPY ({query}) TO '{s3_dest_path}' (FORMAT PARQUET, OVERWRITE_OR_IGNORE TRUE)")
                         chunk_elapsed = time.time() - chunk_start
-                        print(f"[medical-worker]   [Chunk {i+1}/{total_chunks}] ✅ Write complete ({chunk_elapsed:.2f}s)")
+                        print(f"[medical-worker]   [Chunk {i+1}/{total_chunks}] [1] Write complete ({chunk_elapsed:.2f}s)")
                         chunks_completed += 1
                 # Merge only if not in no-merge mode
                 # Use incremental merge to avoid loading all chunks into memory at once
                 no_merge = os.getenv("PGX_NO_MERGE", "0") == "1"
                 if not no_merge:
-                    print(f"[medical-worker] 🔗 Starting chunk merge...")
+                    print(f"[medical-worker] [MERGE] Starting chunk merge...")
                     merge_start = time.time()
                     staging_prefix = _staging_prefix_for(filename, staging_suffix)
                     _merge_chunks_incremental(con, staging_prefix, filename, max_chunks_per_batch=None)
                     merge_elapsed = time.time() - merge_start
-                    print(f"[medical-worker] ✅ Chunk merge complete ({merge_elapsed:.2f}s)")
+                    print(f"[medical-worker] [1] Chunk merge complete ({merge_elapsed:.2f}s)")
                 else:
-                    print(f"[medical-worker] ⏭️  Skipping merge (PGX_NO_MERGE=1)")
+                    print(f"[medical-worker] [SKIP]  Skipping merge (PGX_NO_MERGE=1)")
                 chunk_processing_elapsed = time.time() - chunk_processing_start
                 chunked_elapsed = time.time() - chunked_start
                 metrics["processing_time"] = chunk_processing_elapsed
                 metrics["chunks_processed"] = chunks_completed
-                print(f"[medical-worker] ✅ Chunk processing complete ({chunk_processing_elapsed:.2f}s)")
-                print(f"[medical-worker] ✅ Chunked processing complete ({chunked_elapsed:.2f}s)")
+                print(f"[medical-worker] [1] Chunk processing complete ({chunk_processing_elapsed:.2f}s)")
+                print(f"[medical-worker] [1] Chunked processing complete ({chunked_elapsed:.2f}s)")
             else:
                 # Nothing to write
-                print(f"[medical-worker] ⏭️  No chunks to process")
+                print(f"[medical-worker] [SKIP]  No chunks to process")
         elif apply:
             # Use local staging for non-chunked mode too
-            print(f"[medical-worker] 📝 Starting non-chunked processing mode...")
+            print(f"[medical-worker] [WRITE] Starting non-chunked processing mode...")
             nonchunked_start = time.time()
             use_local_staging = os.getenv("PGX_USE_LOCAL_STAGING", "1") == "1"
             
             if use_local_staging and filename.startswith("s3://"):
                 # Write to local first, then upload
                 local_dest = _local_staging_path(filename)
-                print(f"[medical-worker] ▶ Writing to local staging: {os.path.basename(local_dest)}")
+                print(f"[medical-worker] [START] Writing to local staging: {os.path.basename(local_dest)}")
                 
                 try:
                     # Write to local staging - using explicit LEFT JOINs
                     write_start = time.time()
                     read_expr = get_read_parquet_expr([])
-                    print(f"[medical-worker]   → Writing to local disk...")
+                    print(f"[medical-worker]   --> Writing to local disk...")
                     query = build_join_query(read_expr)
                     con.sql(f"COPY ({query}) TO '{local_dest}' (FORMAT PARQUET)")
                     write_elapsed = time.time() - write_start
-                    print(f"[medical-worker] ✅ Local write complete ({write_elapsed:.2f}s)")
+                    print(f"[medical-worker] [1] Local write complete ({write_elapsed:.2f}s)")
                     
                     # Upload to S3
                     upload_start = time.time()
-                    print(f"[medical-worker] ↗ Uploading to S3...")
+                    print(f"[medical-worker] [UPLOAD] Uploading to S3...")
                     _upload_to_s3_with_retry(local_dest, filename)
                     upload_elapsed = time.time() - upload_start
-                    print(f"[medical-worker] ✅ Upload complete ({upload_elapsed:.2f}s)")
+                    print(f"[medical-worker] [1] Upload complete ({upload_elapsed:.2f}s)")
                 finally:
                     # Always clean up local file, even if upload fails
                     try:
                         if os.path.exists(local_dest):
                             os.remove(local_dest)
                     except Exception as cleanup_err:
-                        print(f"[medical-worker] ⚠️ Warning: Could not clean up {local_dest}: {cleanup_err}")
+                        print(f"[medical-worker] [WARN] Warning: Could not clean up {local_dest}: {cleanup_err}")
             else:
                 # Direct write (original behavior) - using explicit LEFT JOINs
                 write_start = time.time()
                 read_expr = get_read_parquet_expr([])
-                print(f"[medical-worker] ▶ Writing directly to S3...")
+                print(f"[medical-worker] [START] Writing directly to S3...")
                 query = build_join_query(read_expr)
                 con.sql(f"COPY ({query}) TO '{filename}' (FORMAT PARQUET, OVERWRITE_OR_IGNORE TRUE)")
                 write_elapsed = time.time() - write_start
-                print(f"[medical-worker] ✅ Write complete ({write_elapsed:.2f}s)")
+                print(f"[medical-worker] [1] Write complete ({write_elapsed:.2f}s)")
             nonchunked_elapsed = time.time() - nonchunked_start
             metrics["processing_time"] = nonchunked_elapsed
-            print(f"[medical-worker] ✅ Non-chunked processing complete ({nonchunked_elapsed:.2f}s)")
+            print(f"[medical-worker] [1] Non-chunked processing complete ({nonchunked_elapsed:.2f}s)")
             t0 = nonchunked_start
             t1 = time.time()
             if log_s3 and filename.startswith("s3://"):
@@ -1156,7 +1156,7 @@ def _process_medical_partition(filename: str, icd_map: Dict[str, str], cpt_map: 
             metrics["mapping_load_time"] = mapping_elapsed if 'mapping_elapsed' in locals() else 0.0
             
             if resume:
-                print(f"[medical-worker] 📌 Writing checkpoint marker...")
+                print(f"[medical-worker] [CHECKPOINT] Writing checkpoint marker...")
                 try:
                     # Extract entity_id from filename (age_band/event_year pattern)
                     entity_id = "UNKNOWN"
@@ -1178,17 +1178,17 @@ def _process_medical_partition(filename: str, icd_map: Dict[str, str], cpt_map: 
                         "metrics": metrics
                     }
                     _write_marker(filename, marker_suffix, checkpoint_data)
-                    print(f"[medical-worker] ✅ Checkpoint marker written")
+                    print(f"[medical-worker] [1] Checkpoint marker written")
                 except Exception as e:
-                    print(f"[medical-worker] ⚠️ Warning: Could not write checkpoint marker: {e}")
+                    print(f"[medical-worker] [WARN] Warning: Could not write checkpoint marker: {e}")
         else:
             # Dry-run mode - using explicit LEFT JOINs
-            print(f"[medical-worker] 🔍 Dry-run mode: Previewing changes...")
+            print(f"[medical-worker] [CHECK] Dry-run mode: Previewing changes...")
             read_expr = get_read_parquet_expr([])
             query = build_join_query(read_expr, limit=1, offset=0)
             con.sql(query).fetchall()
             if resume:
-                print(f"[medical-worker] 📌 Writing dry-run checkpoint marker...")
+                print(f"[medical-worker] [CHECKPOINT] Writing dry-run checkpoint marker...")
                 try:
                     # Extract entity_id from filename
                     entity_id = "UNKNOWN"
@@ -1209,14 +1209,14 @@ def _process_medical_partition(filename: str, icd_map: Dict[str, str], cpt_map: 
                         "ts": str(int(time.time())),
                         "metrics": {"duration_seconds": time.time() - worker_start_time}
                     })
-                    print(f"[medical-worker] ✅ Dry-run checkpoint marker written")
+                    print(f"[medical-worker] [1] Dry-run checkpoint marker written")
                 except Exception as e:
-                    print(f"[medical-worker] ⚠️ Warning: Could not write checkpoint marker: {e}")
+                    print(f"[medical-worker] [WARN] Warning: Could not write checkpoint marker: {e}")
         
         # Final completion message
         worker_elapsed = time.time() - worker_start_time
-        print(f"[medical-worker] ✅ COMPLETE: {os.path.basename(filename)} (total time: {worker_elapsed:.2f}s)")
-        return f"✓ Updated {filename}"
+        print(f"[medical-worker] [1] COMPLETE: {os.path.basename(filename)} (total time: {worker_elapsed:.2f}s)")
+        return f"[1] Updated {filename}"
     finally:
         # Explicitly close DuckDB connection and clean up
         try:
@@ -1250,7 +1250,7 @@ def apply_mappings_to_medical(
     staging_suffix: str = ".codes_updated.staging/",
 ):
     print(f"\n{'='*80}")
-    print(f"[medical] 🚀 STARTING medical code updates")
+    print(f"[medical] [START] STARTING medical code updates")
     print(f"[medical]   Workers: {workers}, Chunked: {chunked}, Apply: {apply}")
     if years:
         print(f"[medical]   Years filter: {years}")
@@ -1305,10 +1305,10 @@ def apply_mappings_to_medical(
             pass
 
     if parts.empty:
-        print("[medical] ⚠️  No medical gold files found.")
+        print("[medical] [WARN]  No medical gold files found.")
         return
     
-    print(f"[medical] 📊 Found {len(parts)} partition(s) to process")
+    print(f"[medical] [INFO] Found {len(parts)} partition(s) to process")
 
     # Filter partitions if requested
     if years_set is not None:
@@ -1398,7 +1398,7 @@ def apply_mappings_to_medical(
     
     # Ensure threads_per_worker is 1 to avoid oversubscription (unless explicitly set higher)
     if threads_per_worker > 1:
-        print(f"⚠️ Warning: threads_per_worker={threads_per_worker} > 1 may cause CPU oversubscription. Consider using 1 thread per worker with process-level parallelism.")
+        print(f"[WARN] Warning: threads_per_worker={threads_per_worker} > 1 may cause CPU oversubscription. Consider using 1 thread per worker with process-level parallelism.")
     
     if workers and workers > 1:
         executor = ProcessPoolExecutor(max_workers=workers, mp_context=ctx)
@@ -1454,7 +1454,7 @@ def apply_mappings_to_medical(
                     
                     if attempt < max_retries:
                         wait_time = 2 ** (attempt - 1)  # Exponential backoff: 1s, 2s, 4s
-                        print(f"⚠️ Worker process crashed for {filename} (attempt {attempt}/{max_retries})")
+                        print(f"[WARN] Worker process crashed for {filename} (attempt {attempt}/{max_retries})")
                         print(f"   Error: {error_details}")
                         print(f"   This usually indicates Out of Memory (OOM) or a segmentation fault.")
                         print(f"   Check system logs: dmesg | tail -20 or journalctl -k | tail -20")
@@ -1463,7 +1463,7 @@ def apply_mappings_to_medical(
                         time.sleep(wait_time)
                         retry_queue.append((filename, row, attempt))
                     else:
-                        print(f"✗ Worker process crashed after {max_retries} attempts for {filename}")
+                        print(f"[X] Worker process crashed after {max_retries} attempts for {filename}")
                         print(f"   Error: {error_details}")
                         print(f"  Check system logs: dmesg | tail -20 or journalctl -k | tail -20")
                         print(f"  Consider: reducing workers, reducing PGX_DUCKDB_MEMORY_LIMIT, or using spawn mode")
@@ -1476,7 +1476,7 @@ def apply_mappings_to_medical(
                     if attempt < max_retries:
                         wait_time = 2 ** (attempt - 1)  # Exponential backoff: 1s, 2s, 4s
                         tb = traceback.format_exc()
-                        print(f"⚠️ Error processing {filename} (attempt {attempt}/{max_retries}): {e}")
+                        print(f"[WARN] Error processing {filename} (attempt {attempt}/{max_retries}): {e}")
                         print(f"   Traceback:\n{tb}")
                         print(f"   Retrying in {wait_time} seconds...")
                         sys.stdout.flush()
@@ -1484,7 +1484,7 @@ def apply_mappings_to_medical(
                         retry_queue.append((filename, row, attempt))
                     else:
                         tb = traceback.format_exc()
-                        print(f"✗ Error processing {filename} after {max_retries} attempts: {e}\n{tb}")
+                        print(f"[X] Error processing {filename} after {max_retries} attempts: {e}\n{tb}")
                         sys.stdout.flush()
                         errors.append(filename)
             
@@ -1500,12 +1500,12 @@ def apply_mappings_to_medical(
                 except Exception as e:
                     if attempt + 1 < max_retries:
                         wait_time = 2 ** attempt
-                        print(f"⚠️ Retry {attempt + 1} failed for {filename}, will retry again in {wait_time}s...")
+                        print(f"[WARN] Retry {attempt + 1} failed for {filename}, will retry again in {wait_time}s...")
                         time.sleep(wait_time)
                         retry_queue.append((filename, row, attempt + 1))
                     else:
                         tb = traceback.format_exc()
-                        print(f"✗ Error processing {filename} after {max_retries} attempts: {e}\n{tb}")
+                        print(f"[X] Error processing {filename} after {max_retries} attempts: {e}\n{tb}")
                         errors.append(filename)
         finally:
             # Explicitly shutdown executor to ensure proper cleanup
@@ -1527,7 +1527,7 @@ def apply_mappings_to_medical(
                 results.append(msg)
             except Exception as e:
                 tb = traceback.format_exc()
-                print(f"✗ Error processing {row['filename']}: {e}\n{tb}")
+                print(f"[X] Error processing {row['filename']}: {e}\n{tb}")
                 errors.append(row['filename'])
         # Clean up mapping temp directory if used
         if mapping_temp_dir and os.path.exists(mapping_temp_dir):
@@ -1538,16 +1538,16 @@ def apply_mappings_to_medical(
                 pass
     medical_elapsed = time.time() - medical_start_time
     print(f"\n{'='*80}")
-    print(f"[medical] ✅ COMPLETE: {len(results)} successful, {len(errors)} errors (total time: {medical_elapsed:.2f}s)")
+    print(f"[medical] [1] COMPLETE: {len(results)} successful, {len(errors)} errors (total time: {medical_elapsed:.2f}s)")
     print(f"{'='*80}\n")
     if errors:
-        print(f"[medical] ⚠️  Completed with {len(errors)} errors.")
+        print(f"[medical] [WARN]  Completed with {len(errors)} errors.")
 
 
 def _process_pharmacy_partition(filename: str, drug_map: Dict[str, str], apply: bool, threads: int, log_cpu: bool = False, log_s3: bool = False, resume: bool = False, marker_suffix: str = ".codes_updated.ok", chunked: bool = False, chunk_rows: int = 0, staging_suffix: str = ".codes_updated.staging/", total_workers: Optional[int] = None, use_temp_db: bool = False, mapping_temp_dir: Optional[str] = None) -> str:
     import sys
     worker_start_time = time.time()
-    print(f"[pharmacy-worker] 🚀 START processing: {os.path.basename(filename)}")
+    print(f"[pharmacy-worker] [START] START processing: {os.path.basename(filename)}")
     sys.stdout.flush()  # Ensure worker output is immediately visible
     
     # Initialize metrics tracking
@@ -1563,23 +1563,23 @@ def _process_pharmacy_partition(filename: str, drug_map: Dict[str, str], apply: 
     
     # Load mappings from temp files if provided (reduces memory duplication in spawn mode)
     if mapping_temp_dir:
-        print(f"[pharmacy-worker] 📥 Loading mappings from temp directory...")
+        print(f"[pharmacy-worker] [LOAD] Loading mappings from temp directory...")
         _, _, _, drug_map = load_mappings_from_temp(mapping_temp_dir)
-        print(f"[pharmacy-worker] ✅ Mappings loaded from temp directory")
+        print(f"[pharmacy-worker] [1] Mappings loaded from temp directory")
     
     # Enforce threads=1 to avoid oversubscription (process-level parallelism is sufficient)
     if threads > 1:
-        print(f"[pharmacy-worker] ⚠️ Warning: threads={threads} > 1 may cause CPU oversubscription. Using 1 thread per worker.")
+        print(f"[pharmacy-worker] [WARN] Warning: threads={threads} > 1 may cause CPU oversubscription. Using 1 thread per worker.")
         threads = 1
     
-    print(f"[pharmacy-worker] 🔌 Creating DuckDB connection...")
+    print(f"[pharmacy-worker] [CONNECT] Creating DuckDB connection...")
     con = create_duckdb_conn(threads=threads, total_workers=total_workers, use_temp_db=use_temp_db)
-    print(f"[pharmacy-worker] ✅ DuckDB connection established")
+    print(f"[pharmacy-worker] [1] DuckDB connection established")
     
     try:
         if resume and _marker_exists(filename, marker_suffix):
-            print(f"[pharmacy-worker] ↩ Skipped (checkpoint exists): {os.path.basename(filename)}")
-            return f"↩ Skipped (checkpoint) {filename}"
+            print(f"[pharmacy-worker] [SKIP] Skipped (checkpoint exists): {os.path.basename(filename)}")
+            return f"[SKIP] Skipped (checkpoint) {filename}"
         if log_cpu:
             log_cpu_context(prefix="[pharmacy-worker]", threads=threads)
         s3_info_pre = None
@@ -1597,13 +1597,13 @@ def _process_pharmacy_partition(filename: str, drug_map: Dict[str, str], apply: 
             except Exception:
                 s3_info_pre = None
         if drug_map:
-            print(f"[pharmacy-worker] 📋 Loading drug mapping dictionary into DuckDB ({len(drug_map)} entries)...")
+            print(f"[pharmacy-worker] [CHECK] Loading drug mapping dictionary into DuckDB ({len(drug_map)} entries)...")
             mapping_start = time.time()
             # Use chunked streaming to avoid materializing full list
             load_mapping_into_duckdb_chunked(con, drug_map, "drug_map", chunk_size=10000)
             mapping_elapsed = time.time() - mapping_start
             metrics["mapping_load_time"] = mapping_elapsed
-            print(f"[pharmacy-worker] ✅ Drug mapping loaded in {mapping_elapsed:.2f}s")
+            print(f"[pharmacy-worker] [1] Drug mapping loaded in {mapping_elapsed:.2f}s")
 
         mapped = (
             "CASE WHEN drug_name IS NULL OR TRIM(CAST(drug_name AS VARCHAR))='' THEN NULL "
@@ -1619,7 +1619,7 @@ def _process_pharmacy_partition(filename: str, drug_map: Dict[str, str], apply: 
         # Pre-check: skip if no changes (use sampling for large files to save memory)
         skip_sample_check = os.getenv("PGX_SKIP_SAMPLE_CHECK", "0") == "1"
         if apply and not chunked and not skip_sample_check:
-            print(f"[pharmacy-worker] 🔍 Starting pre-check (sampling for changes)...")
+            print(f"[pharmacy-worker] [CHECK] Starting pre-check (sampling for changes)...")
             precheck_start = time.time()
             change_cond = f"(drug_name IS DISTINCT FROM {mapped})"
             # Use sampling to avoid loading entire file into memory
@@ -1642,7 +1642,7 @@ def _process_pharmacy_partition(filename: str, drug_map: Dict[str, str], apply: 
                 ).fetchone()[0]
             precheck_elapsed = time.time() - precheck_start
             if not needs_update:
-                print(f"[pharmacy-worker] ↩ Pre-check complete ({precheck_elapsed:.2f}s): No changes detected, skipping")
+                print(f"[pharmacy-worker] [SKIP] Pre-check complete ({precheck_elapsed:.2f}s): No changes detected, skipping")
                 if resume:
                     try:
                         # Extract entity_id from filename
@@ -1666,16 +1666,16 @@ def _process_pharmacy_partition(filename: str, drug_map: Dict[str, str], apply: 
                         })
                     except Exception:
                         pass
-                return f"↩ Skipped (no changes) {filename}"
-            print(f"[pharmacy-worker] ✅ Pre-check complete ({precheck_elapsed:.2f}s): Changes detected, proceeding")
+                return f"[SKIP] Skipped (no changes) {filename}"
+            print(f"[pharmacy-worker] [1] Pre-check complete ({precheck_elapsed:.2f}s): Changes detected, proceeding")
         if apply and chunked:
-            print(f"[pharmacy-worker] 📦 Starting chunked processing mode...")
+            print(f"[pharmacy-worker] [PACKAGE] Starting chunked processing mode...")
             chunked_start = time.time()
             # Use local staging for better performance and reliability
             use_local_staging = os.getenv("PGX_USE_LOCAL_STAGING", "1") == "1"
             
             # Row-group aligned chunk planning
-            print(f"[pharmacy-worker]   → Computing chunk plan...")
+            print(f"[pharmacy-worker]   --> Computing chunk plan...")
             effective_chunk_rows = chunk_rows
             if not effective_chunk_rows or effective_chunk_rows <= 0:
                 total_rows_try = 0
@@ -1696,8 +1696,8 @@ def _process_pharmacy_partition(filename: str, drug_map: Dict[str, str], apply: 
                 metrics["records_processed"] = total_rows
                 metrics["chunks_processed"] = total_chunks
                 metrics["file_size_bytes"] = _get_object_size_bytes(filename)
-                print(f"[pharmacy-worker]   → Chunk plan: {total_chunks} chunks, {total_rows:,} total rows")
-                print(f"[pharmacy-worker] 🚀 Starting chunk processing ({total_chunks} chunks)...")
+                print(f"[pharmacy-worker]   --> Chunk plan: {total_chunks} chunks, {total_rows:,} total rows")
+                print(f"[pharmacy-worker] [START] Starting chunk processing ({total_chunks} chunks)...")
                 chunk_processing_start = time.time()
                 chunks_completed = 0
                 for i, (offset, limit) in enumerate(chunks):
@@ -1705,7 +1705,7 @@ def _process_pharmacy_partition(filename: str, drug_map: Dict[str, str], apply: 
                     s3_dest_path = _final_chunk_path_for(filename, i) if no_merge else _chunk_path_for(filename, staging_suffix, i)
                     
                     if resume and _object_exists(s3_dest_path):
-                        print(f"[pharmacy-worker] ↩ Skipped chunk {i+1}/{total_chunks} (exists) {filename}")
+                        print(f"[pharmacy-worker] [SKIP] Skipped chunk {i+1}/{total_chunks} (exists) {filename}")
                         chunks_completed += 1
                         continue
                     
@@ -1713,7 +1713,7 @@ def _process_pharmacy_partition(filename: str, drug_map: Dict[str, str], apply: 
                     if use_local_staging and s3_dest_path.startswith("s3://"):
                         local_dest = _local_staging_path(s3_dest_path)
                         chunk_start = time.time()
-                        print(f"[pharmacy-worker]   [Chunk {i+1}/{total_chunks}] ▶ Writing to local staging (rows={limit:,}, offset={offset:,})...")
+                        print(f"[pharmacy-worker]   [Chunk {i+1}/{total_chunks}] [START] Writing to local staging (rows={limit:,}, offset={offset:,})...")
                         
                         try:
                             # Write to local disk (fast)
@@ -1730,14 +1730,14 @@ def _process_pharmacy_partition(filename: str, drug_map: Dict[str, str], apply: 
                                 """
                             )
                             write_elapsed = time.time() - chunk_start
-                            print(f"[pharmacy-worker]   [Chunk {i+1}/{total_chunks}] ✅ Local write complete ({write_elapsed:.2f}s)")
+                            print(f"[pharmacy-worker]   [Chunk {i+1}/{total_chunks}] [1] Local write complete ({write_elapsed:.2f}s)")
                             
                             # Upload to S3 (with retry)
                             upload_start = time.time()
-                            print(f"[pharmacy-worker]   [Chunk {i+1}/{total_chunks}] ↗ Uploading to S3...")
+                            print(f"[pharmacy-worker]   [Chunk {i+1}/{total_chunks}] [UPLOAD] Uploading to S3...")
                             _upload_to_s3_with_retry(local_dest, s3_dest_path)
                             upload_elapsed = time.time() - upload_start
-                            print(f"[pharmacy-worker]   [Chunk {i+1}/{total_chunks}] ✅ Upload complete ({upload_elapsed:.2f}s)")
+                            print(f"[pharmacy-worker]   [Chunk {i+1}/{total_chunks}] [1] Upload complete ({upload_elapsed:.2f}s)")
                             chunks_completed += 1
                             metrics["upload_time"] += upload_elapsed
                         finally:
@@ -1746,12 +1746,12 @@ def _process_pharmacy_partition(filename: str, drug_map: Dict[str, str], apply: 
                                 if os.path.exists(local_dest):
                                     os.remove(local_dest)
                             except Exception as cleanup_err:
-                                print(f"[pharmacy-worker] ⚠️ Warning: Could not clean up {local_dest}: {cleanup_err}")
+                                print(f"[pharmacy-worker] [WARN] Warning: Could not clean up {local_dest}: {cleanup_err}")
                     else:
                         # Direct write (original behavior)
                         chunk_start = time.time()
                         read_expr = get_read_parquet_expr_pharmacy([])
-                        print(f"[pharmacy-worker]   [Chunk {i+1}/{total_chunks}] ▶ Writing directly to S3 (rows={limit:,}, offset={offset:,})...")
+                        print(f"[pharmacy-worker]   [Chunk {i+1}/{total_chunks}] [START] Writing directly to S3 (rows={limit:,}, offset={offset:,})...")
                         con.sql(
                             f"""
                             COPY (
@@ -1764,44 +1764,44 @@ def _process_pharmacy_partition(filename: str, drug_map: Dict[str, str], apply: 
                             """
                         )
                         chunk_elapsed = time.time() - chunk_start
-                        print(f"[pharmacy-worker]   [Chunk {i+1}/{total_chunks}] ✅ Write complete ({chunk_elapsed:.2f}s)")
+                        print(f"[pharmacy-worker]   [Chunk {i+1}/{total_chunks}] [1] Write complete ({chunk_elapsed:.2f}s)")
                         chunks_completed += 1
                 # Merge only if not in no-merge mode
                 no_merge = os.getenv("PGX_NO_MERGE", "0") == "1"
                 if not no_merge:
-                    print(f"[pharmacy-worker] 🔗 Starting chunk merge...")
+                    print(f"[pharmacy-worker] [MERGE] Starting chunk merge...")
                     merge_start = time.time()
                     staging_prefix = _staging_prefix_for(filename, staging_suffix)
                     _merge_chunks_incremental(con, staging_prefix, filename, max_chunks_per_batch=None)
                     merge_elapsed = time.time() - merge_start
-                    print(f"[pharmacy-worker] ✅ Chunk merge complete ({merge_elapsed:.2f}s)")
+                    print(f"[pharmacy-worker] [1] Chunk merge complete ({merge_elapsed:.2f}s)")
                 else:
-                    print(f"[pharmacy-worker] ⏭️  Skipping merge (PGX_NO_MERGE=1)")
+                    print(f"[pharmacy-worker] [SKIP]  Skipping merge (PGX_NO_MERGE=1)")
                 chunk_processing_elapsed = time.time() - chunk_processing_start
                 chunked_elapsed = time.time() - chunked_start
                 metrics["processing_time"] = chunk_processing_elapsed
                 metrics["chunks_processed"] = chunks_completed
-                print(f"[pharmacy-worker] ✅ Chunk processing complete ({chunk_processing_elapsed:.2f}s)")
-                print(f"[pharmacy-worker] ✅ Chunked processing complete ({chunked_elapsed:.2f}s)")
+                print(f"[pharmacy-worker] [1] Chunk processing complete ({chunk_processing_elapsed:.2f}s)")
+                print(f"[pharmacy-worker] [1] Chunked processing complete ({chunked_elapsed:.2f}s)")
             else:
                 # Nothing to write
-                print(f"[pharmacy-worker] ⏭️  No chunks to process")
+                print(f"[pharmacy-worker] [SKIP]  No chunks to process")
         elif apply and not (chunked and chunk_rows and chunk_rows > 0):
             # Use local staging for non-chunked mode too
-            print(f"[pharmacy-worker] 📝 Starting non-chunked processing mode...")
+            print(f"[pharmacy-worker] [WRITE] Starting non-chunked processing mode...")
             nonchunked_start = time.time()
             use_local_staging = os.getenv("PGX_USE_LOCAL_STAGING", "1") == "1"
             
             if use_local_staging and filename.startswith("s3://"):
                 # Write to local first, then upload
                 local_dest = _local_staging_path(filename)
-                print(f"[pharmacy-worker] ▶ Writing to local staging: {os.path.basename(local_dest)}")
+                print(f"[pharmacy-worker] [START] Writing to local staging: {os.path.basename(local_dest)}")
                 
                 try:
                     # Write to local staging
                     write_start = time.time()
                     read_expr = get_read_parquet_expr_pharmacy([])
-                    print(f"[pharmacy-worker]   → Writing to local disk...")
+                    print(f"[pharmacy-worker]   --> Writing to local disk...")
                     con.sql(
                         f"""
                         COPY (
@@ -1813,26 +1813,26 @@ def _process_pharmacy_partition(filename: str, drug_map: Dict[str, str], apply: 
                         """
                     )
                     write_elapsed = time.time() - write_start
-                    print(f"[pharmacy-worker] ✅ Local write complete ({write_elapsed:.2f}s)")
+                    print(f"[pharmacy-worker] [1] Local write complete ({write_elapsed:.2f}s)")
                     
                     # Upload to S3
                     upload_start = time.time()
-                    print(f"[pharmacy-worker] ↗ Uploading to S3...")
+                    print(f"[pharmacy-worker] [UPLOAD] Uploading to S3...")
                     _upload_to_s3_with_retry(local_dest, filename)
                     upload_elapsed = time.time() - upload_start
-                    print(f"[pharmacy-worker] ✅ Upload complete ({upload_elapsed:.2f}s)")
+                    print(f"[pharmacy-worker] [1] Upload complete ({upload_elapsed:.2f}s)")
                 finally:
                     # Always clean up local file, even if upload fails
                     try:
                         if os.path.exists(local_dest):
                             os.remove(local_dest)
                     except Exception as cleanup_err:
-                        print(f"[pharmacy-worker] ⚠️ Warning: Could not clean up {local_dest}: {cleanup_err}")
+                        print(f"[pharmacy-worker] [WARN] Warning: Could not clean up {local_dest}: {cleanup_err}")
             else:
                 # Direct write (original behavior)
                 write_start = time.time()
                 read_expr = get_read_parquet_expr_pharmacy([])
-                print(f"[pharmacy-worker] ▶ Writing directly to S3...")
+                print(f"[pharmacy-worker] [START] Writing directly to S3...")
                 con.sql(
                     f"""
                     COPY (
@@ -1844,10 +1844,10 @@ def _process_pharmacy_partition(filename: str, drug_map: Dict[str, str], apply: 
                     """
                 )
                 write_elapsed = time.time() - write_start
-                print(f"[pharmacy-worker] ✅ Write complete ({write_elapsed:.2f}s)")
+                print(f"[pharmacy-worker] [1] Write complete ({write_elapsed:.2f}s)")
             nonchunked_elapsed = time.time() - nonchunked_start
             metrics["processing_time"] = nonchunked_elapsed
-            print(f"[pharmacy-worker] ✅ Non-chunked processing complete ({nonchunked_elapsed:.2f}s)")
+            print(f"[pharmacy-worker] [1] Non-chunked processing complete ({nonchunked_elapsed:.2f}s)")
             t0 = nonchunked_start
             t1 = time.time()
             if log_s3 and filename.startswith("s3://"):
@@ -1883,7 +1883,7 @@ def _process_pharmacy_partition(filename: str, drug_map: Dict[str, str], apply: 
             metrics["mapping_load_time"] = mapping_elapsed if 'mapping_elapsed' in locals() else 0.0
             
             if resume:
-                print(f"[pharmacy-worker] 📌 Writing checkpoint marker...")
+                print(f"[pharmacy-worker] [CHECKPOINT] Writing checkpoint marker...")
                 try:
                     # Extract entity_id from filename (age_band/event_year pattern)
                     entity_id = "UNKNOWN"
@@ -1905,12 +1905,12 @@ def _process_pharmacy_partition(filename: str, drug_map: Dict[str, str], apply: 
                         "metrics": metrics
                     }
                     _write_marker(filename, marker_suffix, checkpoint_data)
-                    print(f"[pharmacy-worker] ✅ Checkpoint marker written")
+                    print(f"[pharmacy-worker] [1] Checkpoint marker written")
                 except Exception as e:
-                    print(f"[pharmacy-worker] ⚠️ Warning: Could not write checkpoint marker: {e}")
+                    print(f"[pharmacy-worker] [WARN] Warning: Could not write checkpoint marker: {e}")
         else:
             # Dry-run mode
-            print(f"[pharmacy-worker] 🔍 Dry-run mode: Previewing changes...")
+            print(f"[pharmacy-worker] [CHECK] Dry-run mode: Previewing changes...")
             con.sql(
                 f"""
                 SELECT * REPLACE (
@@ -1921,7 +1921,7 @@ def _process_pharmacy_partition(filename: str, drug_map: Dict[str, str], apply: 
                 """
             ).fetchall()
             if resume:
-                print(f"[pharmacy-worker] 📌 Writing dry-run checkpoint marker...")
+                print(f"[pharmacy-worker] [CHECKPOINT] Writing dry-run checkpoint marker...")
                 try:
                     # Extract entity_id from filename
                     entity_id = "UNKNOWN"
@@ -1942,14 +1942,14 @@ def _process_pharmacy_partition(filename: str, drug_map: Dict[str, str], apply: 
                         "ts": str(int(time.time())),
                         "metrics": {"duration_seconds": time.time() - worker_start_time}
                     })
-                    print(f"[pharmacy-worker] ✅ Dry-run checkpoint marker written")
+                    print(f"[pharmacy-worker] [1] Dry-run checkpoint marker written")
                 except Exception as e:
-                    print(f"[pharmacy-worker] ⚠️ Warning: Could not write checkpoint marker: {e}")
+                    print(f"[pharmacy-worker] [WARN] Warning: Could not write checkpoint marker: {e}")
         
         # Final completion message
         worker_elapsed = time.time() - worker_start_time
-        print(f"[pharmacy-worker] ✅ COMPLETE: {os.path.basename(filename)} (total time: {worker_elapsed:.2f}s)")
-        return f"✓ Updated {filename}"
+        print(f"[pharmacy-worker] [1] COMPLETE: {os.path.basename(filename)} (total time: {worker_elapsed:.2f}s)")
+        return f"[1] Updated {filename}"
     finally:
         # Explicitly close DuckDB connection and clean up
         try:
@@ -1981,7 +1981,7 @@ def apply_mappings_to_pharmacy(
     staging_suffix: str = ".codes_updated.staging/",
 ):
     print(f"\n{'='*80}")
-    print(f"[pharmacy] 🚀 STARTING pharmacy code updates")
+    print(f"[pharmacy] [START] STARTING pharmacy code updates")
     print(f"[pharmacy]   Workers: {workers}, Chunked: {chunked}, Apply: {apply}")
     if years:
         print(f"[pharmacy]   Years filter: {years}")
@@ -1991,7 +1991,7 @@ def apply_mappings_to_pharmacy(
     pharmacy_start_time = time.time()
     
     if not drug_map:
-        print("[pharmacy] ⚠️  No drug map provided, skipping pharmacy updates")
+        print("[pharmacy] [WARN]  No drug map provided, skipping pharmacy updates")
         return
 
     src_glob = GOLD_PHARMACY_GLOB
@@ -2032,10 +2032,10 @@ def apply_mappings_to_pharmacy(
             pass
 
     if parts.empty:
-        print("[pharmacy] ⚠️  No pharmacy gold files found.")
+        print("[pharmacy] [WARN]  No pharmacy gold files found.")
         return
     
-    print(f"[pharmacy] 📊 Found {len(parts)} partition(s) to process")
+    print(f"[pharmacy] [INFO] Found {len(parts)} partition(s) to process")
 
     if years_set is not None:
         parts = parts[parts["event_year"].isin(years_set)]
@@ -2118,7 +2118,7 @@ def apply_mappings_to_pharmacy(
     
     # Ensure threads_per_worker is 1 to avoid oversubscription (unless explicitly set higher)
     if threads_per_worker > 1:
-        print(f"⚠️ Warning: threads_per_worker={threads_per_worker} > 1 may cause CPU oversubscription. Consider using 1 thread per worker with process-level parallelism.")
+        print(f"[WARN] Warning: threads_per_worker={threads_per_worker} > 1 may cause CPU oversubscription. Consider using 1 thread per worker with process-level parallelism.")
     
     if workers and workers > 1:
         executor = ProcessPoolExecutor(max_workers=workers, mp_context=ctx)
@@ -2166,13 +2166,13 @@ def apply_mappings_to_pharmacy(
                     
                     if attempt < max_retries:
                         wait_time = 2 ** (attempt - 1)  # Exponential backoff: 1s, 2s, 4s
-                        print(f"⚠️ Worker process crashed for {filename} (attempt {attempt}/{max_retries})")
+                        print(f"[WARN] Worker process crashed for {filename} (attempt {attempt}/{max_retries})")
                         print(f"   This usually indicates Out of Memory (OOM) or a segmentation fault.")
                         print(f"   Retrying in {wait_time} seconds...")
                         time.sleep(wait_time)
                         retry_queue.append((filename, row, attempt))
                     else:
-                        print(f"✗ Worker process crashed after {max_retries} attempts for {filename}")
+                        print(f"[X] Worker process crashed after {max_retries} attempts for {filename}")
                         print(f"  Check system logs: dmesg | tail -20 or journalctl -k | tail -20")
                         print(f"  Consider: reducing workers, reducing PGX_DUCKDB_MEMORY_LIMIT, or enabling PGX_USE_TEMP_DB=1")
                         errors.append(filename)
@@ -2182,13 +2182,13 @@ def apply_mappings_to_pharmacy(
                     
                     if attempt < max_retries:
                         wait_time = 2 ** (attempt - 1)  # Exponential backoff: 1s, 2s, 4s
-                        print(f"⚠️ Error processing {filename} (attempt {attempt}/{max_retries}): {e}")
+                        print(f"[WARN] Error processing {filename} (attempt {attempt}/{max_retries}): {e}")
                         print(f"   Retrying in {wait_time} seconds...")
                         time.sleep(wait_time)
                         retry_queue.append((filename, row, attempt))
                     else:
                         tb = traceback.format_exc()
-                        print(f"✗ Error processing {filename} after {max_retries} attempts: {e}\n{tb}")
+                        print(f"[X] Error processing {filename} after {max_retries} attempts: {e}\n{tb}")
                         errors.append(filename)
             
             # Process retries
@@ -2203,12 +2203,12 @@ def apply_mappings_to_pharmacy(
                 except Exception as e:
                     if attempt + 1 < max_retries:
                         wait_time = 2 ** attempt
-                        print(f"⚠️ Retry {attempt + 1} failed for {filename}, will retry again in {wait_time}s...")
+                        print(f"[WARN] Retry {attempt + 1} failed for {filename}, will retry again in {wait_time}s...")
                         time.sleep(wait_time)
                         retry_queue.append((filename, row, attempt + 1))
                     else:
                         tb = traceback.format_exc()
-                        print(f"✗ Error processing {filename} after {max_retries} attempts: {e}\n{tb}")
+                        print(f"[X] Error processing {filename} after {max_retries} attempts: {e}\n{tb}")
                         errors.append(filename)
         finally:
             # Explicitly shutdown executor to ensure proper cleanup
@@ -2230,7 +2230,7 @@ def apply_mappings_to_pharmacy(
                 results.append(msg)
             except Exception as e:
                 tb = traceback.format_exc()
-                print(f"✗ Error processing {row['filename']}: {e}\n{tb}")
+                print(f"[X] Error processing {row['filename']}: {e}\n{tb}")
                 errors.append(row['filename'])
         # Clean up mapping temp directory if used
         if mapping_temp_dir and os.path.exists(mapping_temp_dir):
@@ -2241,10 +2241,10 @@ def apply_mappings_to_pharmacy(
                 pass
     pharmacy_elapsed = time.time() - pharmacy_start_time
     print(f"\n{'='*80}")
-    print(f"[pharmacy] ✅ COMPLETE: {len(results)} successful, {len(errors)} errors (total time: {pharmacy_elapsed:.2f}s)")
+    print(f"[pharmacy] [1] COMPLETE: {len(results)} successful, {len(errors)} errors (total time: {pharmacy_elapsed:.2f}s)")
     print(f"{'='*80}\n")
     if errors:
-        print(f"[pharmacy] ⚠️  Completed with {len(errors)} errors.")
+        print(f"[pharmacy] [WARN]  Completed with {len(errors)} errors.")
 
 
 def main():
@@ -2305,7 +2305,7 @@ def main():
             # Allow empty CPT and Drug mapping files: it's valid to run without these mappings
             # (e.g., when no normalization for that code family is desired). Treat as a warning, not an error.
             if name.upper() in ('CPT', 'DRUG'):
-                print(f"ℹ️ {name} mapping file provided but empty: {path} — continuing without {name} normalization")
+                print(f"[INFO] {name} mapping file provided but empty: {path} - continuing without {name} normalization")
                 return errors
             errors.append(f"Mapping file provided but could not be loaded or is empty: {path}")
             return errors
@@ -2332,17 +2332,17 @@ def main():
             os.makedirs(os.path.dirname(err_path), exist_ok=True)
             with open(err_path, 'w', encoding='utf-8') as ef:
                 json.dump({'errors': mapping_errors}, ef, indent=2)
-            print(f"❌ Mapping validation failed; details written to {err_path}")
+            print(f"[X] Mapping validation failed; details written to {err_path}")
         except Exception:
-            print("❌ Mapping validation failed; could not write error details to file")
+            print("[X] Mapping validation failed; could not write error details to file")
         # If the user explicitly requested to fail on missing mapping, exit now
         if getattr(args, 'fail_on_missing_mapping', False):
             print("Exiting due to mapping validation failure (--fail-on-missing-mapping)")
             sys.exit(2)
         else:
-            print("⚠️ Mapping validation warnings detected; continuing (use --fail-on-missing-mapping to abort)")
+            print("[WARN] Mapping validation warnings detected; continuing (use --fail-on-missing-mapping to abort)")
 
-    print("🔧 Mappings loaded:")
+    print("[CONFIG] Mappings loaded:")
     print(f"  ICD: {len(icd_map)} entries")
     print(f"  CPT: {len(cpt_map)} entries")
     print(f"  Drug: {len(drug_map)} entries")
@@ -2469,7 +2469,7 @@ def main():
             chunk_rows=args.chunk_rows,
             staging_suffix=args.staging_suffix,
         )
-        print("✅ Completed code updates.")
+        print("[1] Completed code updates.")
     finally:
         pass
 

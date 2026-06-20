@@ -2,8 +2,8 @@
 """
 Event filter: remove administrative codes from event data; optionally keep only baseline FI codes.
 
-Two feature importances: (1) **Baseline FI** — precomputed from an initial run; does not need to be
-recomputed. (2) **Updated FI** — second pass after event filtering for greater accuracy.
+Two feature importances: (1) **Baseline FI** - precomputed from an initial run; does not need to be
+recomputed. (2) **Updated FI** - second pass after event filtering for greater accuracy.
 
 Two modes:
 
@@ -96,7 +96,7 @@ def run_event_filter_on_gold(
     Writes gold/medical_filtered/ and gold/pharmacy_filtered/ (same layout). Step 2 uses these when present.
 
     When allowed_codes_from_fi is provided (e.g. from a prior run's aggregated FI CSV), events are
-    kept only if at least one of (drug_name, ICD cols, procedure_code) is in that set — reducing
+    kept only if at least one of (drug_name, ICD cols, procedure_code) is in that set - reducing
     data before Step 2.
     """
     import json
@@ -558,7 +558,7 @@ def _resolve_cohort_parquet_paths(cohort: str, age_band: str) -> List[Path]:
     """
     found: List[Path] = []
 
-    # Local: check each cohort root × event_year
+    # Local: check each cohort root x event_year
     for root in _cohort_root_candidates():
         if not root.exists():
             continue
@@ -1847,7 +1847,7 @@ if __name__ == "__main__":
     fi_validation = _validate_and_filter_aggregated_feature_importance(args.cohort_name, args.age_band)
     
     if not fi_validation["is_valid"]:
-        logger.error(f"❌ Aggregated feature importance validation failed: {fi_validation.get('error', 'Unknown error')}")
+        logger.error(f"[X] Aggregated feature importance validation failed: {fi_validation.get('error', 'Unknown error')}")
         logger.error(
             "Please generate the baseline aggregated feature importance (first pass) by running Step 3a with --baseline:\n"
             "  python 3a_feature_importance/run_mc_feature_importance.py --cohort %s --age_band %s --baseline\n"
@@ -1859,14 +1859,14 @@ if __name__ == "__main__":
     else:
         if fi_validation["n_zero_importance"] > 0 or fi_validation["n_duplicates"] > 0:
             logger.info(
-                f"✓ Cleaned aggregated feature importance CSV: "
+                f"[1] Cleaned aggregated feature importance CSV: "
                 f"removed {fi_validation['n_zero_importance']} zero-importance features, "
                 f"{fi_validation['n_duplicates']} duplicates. "
                 f"Final: {fi_validation['n_features_final']} features (from {fi_validation['n_features_initial']} initial)"
             )
         else:
             logger.info(
-                f"✓ Aggregated feature importance CSV is clean: "
+                f"[1] Aggregated feature importance CSV is clean: "
                 f"{fi_validation['n_features_final']} features, all with importance > 0, no duplicates"
             )
         print(f"\n[INFO] Final aggregated feature importance count: {fi_validation['n_features_final']} features")

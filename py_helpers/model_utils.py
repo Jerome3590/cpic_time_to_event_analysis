@@ -47,7 +47,7 @@ def save_model_artifacts(model, X_train, X_test, y_train, y_test, shap_values, c
                 paths['model_metrics'],
                 logger
             )
-            logger.info(f"✓ Saved model metrics to {paths['model_metrics']}")
+            logger.info(f"[1] Saved model metrics to {paths['model_metrics']}")
 
         # Save SHAP values
         if shap_values is not None:
@@ -56,14 +56,14 @@ def save_model_artifacts(model, X_train, X_test, y_train, y_test, shap_values, c
                 paths['shap_values'],
                 logger
             )
-            logger.info(f"✓ Saved SHAP values to {paths['shap_values']}")
+            logger.info(f"[1] Saved SHAP values to {paths['shap_values']}")
 
         # Save Cattail plots
         if cattail_plots:
             for plot_name, plot_data in cattail_plots.items():
                 plot_path = f"{paths['cattail_plots']}/{plot_name}.html"
                 save_to_s3_html(plot_data, plot_path, logger)
-                logger.info(f"✓ Saved Cattail plot {plot_name} to {plot_path}")
+                logger.info(f"[1] Saved Cattail plot {plot_name} to {plot_path}")
 
         # Save causal summary
         if causal_summary:
@@ -72,7 +72,7 @@ def save_model_artifacts(model, X_train, X_test, y_train, y_test, shap_values, c
                 paths['causal_summary'],
                 logger
             )
-            logger.info(f"✓ Saved causal summary to {paths['causal_summary']}")
+            logger.info(f"[1] Saved causal summary to {paths['causal_summary']}")
 
         # Create and save model info
         model_info = create_model_summary_json(
@@ -85,7 +85,7 @@ def save_model_artifacts(model, X_train, X_test, y_train, y_test, shap_values, c
             paths['model_info'],
             logger
         )
-        logger.info(f"✓ Saved model info to {paths['model_info']}")
+        logger.info(f"[1] Saved model info to {paths['model_info']}")
 
     except Exception as e:
         logger.error(f"Error saving model artifacts: {str(e)}")

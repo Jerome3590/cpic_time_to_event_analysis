@@ -217,10 +217,10 @@ def create_control_cohort_model_data(
                 print(f"[INFO] Control cohort model_events.parquet already exists ({n_rows:,} rows): {out_path}")
                 return
             else:
-                print(f"[WARN] Existing control model_events.parquet has 0 rows — treating as corrupt, rebuilding.")
+                print(f"[WARN] Existing control model_events.parquet has 0 rows - treating as corrupt, rebuilding.")
                 out_path.unlink()
         except Exception as _e:
-            print(f"[WARN] Existing control model_events.parquet failed integrity check ({_e}) — rebuilding.")
+            print(f"[WARN] Existing control model_events.parquet failed integrity check ({_e}) - rebuilding.")
             try:
                 out_path.unlink()
             except Exception:

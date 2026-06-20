@@ -364,7 +364,7 @@ def safe_unique_count(values: List[Any], logger: Optional[logging.Logger] = None
 
 def handle_empty_filtered_cohort(df, cohort_name, band, year, paths, logger, TOP_K=25):
     """Handle empty filtered cohort by creating placeholder data."""
-    logger.warning(f"Skipping {cohort_name} {band} {year} — no valid rows after filtering")
+    logger.warning(f"Skipping {cohort_name} {band} {year} - no valid rows after filtering")
 
     placeholder_columns = ["mi_person_key", "target", "drug_tokens", "tokens"]
     placeholder = pd.DataFrame(columns=placeholder_columns)
@@ -392,7 +392,7 @@ def handle_empty_filtered_cohort(df, cohort_name, band, year, paths, logger, TOP
     })
 
     placeholder = safe_concat_columns(placeholder, padding)
-    logger.info(f"✓ Created placeholder enhanced dataset with 0 valid rows")
+    logger.info(f"[1] Created placeholder enhanced dataset with 0 valid rows")
 
     return True  # Indicate early exit
 
@@ -424,30 +424,30 @@ def has_valid_metrics(metrics, cohort):
 
 def collect_validation_metrics(conn, logger, age_band, event_year):
     """Collect validation metrics for data quality checks and integrate into QA metrics system."""
-    logger.info("→ Collecting validation metrics...")
-    logger.info(f"→ Validation parameters: age_band={age_band}, event_year={event_year}")
+    logger.info("--> Collecting validation metrics...")
+    logger.info(f"--> Validation parameters: age_band={age_band}, event_year={event_year}")
 
     validation_metrics = {}
 
     try:
         # Pre-validation checks - ensure required views exist
-        logger.info("→ Validation: Checking if required views exist...")
+        logger.info("--> Validation: Checking if required views exist...")
         try:
             conn.sql("SELECT COUNT(*) as count FROM medical_clean_age LIMIT 1").df()
-            logger.info("→ Validation: medical_clean_age view exists")
+            logger.info("--> Validation: medical_clean_age view exists")
         except Exception as medical_exists_e:
-            logger.error(f"→ Validation: medical_clean_age view does not exist: {str(medical_exists_e)}")
+            logger.error(f"--> Validation: medical_clean_age view does not exist: {str(medical_exists_e)}")
             raise Exception(f"Required view 'medical_clean_age' does not exist: {str(medical_exists_e)}") from medical_exists_e
 
         try:
             conn.sql("SELECT COUNT(*) as count FROM pharmacy_clean LIMIT 1").df()
-            logger.info("→ Validation: pharmacy_clean view exists")
+            logger.info("--> Validation: pharmacy_clean view exists")
         except Exception as pharmacy_exists_e:
-            logger.error(f"→ Validation: pharmacy_clean view does not exist: {str(pharmacy_exists_e)}")
+            logger.error(f"--> Validation: pharmacy_clean view does not exist: {str(pharmacy_exists_e)}")
             raise Exception(f"Required view 'pharmacy_clean' does not exist: {str(pharmacy_exists_e)}") from pharmacy_exists_e
 
         # Event year consistency validation
-        logger.info("→ Validation: Checking medical data event year consistency...")
+        logger.info("--> Validation: Checking medical data event year consistency...")
         try:
             # Use DuckDB-compatible date extraction
             medical_year_check = conn.sql(f"""
@@ -458,14 +458,14 @@ def collect_validation_metrics(conn, logger, age_band, event_year):
                 FROM medical_clean_age
                 WHERE age_band = '{age_band}' AND event_year = {event_year}
             """).df()
-            logger.info(f"→ Validation: Medical year check completed - {medical_year_check.iloc[0]['total_rows']} total rows")
+            logger.info(f"--> Validation: Medical year check completed - {medical_year_check.iloc[0]['total_rows']} total rows")
         except Exception as medical_e:
-            logger.error(f"→ Validation: Error checking medical year consistency: {str(medical_e)}")
-            logger.error(f"→ Validation: Medical error type: {type(medical_e).__name__}")
-            logger.error(f"→ Validation: Medical traceback:\n{traceback.format_exc()}")
+            logger.error(f"--> Validation: Error checking medical year consistency: {str(medical_e)}")
+            logger.error(f"--> Validation: Medical error type: {type(medical_e).__name__}")
+            logger.error(f"--> Validation: Medical traceback:\n{traceback.format_exc()}")
 
             # Try alternative date extraction methods
-            logger.info("→ Validation: Trying alternative date extraction methods...")
+            logger.info("--> Validation: Trying alternative date extraction methods...")
             try:
                 # Try with YEAR() function
                 medical_year_check = conn.sql(f"""
@@ -476,9 +476,9 @@ def collect_validation_metrics(conn, logger, age_band, event_year):
                     FROM medical_clean_age
                     WHERE age_band = '{age_band}' AND event_year = {event_year}
                 """).df()
-                logger.info(f"→ Validation: Alternative medical year check succeeded - {medical_year_check.iloc[0]['total_rows']} total rows")
+                logger.info(f"--> Validation: Alternative medical year check succeeded - {medical_year_check.iloc[0]['total_rows']} total rows")
             except Exception as alt_medical_e:
-                logger.error(f"→ Validation: Alternative medical year check also failed: {str(alt_medical_e)}")
+                logger.error(f"--> Validation: Alternative medical year check also failed: {str(alt_medical_e)}")
                 # Try without year extraction (just count rows)
                 try:
                     medical_year_check = conn.sql(f"""
@@ -489,12 +489,12 @@ def collect_validation_metrics(conn, logger, age_band, event_year):
                         FROM medical_clean_age
                         WHERE age_band = '{age_band}' AND event_year = {event_year}
                     """).df()
-                    logger.warning(f"→ Validation: Using simplified medical check - {medical_year_check.iloc[0]['total_rows']} total rows")
+                    logger.warning(f"--> Validation: Using simplified medical check - {medical_year_check.iloc[0]['total_rows']} total rows")
                 except Exception as simple_medical_e:
-                    logger.error(f"→ Validation: Even simplified medical check failed: {str(simple_medical_e)}")
+                    logger.error(f"--> Validation: Even simplified medical check failed: {str(simple_medical_e)}")
                     raise
 
-        logger.info("→ Validation: Checking pharmacy data event year consistency...")
+        logger.info("--> Validation: Checking pharmacy data event year consistency...")
         try:
             # Use DuckDB-compatible date extraction
             pharmacy_year_check = conn.sql(f"""
@@ -505,14 +505,14 @@ def collect_validation_metrics(conn, logger, age_band, event_year):
                 FROM pharmacy_clean
                 WHERE age_band = '{age_band}' AND event_year = {event_year}
             """).df()
-            logger.info(f"→ Validation: Pharmacy year check completed - {pharmacy_year_check.iloc[0]['total_rows']} total rows")
+            logger.info(f"--> Validation: Pharmacy year check completed - {pharmacy_year_check.iloc[0]['total_rows']} total rows")
         except Exception as pharmacy_e:
-            logger.error(f"→ Validation: Error checking pharmacy year consistency: {str(pharmacy_e)}")
-            logger.error(f"→ Validation: Pharmacy error type: {type(pharmacy_e).__name__}")
-            logger.error(f"→ Validation: Pharmacy traceback:\n{traceback.format_exc()}")
+            logger.error(f"--> Validation: Error checking pharmacy year consistency: {str(pharmacy_e)}")
+            logger.error(f"--> Validation: Pharmacy error type: {type(pharmacy_e).__name__}")
+            logger.error(f"--> Validation: Pharmacy traceback:\n{traceback.format_exc()}")
 
             # Try alternative date extraction methods
-            logger.info("→ Validation: Trying alternative pharmacy date extraction methods...")
+            logger.info("--> Validation: Trying alternative pharmacy date extraction methods...")
             try:
                 # Try with YEAR() function
                 pharmacy_year_check = conn.sql(f"""
@@ -523,9 +523,9 @@ def collect_validation_metrics(conn, logger, age_band, event_year):
                     FROM pharmacy_clean
                     WHERE age_band = '{age_band}' AND event_year = {event_year}
                 """).df()
-                logger.info(f"→ Validation: Alternative pharmacy year check succeeded - {pharmacy_year_check.iloc[0]['total_rows']} total rows")
+                logger.info(f"--> Validation: Alternative pharmacy year check succeeded - {pharmacy_year_check.iloc[0]['total_rows']} total rows")
             except Exception as alt_pharmacy_e:
-                logger.error(f"→ Validation: Alternative pharmacy year check also failed: {str(alt_pharmacy_e)}")
+                logger.error(f"--> Validation: Alternative pharmacy year check also failed: {str(alt_pharmacy_e)}")
                 # Try without year extraction (just count rows)
                 try:
                     pharmacy_year_check = conn.sql(f"""
@@ -536,12 +536,12 @@ def collect_validation_metrics(conn, logger, age_band, event_year):
                         FROM pharmacy_clean
                         WHERE age_band = '{age_band}' AND event_year = {event_year}
                     """).df()
-                    logger.warning(f"→ Validation: Using simplified pharmacy check - {pharmacy_year_check.iloc[0]['total_rows']} total rows")
+                    logger.warning(f"--> Validation: Using simplified pharmacy check - {pharmacy_year_check.iloc[0]['total_rows']} total rows")
                 except Exception as simple_pharmacy_e:
-                    logger.error(f"→ Validation: Even simplified pharmacy check failed: {str(simple_pharmacy_e)}")
+                    logger.error(f"--> Validation: Even simplified pharmacy check failed: {str(simple_pharmacy_e)}")
                     raise
 
-        logger.info("→ Validation: Building event year consistency metrics...")
+        logger.info("--> Validation: Building event year consistency metrics...")
         validation_metrics["event_year_consistency"] = {
             "medical": {
                 "total_rows": int(medical_year_check.iloc[0]['total_rows']),
@@ -558,39 +558,39 @@ def collect_validation_metrics(conn, logger, age_band, event_year):
         }
 
         # Date type validation
-        logger.info("→ Validation: Checking medical date types...")
+        logger.info("--> Validation: Checking medical date types...")
         try:
             medical_date_type = conn.sql("""
                 SELECT typeof(event_date) as event_date_type
                 FROM medical_clean_age
                 LIMIT 1
             """).df()
-            logger.info(f"→ Validation: Medical date type check completed - type: {medical_date_type.iloc[0]['event_date_type']}")
+            logger.info(f"--> Validation: Medical date type check completed - type: {medical_date_type.iloc[0]['event_date_type']}")
         except Exception as medical_date_e:
-            logger.error(f"→ Validation: Error checking medical date type: {str(medical_date_e)}")
-            logger.error(f"→ Validation: Medical date error type: {type(medical_date_e).__name__}")
-            logger.error(f"→ Validation: Medical date traceback:\n{traceback.format_exc()}")
+            logger.error(f"--> Validation: Error checking medical date type: {str(medical_date_e)}")
+            logger.error(f"--> Validation: Medical date error type: {type(medical_date_e).__name__}")
+            logger.error(f"--> Validation: Medical date traceback:\n{traceback.format_exc()}")
             # Provide default value and continue
             medical_date_type = pd.DataFrame({'event_date_type': ['TIMESTAMP']})
-            logger.warning("→ Validation: Using default medical date type: TIMESTAMP")
+            logger.warning("--> Validation: Using default medical date type: TIMESTAMP")
 
-        logger.info("→ Validation: Checking pharmacy date types...")
+        logger.info("--> Validation: Checking pharmacy date types...")
         try:
             pharmacy_date_type = conn.sql("""
                 SELECT typeof(event_date) as event_date_type
                 FROM pharmacy_clean
                 LIMIT 1
             """).df()
-            logger.info(f"→ Validation: Pharmacy date type check completed - type: {pharmacy_date_type.iloc[0]['event_date_type']}")
+            logger.info(f"--> Validation: Pharmacy date type check completed - type: {pharmacy_date_type.iloc[0]['event_date_type']}")
         except Exception as pharmacy_date_e:
-            logger.error(f"→ Validation: Error checking pharmacy date type: {str(pharmacy_date_e)}")
-            logger.error(f"→ Validation: Pharmacy date error type: {type(pharmacy_date_e).__name__}")
-            logger.error(f"→ Validation: Pharmacy date traceback:\n{traceback.format_exc()}")
+            logger.error(f"--> Validation: Error checking pharmacy date type: {str(pharmacy_date_e)}")
+            logger.error(f"--> Validation: Pharmacy date error type: {type(pharmacy_date_e).__name__}")
+            logger.error(f"--> Validation: Pharmacy date traceback:\n{traceback.format_exc()}")
             # Provide default value and continue
             pharmacy_date_type = pd.DataFrame({'event_date_type': ['TIMESTAMP']})
-            logger.warning("→ Validation: Using default pharmacy date type: TIMESTAMP")
+            logger.warning("--> Validation: Using default pharmacy date type: TIMESTAMP")
 
-        logger.info("→ Validation: Building date type metrics...")
+        logger.info("--> Validation: Building date type metrics...")
         validation_metrics["date_types"] = {
             "medical_event_date_type": str(medical_date_type.iloc[0]['event_date_type']),
             "pharmacy_event_date_type": str(pharmacy_date_type.iloc[0]['event_date_type']),
@@ -599,49 +599,49 @@ def collect_validation_metrics(conn, logger, age_band, event_year):
         }
 
         # Log validation results
-        logger.info("→ Validation: Analyzing results...")
+        logger.info("--> Validation: Analyzing results...")
         total_mismatched = medical_year_check.iloc[0]['mismatched_rows'] + pharmacy_year_check.iloc[0]['mismatched_rows']
         if total_mismatched > 0:
-            logger.warning(f"→ Found {total_mismatched} rows with event_date/year mismatch")
+            logger.warning(f"--> Found {total_mismatched} rows with event_date/year mismatch")
         else:
-            logger.info("→ ✓ Event year consistency validated")
+            logger.info("--> [1] Event year consistency validated")
 
         medical_needs_conv = 'varchar' in str(medical_date_type.iloc[0]['event_date_type']).lower()
         pharmacy_needs_conv = 'varchar' in str(pharmacy_date_type.iloc[0]['event_date_type']).lower()
 
         if medical_needs_conv or pharmacy_needs_conv:
-            logger.warning(f"→ Date type conversion needed - Medical: {medical_needs_conv}, Pharmacy: {pharmacy_needs_conv}")
+            logger.warning(f"--> Date type conversion needed - Medical: {medical_needs_conv}, Pharmacy: {pharmacy_needs_conv}")
         else:
-            logger.info("→ ✓ Date types validated")
+            logger.info("--> [1] Date types validated")
 
-        logger.info("→ Validation: Metrics collection completed successfully")
+        logger.info("--> Validation: Metrics collection completed successfully")
         return validation_metrics
 
     except Exception as e:
-        logger.error(f"→ CRITICAL: Error collecting validation metrics: {str(e)}")
-        logger.error(f"→ CRITICAL: Exception type: {type(e).__name__}")
-        logger.error(f"→ CRITICAL: Full traceback:\n{traceback.format_exc()}")
+        logger.error(f"--> CRITICAL: Error collecting validation metrics: {str(e)}")
+        logger.error(f"--> CRITICAL: Exception type: {type(e).__name__}")
+        logger.error(f"--> CRITICAL: Full traceback:\n{traceback.format_exc()}")
 
         # Check if required views exist
-        logger.error("→ CRITICAL: Checking if required views exist...")
+        logger.error("--> CRITICAL: Checking if required views exist...")
         try:
             medical_count = conn.sql("SELECT COUNT(*) FROM medical_clean_age").df()
-            logger.error(f"→ CRITICAL: medical_clean_age exists with {medical_count.iloc[0, 0]} rows")
+            logger.error(f"--> CRITICAL: medical_clean_age exists with {medical_count.iloc[0, 0]} rows")
         except Exception as medical_check_e:
-            logger.error(f"→ CRITICAL: medical_clean_age view error: {str(medical_check_e)}")
+            logger.error(f"--> CRITICAL: medical_clean_age view error: {str(medical_check_e)}")
 
         try:
             pharmacy_count = conn.sql("SELECT COUNT(*) FROM pharmacy_clean").df()
-            logger.error(f"→ CRITICAL: pharmacy_clean exists with {pharmacy_count.iloc[0, 0]} rows")
+            logger.error(f"--> CRITICAL: pharmacy_clean exists with {pharmacy_count.iloc[0, 0]} rows")
         except Exception as pharmacy_check_e:
-            logger.error(f"→ CRITICAL: pharmacy_clean view error: {str(pharmacy_check_e)}")
+            logger.error(f"--> CRITICAL: pharmacy_clean view error: {str(pharmacy_check_e)}")
 
         return None
 
 
 def validate_event_year_consistency(conn, logger, age_band, event_year):
     """Validate that event_date and event_year are consistent across all data sources."""
-    logger.info("→ Validating event_year consistency...")
+    logger.info("--> Validating event_year consistency...")
 
     try:
         # Check medical data
@@ -654,7 +654,7 @@ def validate_event_year_consistency(conn, logger, age_band, event_year):
         """).df()
 
         if medical_check.iloc[0]['mismatched_rows'] > 0:
-            logger.warning(f"→ Found {medical_check.iloc[0]['mismatched_rows']} medical rows with event_date/year mismatch")
+            logger.warning(f"--> Found {medical_check.iloc[0]['mismatched_rows']} medical rows with event_date/year mismatch")
 
         # Check pharmacy data
         pharmacy_check = conn.sql(f"""
@@ -666,19 +666,19 @@ def validate_event_year_consistency(conn, logger, age_band, event_year):
         """).df()
 
         if pharmacy_check.iloc[0]['mismatched_rows'] > 0:
-            logger.warning(f"→ Found {pharmacy_check.iloc[0]['mismatched_rows']} pharmacy rows with event_date/year mismatch")
+            logger.warning(f"--> Found {pharmacy_check.iloc[0]['mismatched_rows']} pharmacy rows with event_date/year mismatch")
 
         total_mismatched = medical_check.iloc[0]['mismatched_rows'] + pharmacy_check.iloc[0]['mismatched_rows']
 
         if total_mismatched > 0:
-            logger.warning(f"→ Total mismatched rows: {total_mismatched}")
+            logger.warning(f"--> Total mismatched rows: {total_mismatched}")
             return False
         else:
-            logger.info("→ ✓ Event year consistency validated")
+            logger.info("--> [1] Event year consistency validated")
             return True
 
     except Exception as e:
-        logger.error(f"→ Error during event year validation: {str(e)}")
+        logger.error(f"--> Error during event year validation: {str(e)}")
         return False
 
 
@@ -703,7 +703,7 @@ def safe_convert_date_type(conn, table_name, column_name, logger):
         current_type = str(type_check.iloc[0]['column_type']).lower()
 
         if 'varchar' in current_type or 'string' in current_type:
-            logger.warning(f"→ Converting {table_name}.{column_name} from {current_type.upper()} to TIMESTAMP")
+            logger.warning(f"--> Converting {table_name}.{column_name} from {current_type.upper()} to TIMESTAMP")
 
             # Get all column names from the table to avoid SELECT *
             columns_query = conn.sql(f"DESCRIBE {table_name}").df()
@@ -726,19 +726,19 @@ def safe_convert_date_type(conn, table_name, column_name, logger):
                 FROM {table_name}
             """)
 
-            logger.info(f"→ ✓ Successfully converted {table_name}.{column_name} to TIMESTAMP")
+            logger.info(f"--> [1] Successfully converted {table_name}.{column_name} to TIMESTAMP")
             return True
         else:
-            logger.info(f"→ {table_name}.{column_name} already has correct type: {current_type.upper()}")
+            logger.info(f"--> {table_name}.{column_name} already has correct type: {current_type.upper()}")
             return True
     except Exception as e:
-        logger.error(f"→ Error converting {table_name}.{column_name}: {str(e)}")
+        logger.error(f"--> Error converting {table_name}.{column_name}: {str(e)}")
         return False
 
 
 def ensure_date_types(conn, logger):
     """Ensure event_date and drug_date are properly typed as DATE/TIMESTAMP."""
-    logger.info("→ Ensuring proper date types...")
+    logger.info("--> Ensuring proper date types...")
 
     try:
         # Safely convert medical data date types
@@ -748,19 +748,19 @@ def ensure_date_types(conn, logger):
         pharmacy_success = safe_convert_date_type(conn, "pharmacy_clean", "event_date", logger)
 
         if medical_success and pharmacy_success:
-            logger.info("→ ✓ Date types validated and corrected")
+            logger.info("--> [1] Date types validated and corrected")
             return True
         else:
-            logger.error("→ ✗ Date type conversion failed")
+            logger.error("--> [X] Date type conversion failed")
             return False
     except Exception as e:
-        logger.error(f"→ Error during date type validation: {str(e)}")
+        logger.error(f"--> Error during date type validation: {str(e)}")
         return False
 
 
 def generate_qa_report(conn, cohort_name, logger, age_band=None, event_year=None):
     """Generate a compact QA report for the cohort."""
-    logger.info(f"→ Generating QA report for {cohort_name}...")
+    logger.info(f"--> Generating QA report for {cohort_name}...")
 
     try:
         # Row counts
@@ -838,8 +838,8 @@ def generate_qa_report(conn, cohort_name, logger, age_band=None, event_year=None
             ContentType='application/json'
         )
 
-        logger.info(f"→ ✓ QA report saved to {qa_report_path}")
-        logger.info(f"→ QA Summary for {cohort_name}:")
+        logger.info(f"--> [1] QA report saved to {qa_report_path}")
+        logger.info(f"--> QA Summary for {cohort_name}:")
         logger.info(f"  - Total rows: {qa_report['row_counts']['total_rows']}")
         logger.info(f"  - Distinct patients: {qa_report['row_counts']['distinct_patients']}")
         logger.info(f"  - Drug events: {qa_report['drug_counts']['total_drug_events']}")
@@ -848,13 +848,13 @@ def generate_qa_report(conn, cohort_name, logger, age_band=None, event_year=None
         return qa_report
 
     except Exception as e:
-        logger.error(f"→ Error generating QA report: {str(e)}")
+        logger.error(f"--> Error generating QA report: {str(e)}")
         return None
 
 
 def validate_extracted_parameters(conn, logger, expected_age_band, expected_event_year, step_name):
     """Validate that extracted age_band and event_year match expected values."""
-    logger.info(f"→ [{step_name}] Validating extracted parameters...")
+    logger.info(f"--> [{step_name}] Validating extracted parameters...")
 
     try:
         # Check medical data first
@@ -868,9 +868,9 @@ def validate_extracted_parameters(conn, logger, expected_age_band, expected_even
             ORDER BY row_count DESC
         """).df()
 
-        logger.info(f"→ [{step_name}] Medical data validation results:")
+        logger.info(f"--> [{step_name}] Medical data validation results:")
         for _, row in medical_validation.iterrows():
-            logger.info(f"→ [{step_name}]   age_band='{row['age_band']}', event_year={row['event_year']}, rows={row['row_count']}")
+            logger.info(f"--> [{step_name}]   age_band='{row['age_band']}', event_year={row['event_year']}, rows={row['row_count']}")
 
         # Check if pharmacy_clean table exists before trying to validate it
         pharmacy_validation = None
@@ -885,12 +885,12 @@ def validate_extracted_parameters(conn, logger, expected_age_band, expected_even
                 ORDER BY row_count DESC
             """).df()
 
-            logger.info(f"→ [{step_name}] Pharmacy data validation results:")
+            logger.info(f"--> [{step_name}] Pharmacy data validation results:")
             for _, row in pharmacy_validation.iterrows():
-                logger.info(f"→ [{step_name}]   age_band='{row['age_band']}', event_year={row['event_year']}, rows={row['row_count']}")
+                logger.info(f"--> [{step_name}]   age_band='{row['age_band']}', event_year={row['event_year']}, rows={row['row_count']}")
 
         except Exception as pharmacy_e:
-            logger.info(f"→ [{step_name}] Pharmacy data not yet loaded (this is normal for Step 3.5): {str(pharmacy_e)}")
+            logger.info(f"--> [{step_name}] Pharmacy data not yet loaded (this is normal for Step 3.5): {str(pharmacy_e)}")
             pharmacy_validation = None
 
         # Check for expected data in medical
@@ -912,38 +912,38 @@ def validate_extracted_parameters(conn, logger, expected_age_band, expected_even
         pharmacy_has_expected = expected_pharmacy is not None and not expected_pharmacy.empty
 
         if not medical_has_expected:
-            logger.error(f"→ [{step_name}] ERROR: No medical data found for expected parameters!")
-            logger.error(f"→ [{step_name}] Expected: age_band='{expected_age_band}', event_year={expected_event_year}")
-            logger.error(f"→ [{step_name}] Available medical data:")
+            logger.error(f"--> [{step_name}] ERROR: No medical data found for expected parameters!")
+            logger.error(f"--> [{step_name}] Expected: age_band='{expected_age_band}', event_year={expected_event_year}")
+            logger.error(f"--> [{step_name}] Available medical data:")
             for _, row in medical_validation.iterrows():
-                logger.error(f"→ [{step_name}]   Found: age_band='{row['age_band']}', event_year={row['event_year']}, rows={row['row_count']}")
+                logger.error(f"--> [{step_name}]   Found: age_band='{row['age_band']}', event_year={row['event_year']}, rows={row['row_count']}")
             return False
 
         if pharmacy_validation is not None and not pharmacy_has_expected:
-            logger.warning(f"→ [{step_name}] WARNING: No pharmacy data found for expected parameters!")
-            logger.warning(f"→ [{step_name}] Expected: age_band='{expected_age_band}', event_year={expected_event_year}")
+            logger.warning(f"--> [{step_name}] WARNING: No pharmacy data found for expected parameters!")
+            logger.warning(f"--> [{step_name}] Expected: age_band='{expected_age_band}', event_year={expected_event_year}")
             # Don't fail for pharmacy data - it might not be loaded yet
 
         # Log success
-        logger.info(f"→ [{step_name}] ✓ Found expected medical data: age_band='{expected_age_band}', event_year={expected_event_year}")
+        logger.info(f"--> [{step_name}] [1] Found expected medical data: age_band='{expected_age_band}', event_year={expected_event_year}")
         if expected_medical is not None and not expected_medical.empty:
-            logger.info(f"→ [{step_name}] ✓ Medical rows for expected parameters: {expected_medical.iloc[0]['row_count']}")
+            logger.info(f"--> [{step_name}] [1] Medical rows for expected parameters: {expected_medical.iloc[0]['row_count']}")
         
         if expected_pharmacy is not None and not expected_pharmacy.empty:
-            logger.info(f"→ [{step_name}] ✓ Pharmacy rows for expected parameters: {expected_pharmacy.iloc[0]['row_count']}")
+            logger.info(f"--> [{step_name}] [1] Pharmacy rows for expected parameters: {expected_pharmacy.iloc[0]['row_count']}")
 
-        logger.info(f"→ [{step_name}] ✓ Parameter validation passed")
+        logger.info(f"--> [{step_name}] [1] Parameter validation passed")
         return True
 
     except Exception as e:
-        logger.error(f"→ [{step_name}] ERROR during parameter validation: {str(e)}")
-        logger.error(f"→ [{step_name}] Validation failed - proceeding with caution")
+        logger.error(f"--> [{step_name}] ERROR during parameter validation: {str(e)}")
+        logger.error(f"--> [{step_name}] Validation failed - proceeding with caution")
         return False
 
 
 def validate_data_consistency(conn, logger, age_band, event_year, step_name):
     """Validate data consistency across all views."""
-    logger.info(f"→ [{step_name}] Validating data consistency...")
+    logger.info(f"--> [{step_name}] Validating data consistency...")
 
     try:
         # Check if views exist and have data
@@ -952,7 +952,7 @@ def validate_data_consistency(conn, logger, age_band, event_year, step_name):
         for view_name in views_to_check:
             try:
                 count = conn.sql(f"SELECT COUNT(*) as count FROM {view_name}").df()
-                logger.info(f"→ [{step_name}] {view_name}: {count.iloc[0]['count']} rows")
+                logger.info(f"--> [{step_name}] {view_name}: {count.iloc[0]['count']} rows")
 
                 # Check age_band distribution in this view
                 if view_name in ['medical_clean', 'pharmacy_clean', 'medical_filtered', 'medical_clean_age']:
@@ -963,22 +963,22 @@ def validate_data_consistency(conn, logger, age_band, event_year, step_name):
                         ORDER BY count DESC
                     """).df()
 
-                    logger.info(f"→ [{step_name}] {view_name} age_band distribution:")
+                    logger.info(f"--> [{step_name}] {view_name} age_band distribution:")
                     for _, row in age_dist.iterrows():
-                        logger.info(f"→ [{step_name}]   {row['age_band']}: {row['count']} rows")
+                        logger.info(f"--> [{step_name}]   {row['age_band']}: {row['count']} rows")
 
                         # Flag unexpected age bands
                         if row['age_band'] != age_band:
-                            logger.warning(f"→ [{step_name}] WARNING: Unexpected age_band '{row['age_band']}' in {view_name}")
+                            logger.warning(f"--> [{step_name}] WARNING: Unexpected age_band '{row['age_band']}' in {view_name}")
 
             except Exception as view_e:
-                logger.warning(f"→ [{step_name}] Could not check {view_name}: {str(view_e)}")
+                logger.warning(f"--> [{step_name}] Could not check {view_name}: {str(view_e)}")
 
-        logger.info(f"→ [{step_name}] ✓ Data consistency validation completed")
+        logger.info(f"--> [{step_name}] [1] Data consistency validation completed")
         return True
 
     except Exception as e:
-        logger.error(f"→ [{step_name}] ERROR during data consistency validation: {str(e)}")
+        logger.error(f"--> [{step_name}] ERROR during data consistency validation: {str(e)}")
         return False
 
 
@@ -1040,13 +1040,13 @@ def find_preferred_pickle(base_dir: str, name: str = 'target_analysis_data.pkl')
                 import logging
                 _logger = logging.getLogger(__name__)
             _logger.warning(
-                "Found legacy pickle at %s — please move it to %s. "
+                "Found legacy pickle at %s - please move it to %s. "
                 "This helper will not return legacy paths.",
                 legacy_path,
                 outputs_path,
             )
         except Exception:
-            # If logging fails for some reason, ignore and continue — we still
+            # If logging fails for some reason, ignore and continue - we still
             # do not return the legacy path.
             pass
 
@@ -1069,7 +1069,7 @@ def safe_load_pickle(path: Optional[str]):
             with open(path, 'rb') as f:
                 return _pickle.load(f)
     except Exception as e:
-        print(f"⚠️ Failed to load pickle {path}: {e}")
+        print(f"[WARN] Failed to load pickle {path}: {e}")
         return None
 
 

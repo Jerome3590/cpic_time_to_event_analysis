@@ -53,7 +53,7 @@ def check_gold_dir(name: str, root: Path, check_s3: bool = False, bucket: str = 
     # Report
     print(f"\n=== gold/{name} ===")
     print(f"  Root: {root}")
-    print(f"  Expected cells: {len(EXPECTED_AGE_BANDS) * len(EXPECTED_YEARS)} (age_band × event_year)")
+    print(f"  Expected cells: {len(EXPECTED_AGE_BANDS) * len(EXPECTED_YEARS)} (age_band x event_year)")
     print(f"  Present: {len(present)} cells, {total_files} parquet files, {_fmt(total_bytes)} total")
     if missing:
         print(f"  Missing cells: {len(missing)}")

@@ -2,8 +2,8 @@
 FP-Growth visualization helpers.
 
 This module reads FP-Growth JSON outputs (itemsets and rules) and creates:
-- Top-N itemset support bar charts (combined cohort) — PNG and optional Plotly HTML
-- Network-style graphs from target-only rules (targets only) — PNG and Plotly HTML
+- Top-N itemset support bar charts (combined cohort) - PNG and optional Plotly HTML
+- Network-style graphs from target-only rules (targets only) - PNG and Plotly HTML
 
 Optional code mapping table (code -> description) makes node and itemset labels
 human-readable; see 9_dashboard_visuals/fpgrowth/code_mappings/README.md.
@@ -186,7 +186,7 @@ def _write_empty_network_html(
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>FP-Growth network — {cohort_name} {age_band}</title>
+  <title>FP-Growth network - {cohort_name} {age_band}</title>
   <style>
     body {{ font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 80vh; margin: 0; background: #f8fafc; }}
     .message {{ text-align: center; padding: 2rem; color: #64748b; font-size: 1.1rem; }}
@@ -270,7 +270,7 @@ def _network_combined_plotly_with_filter(
 
     all_traces = edge_traces + [node_trace]
     layout = go.Layout(
-        title=f"{cohort_name} {age_band} — Drug association rules",
+        title=f"{cohort_name} {age_band} - Drug association rules",
         showlegend=True,
         legend=dict(orientation="h", y=1.05, xanchor="center", x=0.5),
         hovermode="closest",
@@ -500,14 +500,14 @@ def _top_itemsets_interactive(
             method="update",
             args=[
                 {"visible": visible_list},
-                {"title": f"{cohort_name} {age_band} {item_type} — Top {top_n} Itemsets ({year_label})"}
+                {"title": f"{cohort_name} {age_band} {item_type} - Top {top_n} Itemsets ({year_label})"}
             ]
         )
         buttons.append(button)
     
     # Create layout with dropdown
     layout = go.Layout(
-        title=f"{cohort_name} {age_band} {item_type} — Top {top_n} Itemsets (All Years)",
+        title=f"{cohort_name} {age_band} {item_type} - Top {top_n} Itemsets (All Years)",
         xaxis=dict(title="Support", showgrid=True),
         yaxis=dict(title="Itemset", autorange="reversed"),  # Top itemset at top
         updatemenus=[
@@ -546,7 +546,7 @@ def _top_itemsets_interactive(
     
     fig = go.Figure(data=traces, layout=layout)
     
-    # Save to HTML (production: single file, embedded Plotly.js — same pattern as BupaR selfcontained=TRUE)
+    # Save to HTML (production: single file, embedded Plotly.js - same pattern as BupaR selfcontained=TRUE)
     fname = f"{cohort_name}_{age_band.replace('-', '_')}_{item_type}_itemsets_interactive.html"
     out_path = output_dir / fname
     _ensure_output_dir(output_dir)
@@ -724,7 +724,7 @@ def _network_from_rules_plotly(
     fig = go.Figure(
         data=[edge_trace, node_trace],
         layout=go.Layout(
-            title=f"{cohort_name} {age_band} {item_type} — target rules network",
+            title=f"{cohort_name} {age_band} {item_type} - target rules network",
             showlegend=False,
             hovermode="closest",
             margin=dict(b=20, l=20, r=20, t=40),
@@ -852,7 +852,7 @@ def _network_interactive_multi_year(
             
             data = G[u][v]
             hover = (
-                f"<b>Rule:</b> {u} → {v}<br>"
+                f"<b>Rule:</b> {u} --> {v}<br>"
                 f"<b>Support:</b> {data['support']:.4f}<br>"
                 f"<b>Confidence:</b> {data['confidence']:.4f}<br>"
                 f"<b>Lift:</b> {data['lift']:.4f}"
@@ -930,7 +930,7 @@ def _network_interactive_multi_year(
             method="update",
             args=[
                 {"visible": visible_list},
-                {"title": f"{cohort_name} {age_band} {item_type} — Association Rules Network ({year_label})<br><sub>{n_nodes} items, {n_edges} rules</sub>"}
+                {"title": f"{cohort_name} {age_band} {item_type} - Association Rules Network ({year_label})<br><sub>{n_nodes} items, {n_edges} rules</sub>"}
             ]
         )
         buttons.append(button)
@@ -942,7 +942,7 @@ def _network_interactive_multi_year(
     
     # Create layout with dropdown
     layout = go.Layout(
-        title=f"{cohort_name} {age_band} {item_type} — Association Rules Network ({initial_label})<br><sub>{G_initial.number_of_nodes()} items, {G_initial.number_of_edges()} rules</sub>",
+        title=f"{cohort_name} {age_band} {item_type} - Association Rules Network ({initial_label})<br><sub>{G_initial.number_of_nodes()} items, {G_initial.number_of_edges()} rules</sub>",
         showlegend=False,
         hovermode="closest",
         updatemenus=[

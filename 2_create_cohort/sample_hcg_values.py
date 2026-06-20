@@ -49,9 +49,9 @@ conn = create_duckdb_conn()
 try:
     conn.sql("INSTALL httpfs; LOAD httpfs;")
     conn.sql("CALL load_aws_credentials('pgx');")
-    print("\n✓ AWS credentials loaded")
+    print("\n[1] AWS credentials loaded")
 except Exception as e:
-    print(f"\n⚠ Warning: Could not load AWS credentials: {e}")
+    print(f"\n[WARN] Warning: Could not load AWS credentials: {e}")
 
 # Try to resolve path
 medical_path = None
@@ -61,12 +61,12 @@ if os.path.exists(local_dir):
     parquet_files = glob.glob(f"{local_dir}/*.parquet")
     if parquet_files:
         medical_path = parquet_files[0]
-        print(f"\n✓ Using local path: {medical_path}")
+        print(f"\n[1] Using local path: {medical_path}")
     else:
         medical_path = f"{local_dir}/*.parquet"
 else:
     medical_path = f"s3://{S3_BUCKET}/gold/medical/age_band={age_band}/event_year={event_year}/*.parquet"
-    print(f"\n→ Using S3 path: {medical_path}")
+    print(f"\n--> Using S3 path: {medical_path}")
 
 try:
     # Query 1: Sample records with all HCG fields
@@ -90,7 +90,7 @@ try:
     result1 = conn.sql(query1).fetchdf()
     
     if result1.empty:
-        print("\n⚠ No records with HCG line codes found")
+        print("\n[WARN] No records with HCG line codes found")
     else:
         print(f"\nFound {len(result1)} sample records:\n")
         # Show all columns with proper formatting
@@ -120,7 +120,7 @@ try:
     result2 = conn.sql(query2).fetchdf()
     
     if result2.empty:
-        print("\n⚠ No records found with current HCG target codes!")
+        print("\n[WARN] No records found with current HCG target codes!")
         print("  This suggests the codes may be incorrect or formatted differently.")
     else:
         print(f"\nFound {len(result2)} records with current codes:\n")
@@ -148,7 +148,7 @@ try:
     result3 = conn.sql(query3).fetchdf()
     
     if result3.empty:
-        print("\n⚠ No HCG line codes found")
+        print("\n[WARN] No HCG line codes found")
     else:
         print(f"\nTop {len(result3)} HCG line codes (with detail):\n")
         for idx, row in result3.iterrows():
@@ -162,7 +162,7 @@ try:
                 or code == 'O11 - Emergency Room'
                 or code == 'P33 - Urgent Care Visits'
             )
-            marker = "✓" if is_match else " "
+            marker = "[1]" if is_match else " "
             detail_str = f" / {detail}" if detail else ""
             print(f"{marker} {code:60s}{detail_str:50s} | {count:>10,} records | {patients:>10,} patients")
     
@@ -195,7 +195,7 @@ try:
     result4 = conn.sql(query4).fetchdf()
     
     if result4.empty:
-        print("\n⚠ No ED-related HCG codes found")
+        print("\n[WARN] No ED-related HCG codes found")
     else:
         print(f"\nFound {len(result4)} ED-related HCG code combinations:\n")
         for idx, row in result4.iterrows():
@@ -208,11 +208,11 @@ try:
                 or line == 'O11 - Emergency Room'
                 or line == 'P33 - Urgent Care Visits'
             )
-            marker = "✓" if is_match else " "
+            marker = "[1]" if is_match else " "
             print(f"{marker} Setting: {setting:30s} | Line: {line:50s} | Detail: {detail}")
     
 except Exception as e:
-    print(f"\n✗ Error: {e}")
+    print(f"\n[X] Error: {e}")
     import traceback
     traceback.print_exc()
 finally:

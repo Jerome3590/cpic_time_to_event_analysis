@@ -110,7 +110,7 @@ def run_single_split(
             X_test = X_train_all.iloc[test_idx].copy()
             y_test = y_train_all[test_idx]
         
-        # Drop mi_person_key if present (not a feature) – only relevant for DataFrames
+        # Drop mi_person_key if present (not a feature) - only relevant for DataFrames
         if "mi_person_key" in X_train.columns:
             X_train = X_train.drop(columns=["mi_person_key"])
         if "mi_person_key" in X_test.columns:
@@ -151,7 +151,7 @@ def run_single_split(
             feat_names = feature_names or X_train.columns.tolist()
             _log_mc(
                 f"[MC-CV] Split {split_idx} ({method}): starting permutation importance "
-                f"on {X_test.shape[0]} rows × {X_test.shape[1]} features"
+                f"on {X_test.shape[0]} rows x {X_test.shape[1]} features"
             )
             feature_importance = get_importance_xgboost(
                 model, feat_names, X_test=X_test, y_test=y_test
@@ -172,7 +172,7 @@ def run_single_split(
             feat_names = feature_names or X_train.columns.tolist()
             _log_mc(
                 f"[MC-CV] Split {split_idx} ({method}): starting permutation importance "
-                f"on {X_test.shape[0]} rows × {X_test.shape[1]} features"
+                f"on {X_test.shape[0]} rows x {X_test.shape[1]} features"
             )
             feature_importance = get_importance_xgboost(
                 model, feat_names, X_test=X_test, y_test=y_test

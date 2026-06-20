@@ -176,7 +176,7 @@ def convert_rejects_to_parquet(input_uri: str, output_uri: str, duckdb_threads: 
             con.sql(make_copy_sql())
             return
         except Exception as e1:
-            logger.warning(f"Default read_csv_auto failed, trying fallback encodings/delims… ({str(e1)[:220]}…)")
+            logger.warning(f"Default read_csv_auto failed, trying fallback encodings/delims... ({str(e1)[:220]}...)")
 
         for delim in ('|', '\t'):
             for enc in ("CP1252", "ISO8859_1"):
@@ -184,7 +184,7 @@ def convert_rejects_to_parquet(input_uri: str, output_uri: str, duckdb_threads: 
                     con.sql(make_copy_sql(enc=enc, delim=delim))
                     return
                 except Exception as e_enc:
-                    logger.warning(f"{enc} + '{delim}' failed; trying ALL_VARCHAR… ({str(e_enc)[:160]}…)")
+                    logger.warning(f"{enc} + '{delim}' failed; trying ALL_VARCHAR... ({str(e_enc)[:160]}...)")
                     try:
                         con.sql(make_copy_sql(enc=enc, delim=delim, all_varchar=True))
                         return
@@ -392,7 +392,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         log_buffer = []
 
     try:
-        logger.info("🚀 Reprocessing corrected rejects → Parquet parts (in part_files folder)")
+        logger.info("[START] Reprocessing corrected rejects --> Parquet parts (in part_files folder)")
         logger.info(f"Cleanup source files: {args.cleanup_source}")
         run_started = time.time()
         agg = {"tx": "repro", "run_id": run_id, "start_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "appended": 0, "skipped": 0, "errors": 0}
@@ -460,7 +460,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         processed = 0
         if args.workers > 1:
             import concurrent.futures as cf
-            logger.info(f"Starting parallel reprocess with {args.workers} workers…")
+            logger.info(f"Starting parallel reprocess with {args.workers} workers...")
             # Build worker args to avoid capturing non-picklable closures
             worker_args = [
                 (in_uri, out_uri, ds, args.duckdb_threads, args.tmp_dir, args.proceed_on_errors, args.sanitize, args.bronze_root, args.cleanup_source)
@@ -470,23 +470,23 @@ def main(argv: Optional[List[str]] = None) -> int:
                 for out_uri, ok, msg in ex.map(_reprocess_worker, worker_args):
                     if ok:
                         if msg == "converted":
-                            logger.info(f"✓ {out_uri}")
+                            logger.info(f"[1] {out_uri}")
                             processed += 1
                             agg["appended"] += 1
 
                         else:
-                            logger.info(f"↷ {msg}: {out_uri}")
+                            logger.info(f"[SKIP] {msg}: {out_uri}")
                             if msg == "skipped_exists":
                                 agg["skipped"] += 1
                     else:
-                        logger.error(f"✗ {out_uri} -> {msg}")
+                        logger.error(f"[X] {out_uri} -> {msg}")
                         agg["errors"] += 1
         else:
             for in_uri, out_uri, ds in tasks:
                 try:
                     out_bucket, out_key = _parse_s3_uri(out_uri)
                     if s3_exists(out_bucket, out_key):
-                        logger.info(f"↷ skipped_exists: {out_uri}")
+                        logger.info(f"[SKIP] skipped_exists: {out_uri}")
                         agg["skipped"] += 1
                         continue
                     src_uri = in_uri
@@ -524,12 +524,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                             logger.warning(f"Could not clean up source files: {cleanup_err}")
                             # Don't fail the conversion if cleanup fails
                     
-                    logger.info(f"✓ {out_uri}")
+                    logger.info(f"[1] {out_uri}")
                     processed += 1
                     agg["appended"] += 1
 
                 except Exception as e:
-                    logger.error(f"✗ {out_uri} -> error: {e}")
+                    logger.error(f"[X] {out_uri} -> error: {e}")
                     agg["errors"] += 1
 
         total_converted += processed
@@ -544,7 +544,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             agg["status"] = "success"
             agg["status_code"] = 0
 
-        logger.info(f"✅ Reprocess complete. Files appended: {total_converted}")
+        logger.info(f"[1] Reprocess complete. Files appended: {total_converted}")
         if save_logs_to_s3 and setup_logging:
             try:
                 save_logs_to_s3(log_buffer, "reprocess_txt_to_parquet", args.dataset, run_id, "apcd_input_data", logger=logger)
@@ -558,14 +558,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         agg_key = f"{agg_key_root.rstrip('/')}/reprocess_txt_to_parquet/run_id={run_id}/summary.json" if agg_key_root else f"reprocess_txt_to_parquet/run_id={run_id}/summary.json"
         try:
             boto3.client('s3').put_object(Bucket=agg_bucket, Key=agg_key, Body=json.dumps(agg, indent=2).encode('utf-8'), ContentType='application/json')
-            logger.info(f"📊 Aggregated summary saved: s3://{agg_bucket}/{agg_key}")
+            logger.info(f"[INFO] Aggregated summary saved: s3://{agg_bucket}/{agg_key}")
         except Exception as e:
-            logger.warning(f"⚠️ Could not save aggregated summary: {e}")
+            logger.warning(f"[WARN] Could not save aggregated summary: {e}")
         if 'ps' in locals() and ps:
             ps.mark_pipeline_completed({"appended": total_converted, "errors": agg["errors"]})
         return 0
     except Exception as e:
-        logger.error(f"❌ Reprocess failed: {e}")
+        logger.error(f"[X] Reprocess failed: {e}")
         if save_logs_to_s3 and setup_logging:
             try:
                 save_logs_to_s3(log_buffer, "reprocess_txt_to_parquet", args.dataset, run_id, "apcd_input_data", logger=logger)

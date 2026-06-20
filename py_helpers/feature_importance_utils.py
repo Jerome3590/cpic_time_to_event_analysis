@@ -264,7 +264,7 @@ def run_cohort_analysis(
                     "n_features": n_features,
                 }
             except Exception:
-                # No aggregated results found locally or in S3 → proceed as normal.
+                # No aggregated results found locally or in S3 --> proceed as normal.
                 pass
 
         # Load data
@@ -537,7 +537,7 @@ def run_cohort_analysis(
                 n_patients = len(unique_patients)
                 n_features = len(all_item_list)
 
-                logger.info("Building CatBoost feature matrix: %d patients × %d features", n_patients, n_features)
+                logger.info("Building CatBoost feature matrix: %d patients x %d features", n_patients, n_features)
 
                 # Create base DataFrame with all patients and empty string defaults
                 # Use more memory-efficient approach: build column by column
@@ -649,7 +649,7 @@ def run_cohort_analysis(
                     data = data.drop(columns=['mi_person_key'])
                 
                 # All columns are already strings with empty string defaults, no need to fillna
-                logger.info("CatBoost feature matrix created: %d rows × %d features", len(data), len([c for c in data.columns if c.startswith('item_')]))
+                logger.info("CatBoost feature matrix created: %d rows x %d features", len(data), len([c for c in data.columns if c.startswith('item_')]))
             else:
                 # Random Forest / XGBoost / ExtraTrees format: binary features
                 # To keep the matrix compact and avoid huge pivot tables,
@@ -659,7 +659,7 @@ def run_cohort_analysis(
                     patient_items["item"].isin(all_item_list)
                 ].copy()
                 if patient_items_filtered.empty:
-                    # No items survive pruning → create an all-zero matrix
+                    # No items survive pruning --> create an all-zero matrix
                     feature_matrix = patient_targets[["mi_person_key"]].drop_duplicates()
                 else:
                     patient_items_filtered["value"] = 1
@@ -674,7 +674,7 @@ def run_cohort_analysis(
                     ).reset_index()
 
                 # Ensure we have one row for EVERY patient in patient_targets,
-                # even those with zero items (they’ll get all zeros)
+                # even those with zero items (they'll get all zeros)
                 all_patients = patient_targets[['mi_person_key']].drop_duplicates()
                 feature_matrix = all_patients.merge(feature_matrix, on='mi_person_key', how='left')
 
@@ -772,7 +772,7 @@ def run_cohort_analysis(
                 constant_features_df.to_csv(constant_features_file, index=False)
                 logger.info("Saved constant-features list locally: %s", constant_features_file)
             except Exception:
-                # Not available locally or in S3 → compute from scratch
+                # Not available locally or in S3 --> compute from scratch
                 # Debug: Check a sample of items that appear in training
                 sample_train_items = list(train_items_set)[:5]
                 logger.info("Sample training items: %s", sample_train_items)

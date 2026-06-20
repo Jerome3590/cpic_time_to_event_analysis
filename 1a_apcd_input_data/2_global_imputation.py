@@ -80,7 +80,7 @@ def init_duckdb(tmp_dir: str = None, s3_region: str = "us-east-1", logger=None):
     duckdb_conn.sql(f"SET s3_region='{s3_region}'")
     
     # Let DuckDB handle memory and threads automatically - NO manual settings
-    logger.info("✅ Simple DuckDB connection created - auto memory/threads")
+    logger.info("[1] Simple DuckDB connection created - auto memory/threads")
     
     return duckdb_conn
 
@@ -93,9 +93,9 @@ def log_data_loss(step_name: str, before_count: int, after_count: int, logger,
     if before_patients is not None and after_patients is not None:
         lost_patients = before_patients - after_patients
         patient_loss_pct = (lost_patients / before_patients * 100) if before_patients > 0 else 0
-        logger.info(f"📊 {step_name}: {before_count:,} → {after_count:,} rows ({lost_count:,} lost, {loss_pct:.1f}%) | {before_patients:,} → {after_patients:,} patients ({lost_patients:,} lost, {patient_loss_pct:.1f}%)")
+        logger.info(f"[INFO] {step_name}: {before_count:,} --> {after_count:,} rows ({lost_count:,} lost, {loss_pct:.1f}%) | {before_patients:,} --> {after_patients:,} patients ({lost_patients:,} lost, {patient_loss_pct:.1f}%)")
     else:
-        logger.info(f"📊 {step_name}: {before_count:,} → {after_count:,} rows ({lost_count:,} lost, {loss_pct:.1f}%)")
+        logger.info(f"[INFO] {step_name}: {before_count:,} --> {after_count:,} rows ({lost_count:,} lost, {loss_pct:.1f}%)")
 
 def create_raw_silver_datasets(pharmacy_input: str, medical_input: str, output_root: str,
                                duckdb_conn, logger, log_buffer):
@@ -136,9 +136,9 @@ def create_raw_silver_datasets(pharmacy_input: str, medical_input: str, output_r
     
     # Check what needs to be created (idempotent - only create missing datasets)
     if pharmacy_raw_exists and medical_raw_exists:
-        logger.info(f"✅ Raw silver datasets already exist:")
-        logger.info(f"   • Pharmacy: {pharmacy_raw_path}")
-        logger.info(f"   • Medical: {medical_raw_path}")
+        logger.info(f"[1] Raw silver datasets already exist:")
+        logger.info(f"   - Pharmacy: {pharmacy_raw_path}")
+        logger.info(f"   - Medical: {medical_raw_path}")
         logger.info(f"   Skipping raw silver dataset creation (idempotent).")
         return {
             "pharmacy_raw_path": pharmacy_raw_path,
@@ -153,14 +153,14 @@ def create_raw_silver_datasets(pharmacy_input: str, medical_input: str, output_r
     create_medical = not medical_raw_exists
     
     if create_pharmacy:
-        logger.info(f"📊 Will create: {pharmacy_raw_path}")
+        logger.info(f"[INFO] Will create: {pharmacy_raw_path}")
     else:
-        logger.info(f"✅ Already exists (skipping): {pharmacy_raw_path}")
+        logger.info(f"[1] Already exists (skipping): {pharmacy_raw_path}")
     
     if create_medical:
-        logger.info(f"📊 Will create: {medical_raw_path}")
+        logger.info(f"[INFO] Will create: {medical_raw_path}")
     else:
-        logger.info(f"✅ Already exists (skipping): {medical_raw_path}")
+        logger.info(f"[1] Already exists (skipping): {medical_raw_path}")
     
     # Create raw pharmacy with all original columns (only if missing)
     pharmacy_raw_count = None
@@ -261,9 +261,9 @@ def create_raw_silver_datasets(pharmacy_input: str, medical_input: str, output_r
             WRITE_PARTITION_COLUMNS FALSE,
             OVERWRITE_OR_IGNORE true)
         """)
-        logger.info("✅ Pharmacy raw dataset created successfully")
+        logger.info("[1] Pharmacy raw dataset created successfully")
     else:
-        logger.info("⏭️ Skipping pharmacy raw dataset (already exists)")
+        logger.info("[SKIP] Skipping pharmacy raw dataset (already exists)")
     
     # Create raw medical with all original columns (only if missing)
     medical_raw_count = None
@@ -376,9 +376,9 @@ def create_raw_silver_datasets(pharmacy_input: str, medical_input: str, output_r
             WRITE_PARTITION_COLUMNS FALSE,
             OVERWRITE_OR_IGNORE true)
         """)
-        logger.info("✅ Medical raw dataset created successfully")
+        logger.info("[1] Medical raw dataset created successfully")
     else:
-        logger.info("⏭️ Skipping medical raw dataset (already exists)")
+        logger.info("[SKIP] Skipping medical raw dataset (already exists)")
     
     logger.info("=" * 80)
     logger.info("RAW SILVER DATASETS CREATION COMPLETE")
@@ -406,15 +406,15 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
                          create_demographics_lookup: bool = True, create_raw_silver: bool = False):
     """Run global demographic imputation across all data"""
     
-    logger.info("🚀 Starting Global Demographic Imputation")
-    logger.info("🔧 Using Version 1997 + 12 - Global Imputation (DuckDB Lessons Learned Applied)")
+    logger.info("[START] Starting Global Demographic Imputation")
+    logger.info("[CONFIG] Using Version 1997 + 12 - Global Imputation (DuckDB Lessons Learned Applied)")
     logger.info("=" * 80)
 
     # Build proper silver paths
     silver_paths = get_silver_imputed_paths(output_root)
-    logger.info(f"📁 Silver imputed paths:")
-    logger.info(f"   • Base path: {silver_paths['base_path']}")
-    logger.info(f"   • mi_person_key demographics lookup: {silver_paths['demographics_lookup']}")
+    logger.info(f"[PATH] Silver imputed paths:")
+    logger.info(f"   - Base path: {silver_paths['base_path']}")
+    logger.info(f"   - mi_person_key demographics lookup: {silver_paths['demographics_lookup']}")
 
     # Initialize helper function for checking S3 paths
     from urllib.parse import urlparse
@@ -445,7 +445,7 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
         save_logs_checkpoint(log_buffer, "global_imputation", "global", "all", "step0a_raw_silver_started", logger=logger)
         raw_results = create_raw_silver_datasets(pharmacy_input, medical_input, output_root, duckdb_conn, logger, log_buffer)
         save_logs_checkpoint(log_buffer, "global_imputation", "global", "all", "step0b_raw_silver_complete", logger=logger)
-        logger.info("✅ Raw silver datasets creation complete")
+        logger.info("[1] Raw silver datasets creation complete")
     
     # Check if imputed partitioned data already exists (more important than demographics lookup)
     pharmacy_partitioned_path = f"{silver_paths['base_path']}/pharmacy_partitioned"
@@ -455,32 +455,32 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
     medical_exists = check_s3_path_exists(medical_partitioned_path)
     
     if pharmacy_exists and medical_exists:
-        logger.info(f"✅ Imputed partitioned data already exists:")
-        logger.info(f"   • Pharmacy: {pharmacy_partitioned_path}")
-        logger.info(f"   • Medical: {medical_partitioned_path}")
+        logger.info(f"[1] Imputed partitioned data already exists:")
+        logger.info(f"   - Pharmacy: {pharmacy_partitioned_path}")
+        logger.info(f"   - Medical: {medical_partitioned_path}")
         
         # If we only wanted to create raw silver, we're done
         if create_raw_silver and not create_demographics_lookup:
-            logger.info(f"📊 Raw silver creation complete. Partitioned data already exists. Exiting.")
+            logger.info(f"[INFO] Raw silver creation complete. Partitioned data already exists. Exiting.")
             return
         
         if create_demographics_lookup:
             # Check if demographics lookup exists
             lookup_path = silver_paths['demographics_lookup']
             if check_s3_path_exists(lookup_path):
-                logger.info(f"✅ Demographics lookup also exists at {lookup_path}. Skipping global imputation.")
+                logger.info(f"[1] Demographics lookup also exists at {lookup_path}. Skipping global imputation.")
                 return
             else:
-                logger.info(f"📊 Demographics lookup missing, will create it...")
+                logger.info(f"[INFO] Demographics lookup missing, will create it...")
         else:
-            logger.info(f"📊 Demographics lookup not needed (create_demographics_lookup=False). Skipping global imputation.")
+            logger.info(f"[INFO] Demographics lookup not needed (create_demographics_lookup=False). Skipping global imputation.")
             return
     else:
-        logger.info(f"📊 Imputed partitioned data missing, will create it...")
+        logger.info(f"[INFO] Imputed partitioned data missing, will create it...")
         if not pharmacy_exists:
-            logger.info(f"   • Missing: {pharmacy_partitioned_path}")
+            logger.info(f"   - Missing: {pharmacy_partitioned_path}")
         if not medical_exists:
-            logger.info(f"   • Missing: {medical_partitioned_path}")
+            logger.info(f"   - Missing: {medical_partitioned_path}")
     
     # Initialize DuckDB with simplified settings (if not already initialized for raw silver)
     if not create_raw_silver:
@@ -490,7 +490,7 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
     save_logs_checkpoint(log_buffer, "global_imputation", "global", "all", "step0_pipeline_started", logger=logger)
     
     # Step 1: Load and normalize pharmacy data
-    logger.info("📊 Step 1: Loading and normalizing pharmacy data...")
+    logger.info("[INFO] Step 1: Loading and normalizing pharmacy data...")
     
     initial_pharmacy_count = duckdb_conn.sql(f"SELECT COUNT(*) FROM read_parquet('{pharmacy_input}', union_by_name=true)").fetchone()[0]
     # Track rows with missing MI Person Key (to be dropped)
@@ -502,7 +502,7 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
           AND "MI Person Key" IS NULL
         """
     ).fetchone()[0]
-    logger.info(f"🗑️ Pharmacy rows dropped (missing MI Person Key): {pharmacy_missing_key:,}")
+    logger.info(f"[CLEANUP] Pharmacy rows dropped (missing MI Person Key): {pharmacy_missing_key:,}")
     
     # Parquet preserves source column names; quote exact names. Count distinct present keys
     initial_pharmacy_patients = duckdb_conn.sql(
@@ -514,8 +514,8 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
         """
     ).fetchone()[0]
     
-    logger.info(f"📊 Initial pharmacy records: {initial_pharmacy_count:,}")
-    logger.info(f"📊 Initial pharmacy patients: {initial_pharmacy_patients:,}")
+    logger.info(f"[INFO] Initial pharmacy records: {initial_pharmacy_count:,}")
+    logger.info(f"[INFO] Initial pharmacy patients: {initial_pharmacy_patients:,}")
     
     # Create normalized pharmacy view with safety conversions
     duckdb_conn.sql(f"""
@@ -557,7 +557,7 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
     save_logs_checkpoint(log_buffer, "global_imputation", "global", "all", "step1_pharmacy_normalized", logger=logger)
     
     # Step 2: Load and normalize medical data
-    logger.info("📊 Step 2: Loading and normalizing medical data...")
+    logger.info("[INFO] Step 2: Loading and normalizing medical data...")
     
     # Filter out .part_*.parquet files which have incorrect schemas
     initial_medical_count = duckdb_conn.sql(f"""
@@ -574,7 +574,7 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
           AND "MI Person Key" IS NULL
         """
     ).fetchone()[0]
-    logger.info(f"🗑️ Medical rows dropped (missing MI Person Key): {medical_missing_key:,}")
+    logger.info(f"[CLEANUP] Medical rows dropped (missing MI Person Key): {medical_missing_key:,}")
     
     initial_medical_patients = duckdb_conn.sql(
         f"""
@@ -585,12 +585,12 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
         """
     ).fetchone()[0]
     
-    logger.info(f"📊 Initial medical records: {initial_medical_count:,}")
-    logger.info(f"📊 Initial medical patients: {initial_medical_patients:,}")
+    logger.info(f"[INFO] Initial medical records: {initial_medical_count:,}")
+    logger.info(f"[INFO] Initial medical patients: {initial_medical_patients:,}")
     
     # Create normalized medical view with safety conversions
     # First, let's check what columns are actually available in the medical data
-    logger.info("🔍 Checking medical data schema...")
+    logger.info("[CHECK] Checking medical data schema...")
     try:
         # Get column names as they appear in the raw Parquet file
         medical_columns = duckdb_conn.sql(f"""
@@ -599,12 +599,12 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
             WHERE NOT regexp_matches(filename, '\.part_[^/]*\.parquet$')
             LIMIT 1
         """).fetchall()
-        logger.info(f"📊 Raw medical columns (Parquet metadata): {[col[0] for col in medical_columns]}")
+        logger.info(f"[INFO] Raw medical columns (Parquet metadata): {[col[0] for col in medical_columns]}")
         
         # Show how they'll appear after DuckDB processing (lowercase)
-        logger.info(f"📊 Processed medical columns (DuckDB will convert to lowercase): {[col[0].lower() for col in medical_columns]}")
+        logger.info(f"[INFO] Processed medical columns (DuckDB will convert to lowercase): {[col[0].lower() for col in medical_columns]}")
     except Exception as e:
-        logger.warning(f"⚠ Could not describe medical schema: {e}")
+        logger.warning(f"[WARN] Could not describe medical schema: {e}")
     
     # Detect available medical columns dynamically (like clean_medical.py)
     try:
@@ -744,7 +744,7 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
     save_logs_checkpoint(log_buffer, "global_imputation", "global", "all", "step2_medical_normalized", logger=logger)
     
     # Step 3: Identify missing demographics globally
-    logger.info("📊 Step 3: Identifying missing demographics globally...")
+    logger.info("[INFO] Step 3: Identifying missing demographics globally...")
     
     # Pharmacy missing demographics
     duckdb_conn.sql("""
@@ -777,14 +777,14 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
     pharmacy_missing_count = duckdb_conn.sql("SELECT COUNT(*) FROM pharmacy_missing").fetchone()[0]
     medical_missing_count = duckdb_conn.sql("SELECT COUNT(*) FROM medical_missing").fetchone()[0]
     
-    logger.info(f"📊 Pharmacy records needing imputation: {pharmacy_missing_count:,}")
-    logger.info(f"📊 Medical records needing imputation: {medical_missing_count:,}")
+    logger.info(f"[INFO] Pharmacy records needing imputation: {pharmacy_missing_count:,}")
+    logger.info(f"[INFO] Medical records needing imputation: {medical_missing_count:,}")
     
     # Save checkpoint after missing demographics identification
     save_logs_checkpoint(log_buffer, "global_imputation", "global", "all", "step3_missing_identified", logger=logger)
     
     # Step 4: Create aggregated demographics by person/year
-    logger.info("📊 Step 4: Creating aggregated demographics by person/year...")
+    logger.info("[INFO] Step 4: Creating aggregated demographics by person/year...")
     
     # Pharmacy aggregated demographics
     duckdb_conn.sql("""
@@ -826,9 +826,9 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
     save_logs_checkpoint(log_buffer, "global_imputation", "global", "all", "step4_demographics_aggregated", logger=logger)
     
     # Step 5: Run global bidirectional imputation
-    logger.info("📊 Step 5: Running global bidirectional imputation...")
+    logger.info("[INFO] Step 5: Running global bidirectional imputation...")
     
-    # Pharmacy → Medical imputation
+    # Pharmacy --> Medical imputation
     duckdb_conn.sql(f"""
     CREATE OR REPLACE VIEW pharmacy_imputed AS
     WITH age_candidates AS (
@@ -878,7 +878,7 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
     LEFT JOIN demo_candidates dc ON pn.mi_person_key = dc.mi_person_key AND pn.event_year = dc.event_year AND dc.demo_rank = 1
     """)
     
-    # Medical → Pharmacy imputation
+    # Medical --> Pharmacy imputation
     duckdb_conn.sql(f"""
     CREATE OR REPLACE VIEW medical_imputed AS
     WITH age_candidates AS (
@@ -932,11 +932,11 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
     save_logs_checkpoint(log_buffer, "global_imputation", "global", "all", "step5_imputation_complete", logger=logger)
     
     # Step 6: Save results (demographics and imputed pharmacy data)
-    logger.info("📊 Step 6: Saving imputed demographics and pharmacy data to silver tier...")
+    logger.info("[INFO] Step 6: Saving imputed demographics and pharmacy data to silver tier...")
     
     # Save imputed pharmacy data with partitions
     pharmacy_partitioned_path = f"{silver_paths['base_path']}/pharmacy_partitioned"
-    logger.info(f"📊 Saving imputed pharmacy data with partitions to: {pharmacy_partitioned_path}")
+    logger.info(f"[INFO] Saving imputed pharmacy data with partitions to: {pharmacy_partitioned_path}")
     
     # Create view with partition columns - PARTITION_BY needs them, but WRITE_PARTITION_COLUMNS FALSE
     # prevents them from being written as data columns (avoiding Glue schema duplicates)
@@ -991,14 +991,14 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
         OVERWRITE_OR_IGNORE true)
     """)
     
-    logger.info("✅ Imputed pharmacy data saved with partitions successfully")
+    logger.info("[1] Imputed pharmacy data saved with partitions successfully")
     
     # Save checkpoint after pharmacy data saved
     save_logs_checkpoint(log_buffer, "global_imputation", "global", "all", "step6a_pharmacy_saved", logger=logger)
     
     # Save imputed medical data with partitions
     medical_partitioned_path = f"{silver_paths['base_path']}/medical_partitioned"
-    logger.info(f"📊 Saving imputed medical data with partitions to: {medical_partitioned_path}")
+    logger.info(f"[INFO] Saving imputed medical data with partitions to: {medical_partitioned_path}")
     
     # Create view with partition columns - PARTITION_BY needs them, but WRITE_PARTITION_COLUMNS FALSE
     # prevents them from being written as data columns (avoiding Glue schema duplicates)
@@ -1106,7 +1106,7 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
         OVERWRITE_OR_IGNORE true)
     """)
     
-    logger.info("✅ Imputed medical data saved with partitions successfully")
+    logger.info("[1] Imputed medical data saved with partitions successfully")
     
     # Save checkpoint after medical data saved
     save_logs_checkpoint(log_buffer, "global_imputation", "global", "all", "step6b_medical_saved", logger=logger)
@@ -1114,7 +1114,7 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
     # Save demographics lookup table (only if requested)
     if create_demographics_lookup:
         demographics_output_path = silver_paths["demographics_lookup"]
-        logger.info("📊 Creating demographics lookup for records that needed imputation...")
+        logger.info("[INFO] Creating demographics lookup for records that needed imputation...")
         
         # Only include records that actually needed imputation (not all records)
         duckdb_conn.sql("""
@@ -1192,7 +1192,7 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
         demographics_patients = duckdb_conn.sql("SELECT COUNT(DISTINCT mi_person_key) FROM demographics_lookup").fetchone()[0]
         
         # Copy to S3 with memory management
-        logger.info("📊 Copying demographics lookup to S3...")
+        logger.info("[INFO] Copying demographics lookup to S3...")
         duckdb_conn.sql(f"""
             COPY demographics_lookup 
             TO '{demographics_output_path}' (FORMAT PARQUET, OVERWRITE_OR_IGNORE true)
@@ -1206,9 +1206,9 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
         total_medical_records = duckdb_conn.sql("SELECT COUNT(*) FROM medical_normalized").fetchone()[0]
         total_records = total_pharmacy_records + total_medical_records
         
-        logger.info(f"📊 Memory efficiency: {demographics_count:,} imputed records out of {total_records:,} total records ({demographics_count/total_records*100:.1f}%)")
+        logger.info(f"[INFO] Memory efficiency: {demographics_count:,} imputed records out of {total_records:,} total records ({demographics_count/total_records*100:.1f}%)")
     else:
-        logger.info("📊 Skipping demographics lookup creation (create_demographics_lookup=False)")
+        logger.info("[INFO] Skipping demographics lookup creation (create_demographics_lookup=False)")
         demographics_output_path = None
         demographics_count = 0
         demographics_patients = 0
@@ -1240,34 +1240,34 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
     """).fetchone()
     
     logger.info("=" * 80)
-    logger.info("🎯 GLOBAL IMPUTATION COMPLETE")
+    logger.info("[TARGET] GLOBAL IMPUTATION COMPLETE")
     logger.info("=" * 80)
-    logger.info(f"📊 Demographics lookup records: {demographics_count:,}")
-    logger.info(f"📊 Demographics lookup patients: {demographics_patients:,}")
+    logger.info(f"[INFO] Demographics lookup records: {demographics_count:,}")
+    logger.info(f"[INFO] Demographics lookup patients: {demographics_patients:,}")
     logger.info("")
-    logger.info("🔧 PHARMACY IMPUTATION SUCCESS (Fixed from Medical Data):")
-    logger.info(f"   • Total pharmacy records: {pharmacy_imputation_stats[0]:,}")
-    logger.info(f"   • Age imputed from medical: {pharmacy_imputation_stats[1]:,} ({pharmacy_imputation_stats[1]/pharmacy_imputation_stats[0]*100:.1f}%)")
-    logger.info(f"   • Gender imputed from medical: {pharmacy_imputation_stats[2]:,} ({pharmacy_imputation_stats[2]/pharmacy_imputation_stats[0]*100:.1f}%)")
-    logger.info(f"   • Race imputed from medical: {pharmacy_imputation_stats[3]:,} ({pharmacy_imputation_stats[3]/pharmacy_imputation_stats[0]*100:.1f}%)")
-    logger.info(f"   • Zip imputed from medical: {pharmacy_imputation_stats[4]:,} ({pharmacy_imputation_stats[4]/pharmacy_imputation_stats[0]*100:.1f}%)")
-    logger.info(f"   • County imputed from medical: {pharmacy_imputation_stats[5]:,} ({pharmacy_imputation_stats[5]/pharmacy_imputation_stats[0]*100:.1f}%)")
-    logger.info(f"   • Payer imputed from medical: {pharmacy_imputation_stats[6]:,} ({pharmacy_imputation_stats[6]/pharmacy_imputation_stats[0]*100:.1f}%)")
+    logger.info("[CONFIG] PHARMACY IMPUTATION SUCCESS (Fixed from Medical Data):")
+    logger.info(f"   - Total pharmacy records: {pharmacy_imputation_stats[0]:,}")
+    logger.info(f"   - Age imputed from medical: {pharmacy_imputation_stats[1]:,} ({pharmacy_imputation_stats[1]/pharmacy_imputation_stats[0]*100:.1f}%)")
+    logger.info(f"   - Gender imputed from medical: {pharmacy_imputation_stats[2]:,} ({pharmacy_imputation_stats[2]/pharmacy_imputation_stats[0]*100:.1f}%)")
+    logger.info(f"   - Race imputed from medical: {pharmacy_imputation_stats[3]:,} ({pharmacy_imputation_stats[3]/pharmacy_imputation_stats[0]*100:.1f}%)")
+    logger.info(f"   - Zip imputed from medical: {pharmacy_imputation_stats[4]:,} ({pharmacy_imputation_stats[4]/pharmacy_imputation_stats[0]*100:.1f}%)")
+    logger.info(f"   - County imputed from medical: {pharmacy_imputation_stats[5]:,} ({pharmacy_imputation_stats[5]/pharmacy_imputation_stats[0]*100:.1f}%)")
+    logger.info(f"   - Payer imputed from medical: {pharmacy_imputation_stats[6]:,} ({pharmacy_imputation_stats[6]/pharmacy_imputation_stats[0]*100:.1f}%)")
     logger.info("")
-    logger.info("🔧 MEDICAL IMPUTATION SUCCESS (Fixed from Pharmacy Data):")
-    logger.info(f"   • Total medical records: {medical_imputation_stats[0]:,}")
-    logger.info(f"   • Age imputed from pharmacy: {medical_imputation_stats[1]:,} ({medical_imputation_stats[1]/medical_imputation_stats[0]*100:.1f}%)")
-    logger.info(f"   • Gender imputed from pharmacy: {medical_imputation_stats[2]:,} ({medical_imputation_stats[2]/medical_imputation_stats[0]*100:.1f}%)")
-    logger.info(f"   • Race imputed from pharmacy: {medical_imputation_stats[3]:,} ({medical_imputation_stats[3]/medical_imputation_stats[0]*100:.1f}%)")
-    logger.info(f"   • Zip imputed from pharmacy: {medical_imputation_stats[4]:,} ({medical_imputation_stats[4]/medical_imputation_stats[0]*100:.1f}%)")
-    logger.info(f"   • County imputed from pharmacy: {medical_imputation_stats[5]:,} ({medical_imputation_stats[5]/medical_imputation_stats[0]*100:.1f}%)")
-    logger.info(f"   • Payer imputed from pharmacy: {medical_imputation_stats[6]:,} ({medical_imputation_stats[6]/medical_imputation_stats[0]*100:.1f}%)")
+    logger.info("[CONFIG] MEDICAL IMPUTATION SUCCESS (Fixed from Pharmacy Data):")
+    logger.info(f"   - Total medical records: {medical_imputation_stats[0]:,}")
+    logger.info(f"   - Age imputed from pharmacy: {medical_imputation_stats[1]:,} ({medical_imputation_stats[1]/medical_imputation_stats[0]*100:.1f}%)")
+    logger.info(f"   - Gender imputed from pharmacy: {medical_imputation_stats[2]:,} ({medical_imputation_stats[2]/medical_imputation_stats[0]*100:.1f}%)")
+    logger.info(f"   - Race imputed from pharmacy: {medical_imputation_stats[3]:,} ({medical_imputation_stats[3]/medical_imputation_stats[0]*100:.1f}%)")
+    logger.info(f"   - Zip imputed from pharmacy: {medical_imputation_stats[4]:,} ({medical_imputation_stats[4]/medical_imputation_stats[0]*100:.1f}%)")
+    logger.info(f"   - County imputed from pharmacy: {medical_imputation_stats[5]:,} ({medical_imputation_stats[5]/medical_imputation_stats[0]*100:.1f}%)")
+    logger.info(f"   - Payer imputed from pharmacy: {medical_imputation_stats[6]:,} ({medical_imputation_stats[6]/medical_imputation_stats[0]*100:.1f}%)")
     logger.info("")
     if demographics_output_path:
-        logger.info(f"📁 Silver mi_person_key demographics lookup: {demographics_output_path}")
+        logger.info(f"[PATH] Silver mi_person_key demographics lookup: {demographics_output_path}")
     else:
-        logger.info("📁 Silver mi_person_key demographics lookup: (skipped)")
-    logger.info(f"📁 Silver base path: {silver_paths['base_path']}")
+        logger.info("[PATH] Silver mi_person_key demographics lookup: (skipped)")
+    logger.info(f"[PATH] Silver base path: {silver_paths['base_path']}")
     
     result = {
         "demographics_output_path": demographics_output_path,
@@ -1280,9 +1280,9 @@ def run_global_imputation(pharmacy_input: str, medical_input: str, output_root: 
     if raw_results:
         result["raw_silver"] = raw_results
         logger.info("")
-        logger.info("📁 Raw Silver Datasets Created:")
-        logger.info(f"   • Pharmacy raw: {raw_results['pharmacy_raw_path']} ({raw_results['pharmacy_raw_count']:,} records)")
-        logger.info(f"   • Medical raw: {raw_results['medical_raw_path']} ({raw_results['medical_raw_count']:,} records)")
+        logger.info("[PATH] Raw Silver Datasets Created:")
+        logger.info(f"   - Pharmacy raw: {raw_results['pharmacy_raw_path']} ({raw_results['pharmacy_raw_count']:,} records)")
+        logger.info(f"   - Medical raw: {raw_results['medical_raw_path']} ({raw_results['medical_raw_count']:,} records)")
     
     return result
 
@@ -1314,16 +1314,16 @@ def main():
     log_level = getattr(logging, args.log_level.upper(), logging.INFO)
     logger.setLevel(log_level)
     
-    logger.info("🚀 Starting Global Demographic Imputation")
+    logger.info("[START] Starting Global Demographic Imputation")
     run_started = time.time()
     agg = {"tx": "glimp", "run_id": run_id, "start_time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "status": "running"}
-    logger.info(f"📊 Pharmacy input: {args.pharmacy_input}")
-    logger.info(f"📊 Medical input: {args.medical_input}")
-    logger.info(f"📊 Output root: {args.output_root}")
-    logger.info(f"📊 Lookahead years: {args.lookahead_years}")
-    logger.info(f"📊 Create raw silver: {args.create_raw_silver}")
+    logger.info(f"[INFO] Pharmacy input: {args.pharmacy_input}")
+    logger.info(f"[INFO] Medical input: {args.medical_input}")
+    logger.info(f"[INFO] Output root: {args.output_root}")
+    logger.info(f"[INFO] Lookahead years: {args.lookahead_years}")
+    logger.info(f"[INFO] Create raw silver: {args.create_raw_silver}")
 
-    logger.info("📊 DuckDB will auto-detect optimal memory and thread settings")
+    logger.info("[INFO] DuckDB will auto-detect optimal memory and thread settings")
     
     try:
         results = run_global_imputation(
@@ -1340,7 +1340,7 @@ def main():
         if results is None:
             results = {}
         
-        logger.info("✅ Global imputation completed successfully!")
+        logger.info("[1] Global imputation completed successfully!")
         
         # Save logs
         save_logs_to_s3(log_buffer, "global_imputation", "global", run_id, "apcd_input_data", logger=logger)
@@ -1360,12 +1360,12 @@ def main():
                 bucket, root = bucket.split("/", 1)
             key = f"{root.rstrip('/')}/global_imputation/run_id={run_id}/summary.json" if root else f"global_imputation/run_id={run_id}/summary.json"
             boto3.client('s3').put_object(Bucket=bucket, Key=key, Body=json.dumps(agg, indent=2).encode('utf-8'), ContentType='application/json')
-            logger.info(f"📊 Aggregated summary saved: s3://{bucket}/{key}")
+            logger.info(f"[INFO] Aggregated summary saved: s3://{bucket}/{key}")
         except Exception as e:
-            logger.warning(f"⚠️ Could not save aggregated summary: {e}")
+            logger.warning(f"[WARN] Could not save aggregated summary: {e}")
         
     except Exception as e:
-        logger.error(f"❌ Global imputation failed: {e}")
+        logger.error(f"[X] Global imputation failed: {e}")
         save_logs_to_s3(log_buffer, "global_imputation", "global", run_id, "apcd_input_data", logger=logger)
         # Aggregated summary (error)
         try:
@@ -1382,9 +1382,9 @@ def main():
                 bucket, root = bucket.split("/", 1)
             key = f"{root.rstrip('/')}/global_imputation/run_id={run_id}/summary.json" if root else f"global_imputation/run_id={run_id}/summary.json"
             boto3.client('s3').put_object(Bucket=bucket, Key=key, Body=json.dumps(agg, indent=2).encode('utf-8'), ContentType='application/json')
-            logger.info(f"📊 Aggregated summary saved: s3://{bucket}/{key}")
+            logger.info(f"[INFO] Aggregated summary saved: s3://{bucket}/{key}")
         except Exception as e2:
-            logger.warning(f"⚠️ Could not save aggregated summary: {e2}")
+            logger.warning(f"[WARN] Could not save aggregated summary: {e2}")
         raise
 
 if __name__ == "__main__":

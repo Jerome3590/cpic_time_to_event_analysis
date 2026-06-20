@@ -3,11 +3,11 @@
 Monte-Carlo feature-importance runner for the final, leakage-filtered feature set.
 
 Flow:
-  1. **Historical aggregated FI (baseline)** — in **pgx-repository** (read-only). Used to filter
+  1. **Historical aggregated FI (baseline)** - in **pgx-repository** (read-only). Used to filter
      cohort features after cohorts are built (1b event filter).
   2. **Second pass** (default): start from baseline aggregated FI (not original full set). Load
-     historical FI from pgx-repository → minus admin/Z codes → use that list as features (~11K) →
-     build patient-level feature matrix from cohort.parquet → run MC CV.
+     historical FI from pgx-repository --> minus admin/Z codes --> use that list as features (~11K) -->
+     build patient-level feature matrix from cohort.parquet --> run MC CV.
   3. **New cohorts (no baseline in pgx-repository):** When historical is missing, we run a
      **baseline** pass first (baseline=True). The baseline now builds a full feature matrix from
      **cohort-derived ICD/CPT/drug codes** (minus admin/Z), not just n_events, so the resulting
@@ -468,7 +468,7 @@ def build_final_features_for_mc(cohort: str, age_band: str, prefer_filtered: boo
     Build feature matrix for Step 3 (Feature Importance) from **cohort data** (Step 2 cohort.parquet).
 
     Does not use Step 4 (model_events.parquet). Loads cohort.parquet for (cohort, age_band)
-    across DEFAULT_EVENT_YEARS (2016–2019); files missing locally are synced from S3 to
+    across DEFAULT_EVENT_YEARS (2016-2019); files missing locally are synced from S3 to
     local (NVMe) first so DuckDB sees only local paths. Aggregates to patient-level:
     mi_person_key, target = MAX(is_target_case), n_events = COUNT(*).
 
@@ -611,7 +611,7 @@ def run_mc_feature_importance(
     agg_path = out_dir / f"{cohort}_{age_band_fname}_aggregated_feature_importance.csv"
 
     if not force and agg_path.exists():
-        print(f"✓ Aggregated feature importance already exists locally: {agg_path}")
+        print(f"[1] Aggregated feature importance already exists locally: {agg_path}")
         print("  Skipping Monte-Carlo feature importance computation.")
         print("  Use --force to rerun.")
         return pd.read_csv(agg_path)
@@ -625,7 +625,7 @@ def run_mc_feature_importance(
         )
         try:
             s3_client.head_object(Bucket=S3_BUCKET, Key=s3_key_agg)
-            print(f"✓ Aggregated feature importance exists in S3: s3://{S3_BUCKET}/{s3_key_agg}")
+            print(f"[1] Aggregated feature importance exists in S3: s3://{S3_BUCKET}/{s3_key_agg}")
             print("  Downloading instead of recomputing...")
             import io
             obj = s3_client.get_object(Bucket=S3_BUCKET, Key=s3_key_agg)
@@ -1069,7 +1069,7 @@ def run_mc_feature_importance(
                 Body=io.BytesIO(per_model_bytes),
                 ContentType="text/csv",
             )
-            print(f"✓ Uploaded {label} FI to s3://{S3_BUCKET}/{s3_key_per}")
+            print(f"[1] Uploaded {label} FI to s3://{S3_BUCKET}/{s3_key_per}")
         except Exception as e:
             print(f"[WARN] Failed to upload per-model FI: {e}")
 
@@ -1176,7 +1176,7 @@ def run_mc_feature_importance(
                     Body=io.BytesIO(obj_bytes),
                     ContentType='text/csv'
                 )
-                print(f"✓ Uploaded aggregated feature importance to pgxdatalake: s3://{S3_BUCKET}/{s3_key_agg}")
+                print(f"[1] Uploaded aggregated feature importance to pgxdatalake: s3://{S3_BUCKET}/{s3_key_agg}")
                 if not baseline:
                     print("[INFO] Second-pass FI in pgxdatalake is the source for final model train features (Step 4 / Step 6).")
             except Exception as e:

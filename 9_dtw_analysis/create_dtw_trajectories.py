@@ -3,7 +3,7 @@
 Create trajectory data for DTW alignment and dashboard visualizations (Step 1 of DTW workflow).
 
 This script extracts patient trajectories from model_data for DTW alignment and visualization.
-Part 1 of DTW pipeline: trajectories → DTW alignment (create_dtw_features.py) → visuals.
+Part 1 of DTW pipeline: trajectories --> DTW alignment (create_dtw_features.py) --> visuals.
 NOT used for model training - for dashboard visual analysis of SHAP/FFA results.
 
 Output CSV columns (minimal for visualization):
@@ -30,7 +30,7 @@ Model data (parquet) columns needed for N3 time-between metrics:
 Requirements:
 - 4_model_data (Step 4) with model_events parquet
 - 7_shap_analysis and 8_ffa_analysis (Steps 7-8) for SHAP/FFA important codes
-- 1b_apcd_event_filter/administrative_codes_lookup.json — administrative ICD codes that identify routine appointments (e.g. well visits, screenings)
+- 1b_apcd_event_filter/administrative_codes_lookup.json - administrative ICD codes that identify routine appointments (e.g. well visits, screenings)
 
 Runtime: ~1-2 minutes per cohort/age_band (fast!)
 """
@@ -100,7 +100,7 @@ DTW_TRAJECTORY_CSV_COLUMNS = [
 # DTW is drug-only for both cohorts (falls and ed).
 POLYPHARMACY_COHORT = "ed"
 
-# Density bins for trajectories — canonical order from event_density_utils
+# Density bins for trajectories - canonical order from event_density_utils
 DENSITY_BINS = _EVENT_DENSITY_BINS
 
 
@@ -739,7 +739,7 @@ def extract_patient_trajectories(
         _log("warning", "Could not get event count: %s; using 0", e)
         n_events_analyzed = 0
 
-    # Time-between metrics (N3: times between sequences) — use event timestamp column for gaps and days to target
+    # Time-between metrics (N3: times between sequences) - use event timestamp column for gaps and days to target
     time_query = f"""
     WITH patient_events AS (
         SELECT
@@ -837,7 +837,7 @@ def extract_patient_trajectories(
         df["mean_days_between_events"] = float("nan")
         df["days_first_event_to_target"] = float("nan")
 
-    # Temporal span (first to last event) for event density — same filtered events as trajectories
+    # Temporal span (first to last event) for event density - same filtered events as trajectories
     span_query = f"""
     WITH patient_events AS (
         SELECT
@@ -899,7 +899,7 @@ def extract_patient_trajectories(
 
     # Routine vs no routine and (if added) extreme vs low medical: use TARGET COHORT but FULL UNFILTERED events.
     # Must run while con is still open (admin/medical queries use con).
-    # Do not apply drug or SHAP/FFA filters here — we need all event types (medical + pharmacy) so routine admin ICD
+    # Do not apply drug or SHAP/FFA filters here - we need all event types (medical + pharmacy) so routine admin ICD
     # and medical utilization are defined over full utilization for target and control.
     _log("info", "Counting administrative ICD events (routine appointments) from model_events (full unfiltered, target cohort)...")
     if admin_codes:
@@ -975,7 +975,7 @@ def extract_patient_trajectories(
     else:
         df["admin_icd_event_count"] = 0
 
-    _log("info", "Counting full unfiltered medical events per patient (for routine × medical utilization)...")
+    _log("info", "Counting full unfiltered medical events per patient (for routine x medical utilization)...")
     if "event_type" in col_names:
         medical_where = "event_type = 'medical'"
     else:
@@ -1037,7 +1037,7 @@ def extract_patient_trajectories(
     if "medical_event_count_full" not in df.columns:
         df["medical_event_count_full"] = 0
 
-    # Bin by full unfiltered medical events to support routine × utilization charts
+    # Bin by full unfiltered medical events to support routine x utilization charts
     try:
         med_count = df["medical_event_count_full"].fillna(0).astype(float)
         _med_thresholds = _compute_bin_thresholds(med_count)
@@ -1090,7 +1090,7 @@ def extract_patient_trajectories(
             "warning",
             "n_event_bin_thresholds.json not found at %s. "
             "Model training (notebook 3 / run_final_model.py) must run BEFORE dashboard visuals (notebook 4). "
-            "Falling back to dynamic P25/P50/P95 of events_per_month — bins may not match the trained model.",
+            "Falling back to dynamic P25/P50/P95 of events_per_month - bins may not match the trained model.",
             _tcache,
         )
         _density_thresholds = _compute_bin_thresholds(density_value)

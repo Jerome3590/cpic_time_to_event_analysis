@@ -289,7 +289,7 @@ class S3UploadMonitor:
             if len(incomplete) > 10:
                 print(f"  ... and {len(incomplete) - 10} more")
         else:
-            print("✅ All combinations complete!")
+            print("[1] All combinations complete!")
         print()
     
     def find_missing(self) -> Dict:
@@ -333,7 +333,7 @@ class S3UploadMonitor:
                     
                     if curr_found > prev_found:
                         new_files = curr_found - prev_found
-                        print(f"[{datetime.now().strftime('%H:%M:%S')}] 🆕 {new_files} new file(s) uploaded!")
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] [NEW] {new_files} new file(s) uploaded!")
                         
                         # Find which combinations changed
                         for i, detail in enumerate(current_state["details"]):
@@ -344,7 +344,7 @@ class S3UploadMonitor:
                                     diff = info["found_count"] - prev_info["found_count"]
                                     print(f"  {detail['cohort']} / {detail['age_band']} - {vt}: +{diff} files")
                     elif curr_found < prev_found:
-                        print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️  Warning: File count decreased!")
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] [WARN]  Warning: File count decreased!")
                     else:
                         print(f"[{datetime.now().strftime('%H:%M:%S')}] No changes ({curr_found}/{current_state['summary']['total_files_expected']} files)")
                 else:
@@ -447,7 +447,7 @@ def main():
         
         for viz_type in viz_types_to_check:
             result = monitor.check_viz_type(viz_type, args.cohort, args.age_band)
-            status = "✅ Complete" if result["complete"] else f"❌ Incomplete ({result['missing_count']} missing)"
+            status = "[1] Complete" if result["complete"] else f"[X] Incomplete ({result['missing_count']} missing)"
             print(f"\n{viz_type.upper()}: {status}")
             print(f"  Found: {result['found_count']}/{result['expected_count']} files")
             print(f"  S3 prefix: s3://{monitor.bucket}/{result['s3_prefix']}")

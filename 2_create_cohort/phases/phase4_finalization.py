@@ -121,7 +121,7 @@ def _normalize_cohort_table_schema(cohort_conn_duckdb, logger, table_name: str, 
     cohort_conn_duckdb.sql(f"CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM {normalized_table}")
     cohort_conn_duckdb.sql(f"DROP TABLE IF EXISTS {normalized_table}")
     logger.info(
-        f"→ [PHASE 4] Normalized {table_name} schema "
+        f"--> [PHASE 4] Normalized {table_name} schema "
         f"({len(CANONICAL_COHORT_COLUMNS)} columns, target=is_target_case)"
     )
 
@@ -153,7 +153,7 @@ def run_phase4_complete_pipeline(context):
         
         # Note: We now write to local NVMe first, then use aws s3 sync
         # This is faster and more reliable than DuckDB's direct S3 COPY
-        logger.info("→ [PHASE 4] Using local staging + aws s3 sync for cohort uploads (faster and more reliable)")
+        logger.info("--> [PHASE 4] Using local staging + aws s3 sync for cohort uploads (faster and more reliable)")
         
         # Enable query profiling with partition-safe filename (prevents overwrite in parallel runs)
         import time
@@ -167,14 +167,14 @@ def run_phase4_complete_pipeline(context):
             # Fallback to PATH lookup if full path doesn't exist
             aws_cli = shutil.which("aws")
             if not aws_cli:
-                logger.error("❌ [PHASE 4] AWS CLI not found, cannot sync to S3")
+                logger.error("[X] [PHASE 4] AWS CLI not found, cannot sync to S3")
                 raise Exception("AWS CLI not available")
         
         # Monitor disk space BEFORE writing Parquet (early warning for NVMe exhaustion)
         monitor_disk_space(logger)
         
         # Final QA validation
-        logger.info("→ [PHASE 4] Performing final QA validation...")
+        logger.info("--> [PHASE 4] Performing final QA validation...")
         
         # HIGH-IMPACT FIX #1: Check cohort views exist (not just row counts)
         # This prevents silent partial pipeline success if views are missing
@@ -197,7 +197,7 @@ def run_phase4_complete_pipeline(context):
                 missing_views.append(view_name)
 
         if missing_views:
-            logger.error(f"❌ [PHASE 4] Missing cohort views: {missing_views}")
+            logger.error(f"[X] [PHASE 4] Missing cohort views: {missing_views}")
             raise Exception(f"Cohort views missing: {missing_views}. Phase 3 may have failed silently.")
 
         if requested_cohort in ("falls", "both"):
@@ -223,14 +223,14 @@ def run_phase4_complete_pipeline(context):
             ed_count = 0
         
         if requested_cohort in ("falls", "both"):
-            logger.info(f"→ [PHASE 4] QA: FALLS cohort patients: {falls_count:,}")
+            logger.info(f"--> [PHASE 4] QA: FALLS cohort patients: {falls_count:,}")
         else:
-            logger.info("→ [PHASE 4] Skipping FALLS QA/write for ed-only run")
+            logger.info("--> [PHASE 4] Skipping FALLS QA/write for ed-only run")
             cohort_conn_duckdb.sql("CREATE OR REPLACE TEMP VIEW falls_cohort AS SELECT * FROM ed_cohort WHERE 1=0")
         if requested_cohort in ("ed", "both"):
-            logger.info(f"→ [PHASE 4] QA: ED cohort patients: {ed_count:,}")
+            logger.info(f"--> [PHASE 4] QA: ED cohort patients: {ed_count:,}")
         else:
-            logger.info("→ [PHASE 4] Skipping ED QA/write for falls-only run")
+            logger.info("--> [PHASE 4] Skipping ED QA/write for falls-only run")
             cohort_conn_duckdb.sql("CREATE OR REPLACE TEMP VIEW ed_cohort AS SELECT * FROM falls_cohort WHERE 1=0")
         
         # Cohort-specific QA checks
@@ -279,18 +279,18 @@ def run_phase4_complete_pipeline(context):
             int(hcg_ed_final_df.iloc[0]['hcg_target_patients_with_drugs']) if not hcg_ed_final_df.empty and hcg_ed_final_df.iloc[0]['hcg_target_patients_with_drugs'] is not None else 0
         )
         
-        logger.info(f"→ [PHASE 4] FALLS COHORT QA (target ICD - all ICD columns):")
+        logger.info(f"--> [PHASE 4] FALLS COHORT QA (target ICD - all ICD columns):")
         logger.info(f"  Total target ICD records: {f1120_opioid_final[0]:,}")
         logger.info(f"  Distinct target ICD patients: {f1120_opioid_final[1]:,}")
         
-        logger.info(f"→ [PHASE 4] ED COHORT QA (HCG target events - ed cohort):")
+        logger.info(f"--> [PHASE 4] ED COHORT QA (HCG target events - ed cohort):")
         logger.info(f"  Total HCG records: {hcg_ed_final[0]:,}")
         logger.info(f"  Distinct HCG patients: {hcg_ed_final[1]:,}")
         logger.info(f"  HCG target patients: {hcg_ed_final[2]:,}")
         logger.info(f"  HCG target patients with drug events: {hcg_ed_final[3]:,}")
         
         # Verify is_target_case column exists in ED cohort
-        logger.info("→ [PHASE 4] ED COHORT QA (Schema validation - target case column):")
+        logger.info("--> [PHASE 4] ED COHORT QA (Schema validation - target case column):")
         schema_check_df = cohort_conn_duckdb.sql("""
         SELECT column_name 
         FROM information_schema.columns 
@@ -301,11 +301,11 @@ def run_phase4_complete_pipeline(context):
         
         required_column = 'is_target_case'
         if required_column not in schema_columns:
-            logger.error(f"❌ [PHASE 4] ED cohort missing required column: {required_column}")
+            logger.error(f"[X] [PHASE 4] ED cohort missing required column: {required_column}")
             logger.error(f"   All available columns: {schema_columns}")
             raise Exception(f"ED cohort table missing required target case column: {required_column}. Phase 3 may have failed to create this column.")
         else:
-            logger.info(f"✓ Required target case column present: {required_column}")
+            logger.info(f"[1] Required target case column present: {required_column}")
             
             # Log counts for target case column to verify it's populated
             try:
@@ -323,13 +323,13 @@ def run_phase4_complete_pipeline(context):
                     logger.info(f"    Control cases: {int(counts['control_cases']):,}")
                     logger.info(f"    Total: {int(counts['total_cases']):,}")
             except Exception as e:
-                logger.warning(f"⚠️ Could not calculate target case counts: {e}")
+                logger.warning(f"[WARN] Could not calculate target case counts: {e}")
         
         # Warn if cohorts are empty
         if requested_cohort in ("falls", "both") and falls_count == 0:
-            logger.warning(f"⚠️ [PHASE 4] WARNING: FALLS cohort is empty for {age_band}/{event_year}")
+            logger.warning(f"[WARN] [PHASE 4] WARNING: FALLS cohort is empty for {age_band}/{event_year}")
         if requested_cohort in ("ed", "both") and ed_count == 0:
-            logger.warning(f"⚠️ [PHASE 4] WARNING: ED cohort is empty for {age_band}/{event_year}")
+            logger.warning(f"[WARN] [PHASE 4] WARNING: ED cohort is empty for {age_band}/{event_year}")
         
         # Save cohorts: Write to local NVMe first, then sync to S3
         from py_helpers.s3_utils import get_cohort_parquet_path
@@ -345,11 +345,11 @@ def run_phase4_complete_pipeline(context):
         falls_s3_path = get_cohort_parquet_path("falls", age_band, event_year)
         falls_local = None
         if requested_cohort not in ("falls", "both"):
-            logger.info("→ [PHASE 4] Skipping FALLS cohort save because requested cohort is ed")
+            logger.info("--> [PHASE 4] Skipping FALLS cohort save because requested cohort is ed")
         elif falls_count > 0:
             # Write to local NVMe first (much faster)
             falls_local = local_staging / f"falls_{age_band}_{event_year}.parquet"
-            logger.info(f"→ [PHASE 4] Writing FALLS cohort ({falls_count:,} patients) to local: {falls_local}")
+            logger.info(f"--> [PHASE 4] Writing FALLS cohort ({falls_count:,} patients) to local: {falls_local}")
             cohort_conn_duckdb.sql(f"""
             COPY falls_cohort TO '{falls_local}'
             (FORMAT PARQUET, COMPRESSION SNAPPY)
@@ -357,10 +357,10 @@ def run_phase4_complete_pipeline(context):
             
             # Log file size before upload (helps diagnose timeouts vs IAM/network failures)
             file_size_gb = falls_local.stat().st_size / 1e9
-            logger.info(f"→ [PHASE 4] FALLS cohort written to local ({file_size_gb:.2f} GB)")
+            logger.info(f"--> [PHASE 4] FALLS cohort written to local ({file_size_gb:.2f} GB)")
             
             # Sync to S3 using aws s3 cp (more reliable for large files)
-            logger.info(f"→ [PHASE 4] Syncing FALLS cohort to S3: {falls_s3_path}")
+            logger.info(f"--> [PHASE 4] Syncing FALLS cohort to S3: {falls_s3_path}")
             local_file = str(falls_local)
             
             # Use cached AWS CLI (resolved once at top of phase)
@@ -372,26 +372,26 @@ def run_phase4_complete_pipeline(context):
                     timeout=3600  # 1 hour timeout
                 )
                 if result.returncode == 0:
-                    logger.info(f"→ [PHASE 4] FALLS cohort synced to S3 successfully")
+                    logger.info(f"--> [PHASE 4] FALLS cohort synced to S3 successfully")
                     # Clean up local file after successful sync
                     try:
                         falls_local.unlink()
-                        logger.info(f"→ [PHASE 4] Cleaned up local FALLS cohort file")
+                        logger.info(f"--> [PHASE 4] Cleaned up local FALLS cohort file")
                         falls_local = None  # Mark as cleaned
                     except Exception as e:
-                        logger.warning(f"⚠️ [PHASE 4] Could not clean up local file: {e}")
+                        logger.warning(f"[WARN] [PHASE 4] Could not clean up local file: {e}")
                 else:
-                    logger.error(f"❌ [PHASE 4] Failed to sync FALLS cohort to S3: {result.stderr}")
+                    logger.error(f"[X] [PHASE 4] Failed to sync FALLS cohort to S3: {result.stderr}")
                     # Keep local file for retry/debugging
-                    logger.warning(f"⚠️ [PHASE 4] Keeping local file for retry: {falls_local}")
+                    logger.warning(f"[WARN] [PHASE 4] Keeping local file for retry: {falls_local}")
                     raise Exception(f"S3 sync failed: {result.stderr}")
             except subprocess.TimeoutExpired:
-                logger.error(f"❌ [PHASE 4] S3 sync timeout for FALLS cohort (exceeded 1 hour)")
+                logger.error(f"[X] [PHASE 4] S3 sync timeout for FALLS cohort (exceeded 1 hour)")
                 # Keep local file for retry
-                logger.warning(f"⚠️ [PHASE 4] Keeping local file for retry: {falls_local}")
+                logger.warning(f"[WARN] [PHASE 4] Keeping local file for retry: {falls_local}")
                 raise
             except FileNotFoundError:
-                logger.error(f"❌ [PHASE 4] AWS CLI not found at {aws_cli}, cannot sync to S3")
+                logger.error(f"[X] [PHASE 4] AWS CLI not found at {aws_cli}, cannot sync to S3")
                 raise Exception("AWS CLI not available")
             
             # Check if it's control-only
@@ -401,11 +401,11 @@ def run_phase4_complete_pipeline(context):
             target_count_check_df = cohort_conn_duckdb.sql("SELECT CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) AS count FROM falls_cohort WHERE is_target_case = 1").fetchdf()
             target_count_check = int(target_count_check_df.iloc[0]['count']) if not target_count_check_df.empty else 0
             if target_count_check == 0:
-                logger.info(f"→ [PHASE 4] FALLS cohort saved (CONTROL-ONLY) to S3: {falls_s3_path}")
+                logger.info(f"--> [PHASE 4] FALLS cohort saved (CONTROL-ONLY) to S3: {falls_s3_path}")
             else:
-                logger.info(f"→ [PHASE 4] FALLS cohort saved to S3: {falls_s3_path}")
+                logger.info(f"--> [PHASE 4] FALLS cohort saved to S3: {falls_s3_path}")
         else:
-            logger.warning(f"⚠️ [PHASE 4] Skipping save of empty FALLS cohort to {falls_s3_path}")
+            logger.warning(f"[WARN] [PHASE 4] Skipping save of empty FALLS cohort to {falls_s3_path}")
 
         # Optional: run QA notebook for falls cohort if configured
         qa_nb = os.environ.get("PGX_QA_NOTEBOOK")
@@ -419,21 +419,21 @@ def run_phase4_complete_pipeline(context):
                     "-p", "age_band", str(age_band),
                     "-p", "event_year", str(event_year),
                 ]
-                logger.info(f"→ [PHASE 4] Running QA notebook: {' '.join(cmd)}")
+                logger.info(f"--> [PHASE 4] Running QA notebook: {' '.join(cmd)}")
                 subprocess.run(cmd, check=True)
-                logger.info(f"✓ QA notebook completed: {out_nb}")
+                logger.info(f"[1] QA notebook completed: {out_nb}")
             except Exception as nb_e:
-                logger.warning(f"⚠ QA notebook failed for falls: {nb_e}")
+                logger.warning(f"[WARN] QA notebook failed for falls: {nb_e}")
         
         # Save ED cohort (always save, even if control-only)
         ed_s3_path = get_cohort_parquet_path("ed", age_band, event_year)
         ed_local = None
         if requested_cohort not in ("ed", "both"):
-            logger.info("→ [PHASE 4] Skipping ED cohort save because requested cohort is falls")
+            logger.info("--> [PHASE 4] Skipping ED cohort save because requested cohort is falls")
         elif ed_count > 0:
             # Write to local NVMe first (much faster, especially for large cohorts)
             ed_local = local_staging / f"ed_{age_band}_{event_year}.parquet"
-            logger.info(f"→ [PHASE 4] Writing ED cohort ({ed_count:,} patients) to local: {ed_local}")
+            logger.info(f"--> [PHASE 4] Writing ED cohort ({ed_count:,} patients) to local: {ed_local}")
             cohort_conn_duckdb.sql(f"""
             COPY ed_cohort TO '{ed_local}'
             (FORMAT PARQUET, COMPRESSION SNAPPY)
@@ -441,10 +441,10 @@ def run_phase4_complete_pipeline(context):
             
             # Log file size before upload (helps diagnose timeouts vs IAM/network failures)
             file_size_gb = ed_local.stat().st_size / 1e9
-            logger.info(f"→ [PHASE 4] ED cohort written to local ({file_size_gb:.2f} GB)")
+            logger.info(f"--> [PHASE 4] ED cohort written to local ({file_size_gb:.2f} GB)")
             
             # Sync to S3 using aws s3 cp (more reliable for large files, can resume on failure)
-            logger.info(f"→ [PHASE 4] Syncing ED cohort to S3: {ed_s3_path}")
+            logger.info(f"--> [PHASE 4] Syncing ED cohort to S3: {ed_s3_path}")
             local_file = str(ed_local)
             
             # Use cached AWS CLI (resolved once at top of phase)
@@ -456,26 +456,26 @@ def run_phase4_complete_pipeline(context):
                     timeout=7200  # 2 hour timeout for very large cohorts
                 )
                 if result.returncode == 0:
-                    logger.info(f"→ [PHASE 4] ED cohort synced to S3 successfully")
+                    logger.info(f"--> [PHASE 4] ED cohort synced to S3 successfully")
                     # Clean up local file after successful sync
                     try:
                         ed_local.unlink()
-                        logger.info(f"→ [PHASE 4] Cleaned up local ED cohort file")
+                        logger.info(f"--> [PHASE 4] Cleaned up local ED cohort file")
                         ed_local = None  # Mark as cleaned
                     except Exception as e:
-                        logger.warning(f"⚠️ [PHASE 4] Could not clean up local file: {e}")
+                        logger.warning(f"[WARN] [PHASE 4] Could not clean up local file: {e}")
                 else:
-                    logger.error(f"❌ [PHASE 4] Failed to sync ED cohort to S3: {result.stderr}")
+                    logger.error(f"[X] [PHASE 4] Failed to sync ED cohort to S3: {result.stderr}")
                     # Keep local file for retry/debugging
-                    logger.warning(f"⚠️ [PHASE 4] Keeping local file for retry: {ed_local}")
+                    logger.warning(f"[WARN] [PHASE 4] Keeping local file for retry: {ed_local}")
                     raise Exception(f"S3 sync failed: {result.stderr}")
             except subprocess.TimeoutExpired:
-                logger.error(f"❌ [PHASE 4] S3 sync timeout for ED cohort (exceeded 2 hours)")
+                logger.error(f"[X] [PHASE 4] S3 sync timeout for ED cohort (exceeded 2 hours)")
                 # Keep local file for retry
-                logger.warning(f"⚠️ [PHASE 4] Keeping local file for retry: {ed_local}")
+                logger.warning(f"[WARN] [PHASE 4] Keeping local file for retry: {ed_local}")
                 raise
             except FileNotFoundError:
-                logger.error(f"❌ [PHASE 4] AWS CLI not found at {aws_cli}, cannot sync to S3")
+                logger.error(f"[X] [PHASE 4] AWS CLI not found at {aws_cli}, cannot sync to S3")
                 raise Exception("AWS CLI not available")
             
             # Check if it's control-only
@@ -485,11 +485,11 @@ def run_phase4_complete_pipeline(context):
             target_count_check_df = cohort_conn_duckdb.sql("SELECT CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) AS count FROM ed_cohort WHERE is_target_case = 1").fetchdf()
             target_count_check = int(target_count_check_df.iloc[0]['count']) if not target_count_check_df.empty else 0
             if target_count_check == 0:
-                logger.info(f"→ [PHASE 4] ED cohort saved (CONTROL-ONLY) to S3: {ed_s3_path}")
+                logger.info(f"--> [PHASE 4] ED cohort saved (CONTROL-ONLY) to S3: {ed_s3_path}")
             else:
-                logger.info(f"→ [PHASE 4] ED cohort saved to S3: {ed_s3_path}")
+                logger.info(f"--> [PHASE 4] ED cohort saved to S3: {ed_s3_path}")
         else:
-            logger.warning(f"⚠️ [PHASE 4] Skipping save of empty ED cohort to {ed_s3_path}")
+            logger.warning(f"[WARN] [PHASE 4] Skipping save of empty ED cohort to {ed_s3_path}")
 
         # Optional: run QA notebook for ed cohort if configured
         qa_nb = os.environ.get("PGX_QA_NOTEBOOK")
@@ -503,11 +503,11 @@ def run_phase4_complete_pipeline(context):
                     "-p", "age_band", str(age_band),
                     "-p", "event_year", str(event_year),
                 ]
-                logger.info(f"→ [PHASE 4] Running QA notebook: {' '.join(cmd)}")
+                logger.info(f"--> [PHASE 4] Running QA notebook: {' '.join(cmd)}")
                 subprocess.run(cmd, check=True)
-                logger.info(f"✓ QA notebook completed: {out_nb}")
+                logger.info(f"[1] QA notebook completed: {out_nb}")
             except Exception as nb_e:
-                logger.warning(f"⚠ QA notebook failed for ed: {nb_e}")
+                logger.warning(f"[WARN] QA notebook failed for ed: {nb_e}")
         
         # Final cleanup
         cleanup_duckdb_temp_files(logger)
@@ -519,11 +519,11 @@ def run_phase4_complete_pipeline(context):
                 remaining_files = list(local_staging.glob("*.parquet"))
                 if not remaining_files:
                     # Directory is empty, but keep it for future use (no need to remove)
-                    logger.debug(f"→ [PHASE 4] Staging directory is empty: {local_staging}")
+                    logger.debug(f"--> [PHASE 4] Staging directory is empty: {local_staging}")
                 else:
-                    logger.warning(f"⚠️ [PHASE 4] Staging directory still contains {len(remaining_files)} file(s): {[f.name for f in remaining_files]}")
+                    logger.warning(f"[WARN] [PHASE 4] Staging directory still contains {len(remaining_files)} file(s): {[f.name for f in remaining_files]}")
         except Exception as e:
-            logger.warning(f"⚠️ [PHASE 4] Could not check staging directory: {e}")
+            logger.warning(f"[WARN] [PHASE 4] Could not check staging directory: {e}")
         
         # Monitor disk space at end (already monitored before writes)
         monitor_disk_space(logger)
@@ -551,9 +551,9 @@ def run_phase4_complete_pipeline(context):
         # Note: Files are kept by default for retry/debugging, but can be cleaned up if desired
         try:
             if 'falls_local' in locals() and falls_local and falls_local.exists():
-                logger.warning(f"⚠️ [PHASE 4] Local FALLS file remains: {falls_local} (kept for retry/debugging)")
+                logger.warning(f"[WARN] [PHASE 4] Local FALLS file remains: {falls_local} (kept for retry/debugging)")
             if 'ed_local' in locals() and ed_local and ed_local.exists():
-                logger.warning(f"⚠️ [PHASE 4] Local ED file remains: {ed_local} (kept for retry/debugging)")
+                logger.warning(f"[WARN] [PHASE 4] Local ED file remains: {ed_local} (kept for retry/debugging)")
         except Exception:
             pass
         

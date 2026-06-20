@@ -203,7 +203,7 @@ def create_validation_plots(
     plt.title(
         f'SHAP-Guided Rule Filtering Validation\n'
         f'Pearson r={stats["pearson_correlation"]:.3f}, '
-        f'Spearman ρ={stats["spearman_correlation"]:.3f}',
+        f'Spearman rho={stats["spearman_correlation"]:.3f}',
         fontsize=14
     )
     plt.legend()
@@ -364,13 +364,13 @@ def main():
     
     # Interpretation
     if stats['pearson_correlation'] > 0.8:
-        print("\n✅ VALIDATION PASSED: High correlation indicates JSON rule extraction")
+        print("\n[1] VALIDATION PASSED: High correlation indicates JSON rule extraction")
         print("   closely matches SHAP importance patterns. XGBoost does NOT need")
         print("   SHAP as a translation layer (unlike CatBoost).")
     elif stats['pearson_correlation'] > 0.6:
-        print("\n⚠️  MODERATE ALIGNMENT: Some correlation but may need investigation.")
+        print("\n[WARN]  MODERATE ALIGNMENT: Some correlation but may need investigation.")
     else:
-        print("\n❌ VALIDATION FAILED: Low correlation suggests potential issues")
+        print("\n[X] VALIDATION FAILED: Low correlation suggests potential issues")
         print("   with rule extraction or SHAP calculation.")
     
     print("\n" + "="*80)

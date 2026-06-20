@@ -72,6 +72,6 @@ for model_path in model_paths:
         if 'Contents' in response:
             for obj in response['Contents']:
                 if '.json' in obj['Key']:
-                    print(f"  ✓ {obj['Key']}")
+                    print(f"  [1] {obj['Key']}")
     except Exception as e:
         print(f"  Error: {e}")

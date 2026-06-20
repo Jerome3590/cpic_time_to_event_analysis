@@ -292,7 +292,7 @@ html_template = Template("""
     cy.on('mouseover', 'edge', function(evt) {
       const d = evt.target.data();
       document.getElementById('legend-content').innerHTML = `
-        <strong>Edge:</strong> ${d.source} → ${d.target}<br>
+        <strong>Edge:</strong> ${d.source} --> ${d.target}<br>
         Support: ${d.support?.toFixed(3) ?? 'N/A'}<br>
         Confidence: ${d.confidence?.toFixed(3) ?? 'N/A'}<br>
         Certainty: ${d.certainty?.toFixed(3) ?? 'N/A'}
@@ -329,7 +329,7 @@ def create_network_visualization(rules_df, title, cohort_name, age_band, event_y
             certainty = float(row['certainty'])
         except (ValueError, TypeError) as e:
             if logger:
-                logger.warning(f"Skipping row with non-numeric metric: {row.to_dict()} — {e}")
+                logger.warning(f"Skipping row with non-numeric metric: {row.to_dict()} - {e}")
             continue
 
         for a in antecedents:
@@ -516,18 +516,18 @@ def save_chart_to_s3(fig, chart_name: str, category: str = 'general',
         # Log success
         size_kb = buffer.getbuffer().nbytes / 1024
         if logger:
-            logger.info(f"✅ Chart saved: {s3_url} ({size_kb:.1f} KB)")
+            logger.info(f"[1] Chart saved: {s3_url} ({size_kb:.1f} KB)")
         else:
-            print(f"✅ Chart saved: {s3_url}")
-            print(f"📏 Size: {size_kb:.1f} KB | Resolution: {dpi} DPI")
+            print(f"[1] Chart saved: {s3_url}")
+            print(f"[SIZE] Size: {size_kb:.1f} KB | Resolution: {dpi} DPI")
         
         return s3_url
         
     except Exception as e:
         if logger:
-            logger.error(f"⚠️ Failed to save chart to S3: {e}")
+            logger.error(f"[WARN] Failed to save chart to S3: {e}")
         else:
-            print(f"⚠️ S3 save failed: {e}")
+            print(f"[WARN] S3 save failed: {e}")
         return None
 
 
@@ -706,7 +706,7 @@ def save_multiple_charts(charts_config: List[Dict[str, Any]],
     
     if logger:
         success_count = sum(1 for url in results.values() if url is not None)
-        logger.info(f"📊 Saved {success_count}/{len(charts_config)} charts to S3")
+        logger.info(f"[INFO] Saved {success_count}/{len(charts_config)} charts to S3")
     
     return results
 
@@ -1261,7 +1261,7 @@ def plot_icd_variant_heatmap(
   ax.set_xlabel('Year')
   ax.set_ylabel(target_col)
   if not title:
-    title = f"Variants matching {code_of_interest} — heatmap"
+    title = f"Variants matching {code_of_interest} - heatmap"
   ax.set_title(title)
   plt.tight_layout()
 

@@ -89,7 +89,7 @@ def validate_explainer_structure(explainer):
         print(f"Warning: Found {len(empty_rules)} empty rules at indices: {empty_rules}")
         return False
     
-    print("\n✓ All validation checks passed!")
+    print("\n[1] All validation checks passed!")
     return True
 
 
@@ -289,7 +289,7 @@ def extract_tree_structure(model_path):
     # Load tree rules JSON - use the already downloaded file
     tree_rules_path = os.path.join(os.path.dirname(model_path), 'tree_rules.json')
     if not os.path.exists(tree_rules_path):
-        print(f"❌ Error: tree_rules.json not found at {tree_rules_path}")
+        print(f"[X] Error: tree_rules.json not found at {tree_rules_path}")
         raise FileNotFoundError(f"tree_rules.json not found at {tree_rules_path}")
     
     with open(tree_rules_path, 'r') as f:
@@ -614,7 +614,7 @@ def perform_causal_analysis(model, X_test, y_pred, df_axps):
             # Smart flipping
             ftype = feature_stats[feat]["type"]
             if ftype == "binary":
-                flipped[feat_idx] = 1 - original[feat_idx]  # flip 0 ↔ 1
+                flipped[feat_idx] = 1 - original[feat_idx]  # flip 0 <-> 1
             elif ftype == "numeric":
                 flipped[feat_idx] = original[feat_idx] + np.sign(original[feat_idx]) * feature_stats[feat]["std"]
             else:

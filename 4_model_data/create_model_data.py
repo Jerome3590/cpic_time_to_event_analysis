@@ -6,7 +6,7 @@ Create model-ready event-level data filtered to important features, with
 This script is intentionally DuckDB + Parquet only for event-level data
 to avoid pandas memory pressure on large cohorts:
 
-1. Reads cohort_feature_importance CSVs from Step 3b/3c (refined feature list — the *filters*;
+1. Reads cohort_feature_importance CSVs from Step 3b/3c (refined feature list - the *filters*;
    these are not from Step 2; Step 2 is cohort creation only):
      - 3b_feature_importance_eda/outputs or DATA_ROOT/gold/feature_importance
    REQUIRED: Step 3b must run before Step 4a (will error if files not found)
@@ -36,7 +36,7 @@ to avoid pandas memory pressure on large cohorts:
      with an event-level `target` column.
    - **Target leakage removal (Step 4):** For case events, keeps only events strictly before
      the target date (event_date < first_fall_date or first_ed_date). Events
-     on or after the target date are dropped here (linear flow: 3b identifies leakage → 4 removes it).
+     on or after the target date are dropped here (linear flow: 3b identifies leakage --> 4 removes it).
 
 This output is then used as input for:
  - FP-Growth (pattern mining on important features plus within-cohort controls)
@@ -653,10 +653,10 @@ def filter_cohort_events_for_items(
                 con.close()
                 return
             else:
-                print(f"[WARN] Existing model_events.parquet has 0 rows — treating as corrupt, rebuilding.")
+                print(f"[WARN] Existing model_events.parquet has 0 rows - treating as corrupt, rebuilding.")
                 out_path.unlink()
         except Exception as _e:
-            print(f"[WARN] Existing model_events.parquet failed integrity check ({_e}) — rebuilding.")
+            print(f"[WARN] Existing model_events.parquet failed integrity check ({_e}) - rebuilding.")
             try:
                 out_path.unlink()
             except Exception:
@@ -1572,7 +1572,7 @@ def main() -> None:
             )
         sys.exit(1)
 
-    # Default years: match feature-importance temporal setup (2016–2018 train, 2019 test)
+    # Default years: match feature-importance temporal setup (2016-2018 train, 2019 test)
     YEARS = [2016, 2017, 2018, 2019]
 
     local_cohort_root = resolve_local_cohort_root()

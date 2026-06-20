@@ -113,7 +113,7 @@ def remove_target_leakage(
     if len(dtw_features) > 10:
         print(f"  ... and {len(dtw_features) - 10} more")
     
-    # 4b. Trajectory / sequence / itemset (defensive only; feature engineering never generates these—only n_events, item_*, PGx)
+    # 4b. Trajectory / sequence / itemset (defensive only; feature engineering never generates these-only n_events, item_*, PGx)
     traj_seq_itemset = [c for c in df.columns if 'trajectory' in c.lower() or 'sequence' in c.lower() or 'itemset' in c.lower()]
     leakage_features.extend(traj_seq_itemset)
     if traj_seq_itemset:

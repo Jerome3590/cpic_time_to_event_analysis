@@ -33,12 +33,12 @@ def create_simple_duckdb_connection():
     conn.sql("SET s3_url_style='path'")
     
     # Let DuckDB handle memory and threads automatically - NO manual settings
-    print("✅ Simple DuckDB connection created - auto memory/threads")
+    print("[1] Simple DuckDB connection created - auto memory/threads")
     return conn
 
 def get_drug_frequency_data():
     """Get drug frequency data by year from cleaned pharmacy data"""
-    print("📊 Querying drug name frequencies by year...")
+    print("[INFO] Querying drug name frequencies by year...")
     
     conn = create_simple_duckdb_connection()
     
@@ -57,16 +57,16 @@ def get_drug_frequency_data():
     
     # Execute query and convert to DataFrame
     df = conn.sql(query).df()
-    print(f"✅ Retrieved {len(df):,} drug-year combinations")
-    print(f"📅 Years covered: {sorted(df['event_year'].unique())}")
-    print(f"💊 Unique drugs: {df['drug_name'].nunique():,}")
+    print(f"[1] Retrieved {len(df):,} drug-year combinations")
+    print(f"[DATE] Years covered: {sorted(df['event_year'].unique())}")
+    print(f"[DRUG] Unique drugs: {df['drug_name'].nunique():,}")
     
     conn.close()
     return df
 
 def get_high_frequency_drugs():
     """Get high frequency drugs (>1000 occurrences)"""
-    print("🔝 Analyzing high frequency drugs...")
+    print("[HIGH] Analyzing high frequency drugs...")
     
     conn = create_simple_duckdb_connection()
     
@@ -93,14 +93,14 @@ def get_high_frequency_drugs():
     """
     
     high_freq_df = conn.sql(high_freq_query).df()
-    print(f"🔝 High frequency drugs (>1000): {len(high_freq_df)} drugs")
+    print(f"[HIGH] High frequency drugs (>1000): {len(high_freq_df)} drugs")
     
     conn.close()
     return high_freq_df
 
 def get_low_frequency_drugs():
     """Get low frequency drugs (<1000 occurrences)"""
-    print("🔻 Analyzing low frequency drugs...")
+    print("[LOW] Analyzing low frequency drugs...")
     
     conn = create_simple_duckdb_connection()
     
@@ -127,14 +127,14 @@ def get_low_frequency_drugs():
     """
     
     low_freq_df = conn.sql(low_freq_query).df()
-    print(f"🔻 Low frequency drugs (<1000): {len(low_freq_df)} drugs")
+    print(f"[LOW] Low frequency drugs (<1000): {len(low_freq_df)} drugs")
     
     conn.close()
     return low_freq_df
 
 def get_summary_statistics():
     """Get summary statistics for drug frequencies"""
-    print("📈 Calculating summary statistics...")
+    print("[CHART] Calculating summary statistics...")
     
     conn = create_simple_duckdb_connection()
     
@@ -167,7 +167,7 @@ def get_summary_statistics():
 
 def get_trends_data():
     """Get year-over-year trends for top drugs"""
-    print("📈 Analyzing year-over-year drug trends...")
+    print("[CHART] Analyzing year-over-year drug trends...")
     
     conn = create_simple_duckdb_connection()
     
@@ -211,7 +211,7 @@ def get_trends_data():
     """
     
     trends_df = conn.sql(trends_query).df()
-    print(f"✅ Retrieved trends data for {trends_df['drug_name'].nunique()} top drugs")
+    print(f"[1] Retrieved trends data for {trends_df['drug_name'].nunique()} top drugs")
     
     conn.close()
     return trends_df
@@ -219,41 +219,41 @@ def get_trends_data():
 def print_summary_report(df, high_freq_df, low_freq_df, summary_df):
     """Print a comprehensive summary report"""
     print("\n" + "="*60)
-    print("📈 DRUG FREQUENCY ANALYSIS SUMMARY")
+    print("[CHART] DRUG FREQUENCY ANALYSIS SUMMARY")
     print("="*60)
     
-    print(f"\n📅 Years analyzed: {summary_df['years_covered'].iloc[0]}")
-    print(f"💊 Total unique drugs: {summary_df['unique_drugs'].iloc[0]:,}")
-    print(f"📊 Total drug-year combinations: {summary_df['total_combinations'].iloc[0]:,}")
-    print(f"🔝 High frequency drugs (>1000): {len(high_freq_df):,}")
-    print(f"🔻 Low frequency drugs (<1000): {len(low_freq_df):,}")
+    print(f"\n[DATE] Years analyzed: {summary_df['years_covered'].iloc[0]}")
+    print(f"[DRUG] Total unique drugs: {summary_df['unique_drugs'].iloc[0]:,}")
+    print(f"[INFO] Total drug-year combinations: {summary_df['total_combinations'].iloc[0]:,}")
+    print(f"[HIGH] High frequency drugs (>1000): {len(high_freq_df):,}")
+    print(f"[LOW] Low frequency drugs (<1000): {len(low_freq_df):,}")
     
-    print(f"\n📊 Frequency distribution:")
+    print(f"\n[INFO] Frequency distribution:")
     print(f"   Min frequency: {summary_df['min_frequency'].iloc[0]:,}")
     print(f"   Max frequency: {summary_df['max_frequency'].iloc[0]:,}")
     print(f"   Mean frequency: {summary_df['avg_frequency'].iloc[0]}")
     print(f"   Median frequency: {summary_df['median_frequency'].iloc[0]}")
     
-    print(f"\n🏆 Top 5 drugs by total frequency:")
+    print(f"\n[TOP] Top 5 drugs by total frequency:")
     for i, (_, row) in enumerate(high_freq_df.head().iterrows(), 1):
         print(f"   {i}. {row['drug_name']}: {row['total_frequency']:,} occurrences")
     
-    print(f"\n✅ DuckDB connection test: SUCCESS!")
-    print(f"✅ Simplified connection works without memory_limit errors")
-    print(f"✅ S3 data access works properly")
-    print(f"✅ Query execution successful")
+    print(f"\n[1] DuckDB connection test: SUCCESS!")
+    print(f"[1] Simplified connection works without memory_limit errors")
+    print(f"[1] S3 data access works properly")
+    print(f"[1] Query execution successful")
     
-    print("\n🔧 DUCKDB FIXES VALIDATION:")
-    print("✅ Fix 1: Simplified connection - No complex chaining")
-    print("✅ Fix 2: S3 path handling - Hyphens work for Hive partitioning")
-    print("✅ Fix 3: Column selection - Only available columns used")
-    print("✅ Fix 4: Connection isolation - Clean connection state")
+    print("\n[CONFIG] DUCKDB FIXES VALIDATION:")
+    print("[1] Fix 1: Simplified connection - No complex chaining")
+    print("[1] Fix 2: S3 path handling - Hyphens work for Hive partitioning")
+    print("[1] Fix 3: Column selection - Only available columns used")
+    print("[1] Fix 4: Connection isolation - Clean connection state")
     
-    print("\n🎉 ALL DUCKDB FIXES WORKING SUCCESSFULLY!")
+    print("\n[SUCCESS] ALL DUCKDB FIXES WORKING SUCCESSFULLY!")
 
 def main():
     """Main analysis function"""
-    print("🎯 DRUG FREQUENCY ANALYSIS - Testing DuckDB Fixes")
+    print("[TARGET] DRUG FREQUENCY ANALYSIS - Testing DuckDB Fixes")
     print("="*60)
     
     # Get all data
@@ -276,11 +276,11 @@ def main():
         from py_helpers.visualization_utils import write_drug_frequency_latest
         # Aggregate df (already event_year, drug_name, frequency)
         write_drug_frequency_latest(df)
-        print("📤 Drug frequency written to S3:")
-        print(f"  • s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/drug_name/drug_frequency_latest.parquet")
-        print(f"  • s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/drug_name/drug_frequency_latest.csv")
+        print("[UPLOAD] Drug frequency written to S3:")
+        print(f"  - s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/drug_name/drug_frequency_latest.parquet")
+        print(f"  - s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/drug_name/drug_frequency_latest.csv")
     except Exception as e:
-        print(f"⚠️ Skipped writing latest drug frequency: {e}")
+        print(f"[WARN] Skipped writing latest drug frequency: {e}")
 
     # Return data for notebook visualization
     return {
@@ -314,23 +314,23 @@ if __name__ == "__main__":
         if os.path.exists(pickle_path):
             try:
                 shutil.copy2(pickle_path, orig_copy)
-                print(f"💾 Existing pickle moved/copied to '{orig_copy}'")
+                print(f"[SAVE] Existing pickle moved/copied to '{orig_copy}'")
             except Exception as e:
-                print(f"⚠️ Could not preserve existing pickle to '{orig_copy}': {e}")
+                print(f"[WARN] Could not preserve existing pickle to '{orig_copy}': {e}")
 
         # Write the current data to the canonical path
         with open(pickle_path, 'wb') as f:
             pickle.dump(data, f)
-        print(f"\n💾 Data saved to '{pickle_path}' for notebook visualization")
+        print(f"\n[SAVE] Data saved to '{pickle_path}' for notebook visualization")
 
         # Also write/overwrite a stable 'updated' copy (no timestamp)
         try:
             shutil.copy2(pickle_path, updated_copy)
-            print(f"💾 Updated copy written to '{updated_copy}'")
+            print(f"[SAVE] Updated copy written to '{updated_copy}'")
         except Exception as e:
-            print(f"⚠️ Failed to write updated copy '{updated_copy}': {e}")
+            print(f"[WARN] Failed to write updated copy '{updated_copy}': {e}")
 
         # No legacy back-compat writes: consumers must use files under outputs_dir
 
     except Exception as e:
-        print(f"❌ Failed to save pickle data: {e}")
+        print(f"[X] Failed to save pickle data: {e}")

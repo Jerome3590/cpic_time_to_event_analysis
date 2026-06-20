@@ -102,7 +102,7 @@ def _agg_n3_via_duckdb(df: pd.DataFrame, metric_col: str, bucket_label_0: str, b
 
 
 if str(DTW_VIZ_DIR) not in sys.path:
-    sys.path.insert(0, str(DTW_VIZ_DIR))  # noqa: E402 — so create_dtw_plots can be imported
+    sys.path.insert(0, str(DTW_VIZ_DIR))  # noqa: E402 - so create_dtw_plots can be imported
 
 from py_helpers.checkpoint_utils import check_step_checkpoint_exists, save_step_checkpoint  # noqa: E402
 
@@ -361,7 +361,7 @@ def create_dtw_visuals(
     _log("info", "Wrote %s", chart_path)
     _upload_dtw_chart_data_to_dashboard_s3(project_root, cohort_name, age_band, chart_data, logger=logger)
 
-    # Sequence heatmap (code × position counts); no empty artifacts: when no data, write JSON with message + metrics (why).
+    # Sequence heatmap (code x position counts); no empty artifacts: when no data, write JSON with message + metrics (why).
     heatmap_data = _build_sequence_heatmap_data(dtw_df)
     if heatmap_data is None:
         _log("warning", "DTW sequence_heatmap not produced for %s/%s (writing empty-state JSON with message and metrics)", cohort_name, age_band)
@@ -751,7 +751,7 @@ def _compute_dtw_routine_comparison_counts(df: pd.DataFrame) -> Optional[Dict[st
 
 
 def _agg_routine_by_medical_via_duckdb(df: pd.DataFrame) -> Optional[Dict[str, Any]]:
-    """Build routine × medical utilization chart in DuckDB when available. Returns chart dict or None."""
+    """Build routine x medical utilization chart in DuckDB when available. Returns chart dict or None."""
     try:
         import duckdb
     except ImportError:
@@ -1055,7 +1055,7 @@ def _compute_target_pathway_patterns(df: pd.DataFrame) -> Optional[Dict[str, Any
 def _build_sequence_heatmap_data(dtw_df: pd.DataFrame) -> Optional[Dict[str, Any]]:
     """
     Build heatmap data for drug, ICD, and CPT activity types (opioid_ed and all cohorts).
-    Returns dict with keys 'drug', 'icd', 'cpt'; each value has codes, positions, counts (code × position).
+    Returns dict with keys 'drug', 'icd', 'cpt'; each value has codes, positions, counts (code x position).
     Dashboard can show Drug / ICD / CPT via activity-type selector.
     """
     if dtw_df.empty or "seq_pattern_str" not in dtw_df.columns:
@@ -1228,7 +1228,7 @@ def _build_dtw_chart_data(dtw_df: pd.DataFrame, logger: Optional[logging.Logger]
     else:
         reason = _reason_routine_comparison(dtw_df)
         charts_not_built["routine_comparison"] = reason
-        _log_n3("info", "routine_comparison (Routine vs No Routine outcomes): not built — %s", reason)
+        _log_n3("info", "routine_comparison (Routine vs No Routine outcomes): not built - %s", reason)
 
     routine_counts = _compute_dtw_routine_comparison_counts(dtw_df)
     if routine_counts:
@@ -1237,7 +1237,7 @@ def _build_dtw_chart_data(dtw_df: pd.DataFrame, logger: Optional[logging.Logger]
     else:
         reason = _reason_routine_comparison_counts(dtw_df)
         charts_not_built["routine_comparison_counts"] = reason
-        _log_n3("info", "routine_comparison_counts (medical/prescription events by routine): not built — %s", reason)
+        _log_n3("info", "routine_comparison_counts (medical/prescription events by routine): not built - %s", reason)
 
     routine_by_medical = _compute_routine_by_medical_utilization(dtw_df)
     if routine_by_medical:
@@ -1274,15 +1274,15 @@ def _build_dtw_chart_data(dtw_df: pd.DataFrame, logger: Optional[logging.Logger]
         if "mean_days_between_events" not in dtw_df.columns:
             reason = "missing mean_days_between_events (run create_dtw_trajectories with timestamp column)"
             charts_not_built["times_between_sequences"] = reason
-            _log_n3("info", "N3 times_between_sequences: not built — %s", reason)
+            _log_n3("info", "N3 times_between_sequences: not built - %s", reason)
         elif "admin_icd_event_count" not in dtw_df.columns:
             reason = "missing admin_icd_event_count"
             charts_not_built["times_between_sequences"] = reason
-            _log_n3("info", "N3 times_between_sequences: not built — %s", reason)
+            _log_n3("info", "N3 times_between_sequences: not built - %s", reason)
         else:
             reason = "insufficient rows or no valid mean_days_between_events"
             charts_not_built["times_between_sequences"] = reason
-            _log_n3("info", "N3 times_between_sequences: not built — %s", reason)
+            _log_n3("info", "N3 times_between_sequences: not built - %s", reason)
         # If summary indicates N3 data exists, emit a one-bucket fallback so downstream
         # consumers still receive the expected key while pipeline artifacts are standardized.
         if int(out.get("summary", {}).get("trajectories_with_time_between") or 0) > 0:
@@ -1309,11 +1309,11 @@ def _build_dtw_chart_data(dtw_df: pd.DataFrame, logger: Optional[logging.Logger]
         if "days_first_event_to_target" not in dtw_df.columns:
             reason = "missing days_first_event_to_target (run create_dtw_trajectories with timestamp column)"
             charts_not_built["time_to_target_sequences"] = reason
-            _log_n3("info", "N3 time_to_target_sequences: not built — %s", reason)
+            _log_n3("info", "N3 time_to_target_sequences: not built - %s", reason)
         else:
             reason = "insufficient target=1 rows or no valid days_first_event_to_target"
             charts_not_built["time_to_target_sequences"] = reason
-            _log_n3("info", "N3 time_to_target_sequences: not built — %s", reason)
+            _log_n3("info", "N3 time_to_target_sequences: not built - %s", reason)
         if int(out.get("summary", {}).get("trajectories_target1_with_time_to_target") or 0) > 0:
             target_subset = dtw_df[dtw_df["target"] == 1] if "target" in dtw_df.columns else dtw_df
             ttt_fallback = _fallback_n3_all_bucket(

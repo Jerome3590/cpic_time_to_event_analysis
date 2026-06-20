@@ -260,7 +260,7 @@ def filter_and_refine_features(
             else:
                 print(f"[WARN] BupaR CSV has no leakage columns (is_post_target_leakage or post_*_ratio). Check create_bupar_post_target_analysis was run for this cohort/age_band.")
     
-    # Exclude target-family codes (F10/F11/F19 substance use disorder) for falls — they are outcome, not predictors
+    # Exclude target-family codes (F10/F11/F19 substance use disorder) for falls - they are outcome, not predictors
     if cohort and (str(cohort).strip().lower() == "falls"):
         before_count = len(refined_fi)
         refined_fi["_code"] = refined_fi["feature"].apply(feature_to_code)
@@ -269,7 +269,7 @@ def filter_and_refine_features(
         n_target_family = before_count - len(refined_fi)
         filtering_summary["filtered_by_target_family"] = n_target_family
         if n_target_family > 0:
-            print(f"Excluded {n_target_family} target-family (F10/F11/F19 substance use disorder) features — outcome codes, not predictors")
+            print(f"Excluded {n_target_family} target-family (F10/F11/F19 substance use disorder) features - outcome codes, not predictors")
     
     # No features or missing importance column: return minimal schema and summary
     if refined_fi.empty or len(refined_fi.columns) < 2:

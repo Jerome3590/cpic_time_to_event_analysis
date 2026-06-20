@@ -165,15 +165,15 @@ def save_logs_to_s3(log_buffer, cohort_name, band, year, pipeline_phase="apcd_in
         save_to_s3_text(log_content, log_path, logger=logger)
 
         if logger:
-            logger.info(f"✓ Logs saved to S3: {log_path}")
+            logger.info(f"[1] Logs saved to S3: {log_path}")
         else:
-            print(f"✓ Logs saved to S3: {log_path}")
+            print(f"[1] Logs saved to S3: {log_path}")
 
     except Exception as e:
         if logger:
-            logger.warning(f"⚠ Warning: Could not save logs to S3: {str(e)}")
+            logger.warning(f"[WARN] Warning: Could not save logs to S3: {str(e)}")
         else:
-            print(f"⚠ Warning: Could not save logs to S3: {str(e)}")
+            print(f"[WARN] Warning: Could not save logs to S3: {str(e)}")
 
 
 def save_logs_checkpoint(log_buffer, cohort_name, band, year, step_name, pipeline_phase="apcd_input_data", logger=None):
@@ -198,7 +198,7 @@ def save_logs_checkpoint(log_buffer, cohort_name, band, year, step_name, pipelin
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
         # Clean and standardize the step name
-        step_name_clean = step_name.lower().replace(' ', '_').replace('→', '').replace(':', '').replace('-', '_').replace('__', '_')
+        step_name_clean = step_name.lower().replace(' ', '_').replace('-->', '').replace(':', '').replace('-', '_').replace('__', '_')
 
         # Extract step number and description more robustly
         step_num = "1"  # Default
@@ -226,15 +226,15 @@ def save_logs_checkpoint(log_buffer, cohort_name, band, year, step_name, pipelin
         save_to_s3_text(log_content, log_path, logger=logger)
 
         if logger:
-            logger.info(f"✓ Checkpoint logs saved: {log_path}")
+            logger.info(f"[1] Checkpoint logs saved: {log_path}")
         else:
-            print(f"✓ Checkpoint logs saved: {log_path}")
+            print(f"[1] Checkpoint logs saved: {log_path}")
 
     except Exception as e:
         if logger:
-            logger.warning(f"⚠ Warning: Could not save checkpoint logs to S3: {str(e)}")
+            logger.warning(f"[WARN] Warning: Could not save checkpoint logs to S3: {str(e)}")
         else:
-            print(f"⚠ Warning: Could not save checkpoint logs to S3: {str(e)}")
+            print(f"[WARN] Warning: Could not save checkpoint logs to S3: {str(e)}")
 
 
 def save_to_s3_text(
@@ -265,11 +265,11 @@ def save_to_s3_text(
         )
 
         if logger:
-            logger.info(f"✓ Saved text file to {s3_path}")
+            logger.info(f"[1] Saved text file to {s3_path}")
         else:
-            print(f"✓ Saved text file to {s3_path}")
+            print(f"[1] Saved text file to {s3_path}")
     except Exception as e:
-        msg = f"✗ Error saving text file to {s3_path}: {str(e)}"
+        msg = f"[X] Error saving text file to {s3_path}: {str(e)}"
         if logger:
             logger.error(msg)
         else:
@@ -301,15 +301,15 @@ def save_logs_immediate(log_buffer, cohort_name, band, year, pipeline_phase="apc
         save_to_s3_text(log_content, log_path, logger=logger)
 
         if logger:
-            logger.info(f"✓ Immediate logs saved to S3: {log_path}")
+            logger.info(f"[1] Immediate logs saved to S3: {log_path}")
         else:
-            print(f"✓ Immediate logs saved to S3: {log_path}")
+            print(f"[1] Immediate logs saved to S3: {log_path}")
 
     except Exception as e:
         if logger:
-            logger.warning(f"⚠ Warning: Could not save immediate logs to S3: {str(e)}")
+            logger.warning(f"[WARN] Warning: Could not save immediate logs to S3: {str(e)}")
         else:
-            print(f"⚠ Warning: Could not save immediate logs to S3: {str(e)}")
+            print(f"[WARN] Warning: Could not save immediate logs to S3: {str(e)}")
 
 
 def log_file_sizing_optimization(logger, operation_context, table_name, sizing_params, s3_path):
@@ -327,7 +327,7 @@ def log_file_sizing_optimization(logger, operation_context, table_name, sizing_p
         if logger is None:
             return
 
-        logger.info(f"📊 File Sizing Optimization for {operation_context}")
+        logger.info(f"[INFO] File Sizing Optimization for {operation_context}")
         logger.info(f"   Table: {table_name}")
         logger.info(f"   Target Path: {s3_path}")
 
@@ -359,15 +359,15 @@ def log_file_sizing_optimization(logger, operation_context, table_name, sizing_p
 
         # Log any errors or warnings
         if 'error' in sizing_params:
-            logger.warning(f"   ⚠ Optimization Warning: {sizing_params['error']}")
+            logger.warning(f"   [WARN] Optimization Warning: {sizing_params['error']}")
 
-        logger.info("   ✓ Optimization parameters calculated successfully")
+        logger.info("   [1] Optimization parameters calculated successfully")
 
     except Exception as e:
         if logger:
-            logger.error(f"   ✗ Error in file sizing optimization logging: {str(e)}")
+            logger.error(f"   [X] Error in file sizing optimization logging: {str(e)}")
         else:
-            print(f"   ✗ Error in file sizing optimization logging: {str(e)}")
+            print(f"   [X] Error in file sizing optimization logging: {str(e)}")
 
 
 # ===== Multiprocessing Logging Utilities (Queue-based real-time flush) =====

@@ -40,7 +40,7 @@ def get_multiprocessing_context():
 		try:
 			return mp.get_context(mp_start_method), mp_start_method
 		except (ValueError, RuntimeError) as e:
-			print(f"⚠️ Warning: Requested start method '{mp_start_method}' not available: {e}, falling back to 'spawn'")
+			print(f"[WARN] Warning: Requested start method '{mp_start_method}' not available: {e}, falling back to 'spawn'")
 			return mp.get_context('spawn'), 'spawn'
 
 	return mp.get_context('spawn'), 'spawn'
@@ -74,7 +74,7 @@ def persist_mappings_to_temp(
 
 		return mapping_temp_dir
 	except Exception as e:
-		print(f"⚠️ Warning: Could not persist mappings to temp files: {e}")
+		print(f"[WARN] Warning: Could not persist mappings to temp files: {e}")
 		return None
 
 
@@ -114,7 +114,7 @@ def load_mappings_from_temp(mapping_temp_dir: Optional[str]) -> Tuple[Dict[str, 
 
 		return icd_map, cpt_map, icd_target_map, drug_map
 	except Exception as e:
-		print(f"⚠️ Warning: Could not load mappings from temp files: {e}")
+		print(f"[WARN] Warning: Could not load mappings from temp files: {e}")
 		return {}, {}, {}, {}
 
 
@@ -148,14 +148,14 @@ class PipelineState:
 		try:
 			response = self.s3_client.get_object(Bucket=S3_BUCKET, Key=self.state_key)
 			state = json.loads(response['Body'].read().decode('utf-8'))
-			self.logger.info(f"📂 Loaded pipeline state: {len(state.get('completed_steps', []))} steps completed")
+			self.logger.info(f"[LOAD] Loaded pipeline state: {len(state.get('completed_steps', []))} steps completed")
 			return state
 		except Exception as primary_error:
 			try:
 				response = self.s3_client.get_object(Bucket=LEGACY_STATE_BUCKET, Key=self.legacy_state_key)
 				state = json.loads(response['Body'].read().decode('utf-8'))
 				self.logger.info(
-					"📂 Loaded legacy pipeline state from s3://%s/%s; future saves use s3://%s/%s",
+					"[LOAD] Loaded legacy pipeline state from s3://%s/%s; future saves use s3://%s/%s",
 					LEGACY_STATE_BUCKET,
 					self.legacy_state_key,
 					S3_BUCKET,
@@ -164,9 +164,9 @@ class PipelineState:
 				return state
 			except Exception:
 				if primary_error.__class__.__name__ != "NoSuchKey":
-					self.logger.warning(f"⚠️ Could not load state: {primary_error}, starting fresh")
+					self.logger.warning(f"[WARN] Could not load state: {primary_error}, starting fresh")
 				else:
-					self.logger.info("📂 No existing state found, starting fresh")
+					self.logger.info("[LOAD] No existing state found, starting fresh")
 				return {
 					'pipeline_name': self.pipeline_name,
 					'entity_id': self.entity_id,
@@ -187,23 +187,23 @@ class PipelineState:
 				Body=json.dumps(self.state, indent=2),
 				ContentType='application/json'
 			)
-			self.logger.debug(f"💾 Saved pipeline state to s3://{S3_BUCKET}/{self.state_key}")
+			self.logger.debug(f"[SAVE] Saved pipeline state to s3://{S3_BUCKET}/{self.state_key}")
 		except Exception as e:
-			self.logger.error(f"❌ Failed to save state: {e}")
+			self.logger.error(f"[X] Failed to save state: {e}")
 
 	def is_step_completed(self, step_name: str) -> bool:
 		completed = any(s['step_name'] == step_name for s in self.state['completed_steps'])
 		if not completed:
 			completed = self._check_step_checkpoint_exists(step_name)
 			if completed:
-				self.logger.info(f"✅ Found existing checkpoint for '{step_name}' in S3")
+				self.logger.info(f"[1] Found existing checkpoint for '{step_name}' in S3")
 				self.state['completed_steps'].append({
 					'step_name': step_name,
 					'completed_at': datetime.utcnow().isoformat(),
 					'metadata': {'recovered_from_checkpoint': True}
 				})
 		if completed:
-			self.logger.info(f"⏭️  Step '{step_name}' already completed, skipping")
+			self.logger.info(f"[SKIP]  Step '{step_name}' already completed, skipping")
 		return completed
 
 	def _check_step_checkpoint_exists(self, step_name: str) -> bool:
@@ -227,7 +227,7 @@ class PipelineState:
 			self.state['completed_steps'].append(step_data)
 			self._save_state()
 			self._save_step_checkpoint(step_name, metadata)
-			self.logger.info(f"✅ Marked step '{step_name}' as completed")
+			self.logger.info(f"[1] Marked step '{step_name}' as completed")
 
 	def _save_step_checkpoint(self, step_name: str, metadata: Optional[Dict] = None):
 		try:
@@ -247,9 +247,9 @@ class PipelineState:
 				Body=json.dumps(checkpoint_data, indent=2),
 				ContentType='application/json'
 			)
-			self.logger.debug(f"💾 Saved step checkpoint: s3://{S3_BUCKET}/{checkpoint_key}")
+			self.logger.debug(f"[SAVE] Saved step checkpoint: s3://{S3_BUCKET}/{checkpoint_key}")
 		except Exception as e:
-			self.logger.warning(f"⚠️ Could not save step checkpoint for '{step_name}': {e}")
+			self.logger.warning(f"[WARN] Could not save step checkpoint for '{step_name}': {e}")
 
 	def mark_step_failed(self, step_name: str, error: str):
 		step_data = {
@@ -261,7 +261,7 @@ class PipelineState:
 		self.state['status'] = 'failed'
 		self._save_state()
 		self._save_step_failure_checkpoint(step_name, error)
-		self.logger.error(f"❌ Marked step '{step_name}' as failed: {error}")
+		self.logger.error(f"[X] Marked step '{step_name}' as failed: {error}")
 
 	def _save_step_failure_checkpoint(self, step_name: str, error: str):
 		try:
@@ -281,9 +281,9 @@ class PipelineState:
 				Body=json.dumps(checkpoint_data, indent=2),
 				ContentType='application/json'
 			)
-			self.logger.debug(f"💾 Saved failure checkpoint: s3://{S3_BUCKET}/{checkpoint_key}")
+			self.logger.debug(f"[SAVE] Saved failure checkpoint: s3://{S3_BUCKET}/{checkpoint_key}")
 		except Exception as e:
-			self.logger.warning(f"⚠️ Could not save failure checkpoint for '{step_name}': {e}")
+			self.logger.warning(f"[WARN] Could not save failure checkpoint for '{step_name}': {e}")
 
 	def mark_pipeline_completed(self, metadata: Optional[Dict] = None):
 		self.state['status'] = 'completed'
@@ -291,7 +291,7 @@ class PipelineState:
 		if metadata:
 			self.state['metadata'].update(metadata)
 		self._save_state()
-		self.logger.info(f"🎉 Pipeline '{self.pipeline_name}' completed for {self.entity_id}")
+		self.logger.info(f"[SUCCESS] Pipeline '{self.pipeline_name}' completed for {self.entity_id}")
 
 	def get_progress(self) -> Dict[str, Any]:
 		return {
@@ -314,7 +314,7 @@ class PipelineState:
 			'metadata': {}
 		}
 		self._save_state()
-		self.logger.warning(f"🔄 Reset pipeline state for {self.entity_id}")
+		self.logger.warning(f"[RESET] Reset pipeline state for {self.entity_id}")
 
 	@staticmethod
 	def check_output_exists(s3_path: str) -> bool:
@@ -363,7 +363,7 @@ class GlobalPipelineTracker:
 				ContentType='application/json'
 			)
 		except Exception as e:
-			self.logger.error(f"❌ Failed to save global tracker: {e}")
+			self.logger.error(f"[X] Failed to save global tracker: {e}")
 
 	def register_entity(self, entity_id: str, metadata: Optional[Dict] = None):
 		entity_key = entity_id.replace('/', '_')

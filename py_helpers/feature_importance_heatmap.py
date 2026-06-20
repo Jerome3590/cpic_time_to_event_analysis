@@ -1,5 +1,5 @@
 """
-Aggregated feature importance heatmap for the dashboard (features × age bands).
+Aggregated feature importance heatmap for the dashboard (features x age bands).
 
 Uses only final feature importance after BupaR edits (Step 3b):
 3b_feature_importance_eda/outputs/{cohort}/{age_band}/{cohort}_{age_band}_cohort_feature_importance.csv.
@@ -132,7 +132,7 @@ def get_aggregated_fi_heatmap_data(
     filter_final: bool = True,
 ) -> Optional[Dict[str, Any]]:
     """
-    Build feature × age_band heatmap data from Step 3b cohort_feature_importance only (final FI after BupaR).
+    Build feature x age_band heatmap data from Step 3b cohort_feature_importance only (final FI after BupaR).
     No fallback to 3a; raises FileNotFoundError if any 3b artifact is missing.
     Returns a dict suitable for JSON and client-side Plotly: row_labels, column_labels, matrix, metric.
     Returns None only if < 2 age bands have data after loading.
@@ -254,7 +254,7 @@ def get_fi_heatmap_data_for_model(
     filter_final: bool = True,
 ) -> Optional[Dict[str, Any]]:
     """
-    Build feature × age_band heatmap data for a specific model (or aggregated).
+    Build feature x age_band heatmap data for a specific model (or aggregated).
 
     For model=="aggregated" uses Step 3b cohort_feature_importance only (no fallback); pipeline breaks if 3b missing.
     For other models uses {cohort}_{age_band_fname}_{model}_feature_importance_mc*.csv from 3a.
@@ -558,7 +558,7 @@ def create_aggregated_fi_heatmap(
     Create cross-age-band feature importance heatmap from Step 3b cohort_feature_importance only (no fallback).
 
     Loads {cohort}_{age_band_fname}_aggregated_feature_importance.csv for each
-    age_band from outputs_base / cohort, builds feature × age_band matrix (union
+    age_band from outputs_base / cohort, builds feature x age_band matrix (union
     of top_n features across age bands, or all with importance > 0 if top_n is None), and saves a heatmap to
     outputs_base/cohort/plots/{cohort}_aggregated_fi_heatmap.png.
     Also writes outputs_base/cohort/plots/{cohort}_aggregated_fi_heatmap.json for dashboard.
@@ -609,7 +609,7 @@ def create_aggregated_fi_heatmap(
         ax=ax,
         linewidths=0.5,
     )
-    ax.set_title(f"Aggregated Feature Importance by Age Band — {cohort}", fontsize=12, fontweight="bold")
+    ax.set_title(f"Aggregated Feature Importance by Age Band - {cohort}", fontsize=12, fontweight="bold")
     ax.set_xlabel("Age Band")
     ax.set_ylabel("Feature")
     plt.setp(ax.get_yticklabels(), rotation=0, fontsize=7)
@@ -747,7 +747,7 @@ def create_combined_cohorts_fi_heatmap(
         linewidths=0.5,
     )
     ax.set_title(
-        "Combined feature importance — both cohorts (sum of normalized weighted importance across age bands)",
+        "Combined feature importance - both cohorts (sum of normalized weighted importance across age bands)",
         fontsize=12,
         fontweight="bold",
     )

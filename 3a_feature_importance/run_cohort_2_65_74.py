@@ -56,7 +56,7 @@ MODEL_PARAMS = {
         'subsample': 1.0,
         'colsample_bytree': 1.0,
         'random_seed': 42,
-        'n_jobs': 2,  # Use 2 threads per model (with 28 workers × 2 threads = 56 threads on 32 cores, acceptable with early stopping)
+        'n_jobs': 2,  # Use 2 threads per model (with 28 workers x 2 threads = 56 threads on 32 cores, acceptable with early stopping)
         'tree_method': 'hist',  # Faster than exact, more accurate than approx
         'early_stopping_rounds': 10,  # Enable early stopping for faster training
     },
@@ -67,7 +67,7 @@ MODEL_PARAMS = {
         'subsample': 0.8,
         'max_features': None,
         'random_seed': 42,
-        'n_jobs': 2,  # Use 2 threads per model (with 28 workers × 2 threads = 56 threads on 32 cores, acceptable with early stopping)
+        'n_jobs': 2,  # Use 2 threads per model (with 28 workers x 2 threads = 56 threads on 32 cores, acceptable with early stopping)
         'tree_method': 'hist',  # Faster than exact, more accurate than approx
         'early_stopping_rounds': 10,  # Enable early stopping for faster training
     },

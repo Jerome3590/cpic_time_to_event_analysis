@@ -3,9 +3,9 @@
 Runner: DTW Trajectory Analysis for cpic_time_to_event_analysis.
 
 Runs the 3-step DTW pipeline for all configured cohorts/age bands:
-  1. create_dtw_trajectories.py  — extract patient trajectories from model_events
-  2. create_dtw_features.py      — compute DTW distances to prototype trajectories
-  3. create_dtw_visuals.py       — build chart_data.json + plots and upload to S3
+  1. create_dtw_trajectories.py  - extract patient trajectories from model_events
+  2. create_dtw_features.py      - compute DTW distances to prototype trajectories
+  3. create_dtw_visuals.py       - build chart_data.json + plots and upload to S3
 
 S3 outputs: s3://pgxdatalake/gold/{PROJECT_SLUG}/dtw_analysis/{cohort}/{age_band}/
 
@@ -68,7 +68,7 @@ def main():
             extra = step_args + (["--force"] if args.force else [])
             ok = run_step(script, cohort, age_band, extra)
             if not ok:
-                msg = f"[FAIL] {script} for {cohort}/{age_band}"
+                msg = f"[X] {script} for {cohort}/{age_band}"
                 print(msg)
                 if args.fail_fast:
                     sys.exit(1)

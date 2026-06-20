@@ -797,7 +797,7 @@ def run_shap_analysis(
 
     # ------------------- XGBoost SHAP (Two-Pass Approach) -------------------
     print("=" * 80)
-    print("XGBoost SHAP Analysis (Two-Pass: Global Signal → Row-Level for Selected Features)")
+    print("XGBoost SHAP Analysis (Two-Pass: Global Signal --> Row-Level for Selected Features)")
     print("=" * 80)
     
     try:
@@ -820,7 +820,7 @@ def run_shap_analysis(
         # Filter to features with mean_abs_shap > 0 for consistency
         global_shap_df_filtered = global_shap_df[global_shap_df['mean_abs_shap'] > 0].copy()
         global_shap_df_filtered.to_csv(xgb_imp_path, index=False)
-        print(f"✅ Saved global SHAP importance to {xgb_imp_path}")
+        print(f"[1] Saved global SHAP importance to {xgb_imp_path}")
         print(f"   Features with signal: {len(global_shap_df_filtered)} (from {len(global_shap_df)} total)")
         
         # Select features with signal (Top K approach, default 500)
@@ -902,7 +902,7 @@ def run_shap_analysis(
         plt.savefig(beeswarm_path, dpi=300)
         plt.close()
 
-        print(f"✅ Saved XGBoost SHAP summary plots to {out_dir}")
+        print(f"[1] Saved XGBoost SHAP summary plots to {out_dir}")
         
         models_analyzed.append("xgboost")
         
@@ -929,7 +929,7 @@ def run_shap_analysis(
     if cb_clf is not None:
         try:
             print("=" * 80)
-            print("CatBoost SHAP Analysis (Two-Pass: Global Signal → Row-Level for Selected Features)")
+            print("CatBoost SHAP Analysis (Two-Pass: Global Signal --> Row-Level for Selected Features)")
             print("=" * 80)
             
             feature_names_cb = list(X_full.columns)
@@ -962,7 +962,7 @@ def run_shap_analysis(
             # Filter to features with mean_abs_shap > 0 for consistency
             global_shap_df_cb_filtered = global_shap_df_cb[global_shap_df_cb['mean_abs_shap'] > 0].copy()
             global_shap_df_cb_filtered.to_csv(cb_imp_path, index=False)
-            print(f"✅ Saved global SHAP importance to {cb_imp_path}")
+            print(f"[1] Saved global SHAP importance to {cb_imp_path}")
             print(f"   Features with signal: {len(global_shap_df_cb_filtered)} (from {len(global_shap_df_cb)} total)")
             
             # Select features with signal (Top K approach, default 500)
@@ -1044,7 +1044,7 @@ def run_shap_analysis(
             plt.savefig(cb_beeswarm_path, dpi=300)
             plt.close()
 
-            print(f"✅ Saved CatBoost SHAP summary plots to {out_dir}")
+            print(f"[1] Saved CatBoost SHAP summary plots to {out_dir}")
             
             # Mark CatBoost as successfully analyzed
             models_analyzed.append("catboost")
@@ -1165,7 +1165,7 @@ def main() -> None:
         raise_on_missing=bool(args.bin),
     )
 
-    # File logger — logs/7_shap_analysis/{cohort}_{age_band}[_{bin}].log
+    # File logger - logs/7_shap_analysis/{cohort}_{age_band}[_{bin}].log
     _logs_dir = PROJECT_ROOT / "logs" / "7_shap_analysis"
     _logs_dir.mkdir(parents=True, exist_ok=True)
     _bin_suffix = f"_{args.bin}" if args.bin else ""

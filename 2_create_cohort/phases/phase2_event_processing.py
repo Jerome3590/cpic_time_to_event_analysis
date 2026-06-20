@@ -2,7 +2,7 @@
 Phase 2: Event Processing with DuckDB optimizations.
 
 Step 1: Event Fact Table Creation
-Step 2: Medication claims events (pharmacy lines → event fact)
+Step 2: Medication claims events (pharmacy lines --> event fact)
 """
 
 from .common import (
@@ -96,7 +96,7 @@ def run_phase2_step1_event_fact_table(context):
         """
         
         # Default classification falls back to falls vs ed
-        # Priority: 1) target ICD codes (ANY position) → falls, 2) HCG ED visits → ed, 3) Other → ed
+        # Priority: 1) target ICD codes (ANY position) --> falls, 2) HCG ED visits --> ed, 3) Other --> ed
         # CRITICAL: Check ALL 10 ICD diagnosis columns for target codes
         target_icd_condition = get_opioid_icd_sql_condition()
         default_case = f"""
@@ -109,7 +109,7 @@ def run_phase2_step1_event_fact_table(context):
 
         # If any env targets are provided, build explicit target/non_target classification.
         # For the production falls target, use event_classification='falls' consistently.
-        # Priority: 1) Target ICD/CPT codes → target_event_classification, 2) HCG ED visits → ed, 3) Other → non_target
+        # Priority: 1) Target ICD/CPT codes --> target_event_classification, 2) HCG ED visits --> ed, 3) Other --> non_target
         # IMPORTANT: 'non_target' is intentionally excluded from ED-based cohorts in later phases
         if icd_conditions or cpt_conditions:
             target_conditions = []
@@ -129,7 +129,7 @@ def run_phase2_step1_event_fact_table(context):
         
         # CRITICAL FIX: Compute event_sequence AFTER UNION ALL to ensure global chronological ordering
         # Previously, ROW_NUMBER() was computed separately for medical and pharmacy, breaking global sequence
-        # Example: Medical event Jan 10 → seq 1, Pharmacy event Jan 05 → seq 1 (both seq 1, but Jan 05 should come first)
+        # Example: Medical event Jan 10 --> seq 1, Pharmacy event Jan 05 --> seq 1 (both seq 1, but Jan 05 should come first)
         # This fix ensures event_sequence reflects true chronological order across all event types
         # This is essential for Phase 3 time windows, first events, and temporal analysis
         event_fact_table_sql = f"""
@@ -242,7 +242,7 @@ def run_phase2_step1_event_fact_table(context):
         FROM unified_events;
         """
         execute_sql_with_dev_validation(cohort_conn_duckdb, logger, event_fact_table_sql)
-        logger.info("→ [PHASE 2 STEP 1] Unified event fact table created")
+        logger.info("--> [PHASE 2 STEP 1] Unified event fact table created")
         
         # QA checks
         # Cast COUNT(*) to BIGINT to avoid INT32 overflow for large counts
@@ -256,8 +256,8 @@ def run_phase2_step1_event_fact_table(context):
         ORDER BY count DESC
         """).fetchall()
         
-        logger.info(f"→ [PHASE 2 STEP 1] QA: Total events: {total_events:,}")
-        logger.info(f"→ [PHASE 2 STEP 1] QA: Event type distribution: {dict(event_type_dist)}")
+        logger.info(f"--> [PHASE 2 STEP 1] QA: Total events: {total_events:,}")
+        logger.info(f"--> [PHASE 2 STEP 1] QA: Event type distribution: {dict(event_type_dist)}")
         
         target_classification = target_event_classification if (icd_conditions or cpt_conditions) else 'falls'
         target_total = cohort_conn_duckdb.sql(f"""
@@ -277,7 +277,7 @@ def run_phase2_step1_event_fact_table(context):
         ORDER BY count_by_classification DESC
         """).fetchall()
 
-        logger.info(f"→ [PHASE 2 STEP 1] Target classification QA ({target_classification}):")
+        logger.info(f"--> [PHASE 2 STEP 1] Target classification QA ({target_classification}):")
         logger.info(f"  Total target records: {target_total[0]:,}")
         logger.info(f"  Distinct target patients: {target_total[1]:,}")
         if target_by_class:
@@ -310,7 +310,7 @@ def run_phase2_step1_event_fact_table(context):
 
 
 def run_phase2_step2_drug_exposure(context):
-    """Phase 2 Step 2: Medication claims events (pharmacy lines → event fact) with DuckDB optimizations."""
+    """Phase 2 Step 2: Medication claims events (pharmacy lines --> event fact) with DuckDB optimizations."""
     logger = context["logger"]
     cohort_conn_duckdb = context["cohort_conn_duckdb"]
     age_band = context["age_band"]
@@ -353,7 +353,7 @@ def run_phase2_step2_drug_exposure(context):
           AND drug_name != '';
         """
         execute_sql_with_dev_validation(cohort_conn_duckdb, logger, drug_exposure_sql)
-        logger.info("→ [PHASE 2 STEP 2] Unified medication claims events view created")
+        logger.info("--> [PHASE 2 STEP 2] Unified medication claims events view created")
         
         # QA checks
         # Cast COUNT(*) to BIGINT to avoid INT32 overflow for large counts
@@ -361,7 +361,7 @@ def run_phase2_step2_drug_exposure(context):
         total_drug_events_result = cohort_conn_duckdb.sql("SELECT COUNT(*)::BIGINT FROM unified_drug_exposure").fetchone()[0]
         total_drug_events = int(total_drug_events_result) if total_drug_events_result is not None else 0
         
-        logger.info(f"→ [PHASE 2 STEP 2] QA: Total medication claims events: {total_drug_events:,}")
+        logger.info(f"--> [PHASE 2 STEP 2] QA: Total medication claims events: {total_drug_events:,}")
         
         # Force checkpoint
         force_checkpoint(cohort_conn_duckdb, logger)

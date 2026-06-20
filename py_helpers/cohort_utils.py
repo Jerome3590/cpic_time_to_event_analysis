@@ -145,7 +145,7 @@ def check_cohort_needs_processing(s3_path, bucket_name: str = "pgxdatalake", log
 
         needs_processing = not all(s3_exists(path) for path in paths.values())
 
-        msg = f"→ {cohort_id}: Needs feature engineering" if needs_processing else f"✓ {cohort_id}: Already processed"
+        msg = f"--> {cohort_id}: Needs feature engineering" if needs_processing else f"[1] {cohort_id}: Already processed"
         if logger:
             logger.info(msg)
         else:
@@ -161,7 +161,7 @@ def check_cohort_needs_processing(s3_path, bucket_name: str = "pgxdatalake", log
         }
 
     except Exception as e:
-        msg = f"✗ Error checking {s3_path}: {str(e)}"
+        msg = f"[X] Error checking {s3_path}: {str(e)}"
         if logger is None:
             # Fallback to a simple local logger to avoid import cycles
             logger = logging.getLogger("cohort_utils")
@@ -226,7 +226,7 @@ def check_and_fix_mismatched_sets(age_band, event_year, logger: Optional[logging
 
 
 def handle_empty_filtered_cohort(df, cohort_name, band, year, paths, logger: Optional[logging.Logger] = None, TOP_K=25):
-    logger.warning(f"Skipping {cohort_name} {band} {year} — no valid rows after filtering")
+    logger.warning(f"Skipping {cohort_name} {band} {year} - no valid rows after filtering")
 
     placeholder_columns = ["mi_person_key", "target", "drug_tokens", "tokens"]
     placeholder = pd.DataFrame(columns=placeholder_columns)
@@ -241,7 +241,7 @@ def handle_empty_filtered_cohort(df, cohort_name, band, year, paths, logger: Opt
 
     placeholder = safe_concat_columns(placeholder, padding)
     save_to_s3_parquet(placeholder, paths['fpgrowth_features'])
-    logger.info(f"✓ Saved placeholder enhanced dataset with 0 valid rows: {paths['fpgrowth_features']}")
+    logger.info(f"[1] Saved placeholder enhanced dataset with 0 valid rows: {paths['fpgrowth_features']}")
 
     save_feature_artifacts(placeholder, pd.DataFrame(), pd.DataFrame(), {}, paths, logger)
     return True
@@ -355,13 +355,13 @@ def check_and_reprocess_all_cohorts(
         for _ in range(max_retries):
             try:
                 result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-                logger.info(f"✓ Reprocessed {cohort_type}/{age_band}/{event_year}")
+                logger.info(f"[1] Reprocessed {cohort_type}/{age_band}/{event_year}")
                 return True
             except subprocess.CalledProcessError as e:
                 logger.warning(f"Retrying {cohort_type}/{age_band}/{event_year} due to: {e.stderr}")
                 time.sleep(2)
 
-        logger.error(f"✗ Failed to reprocess {cohort_type}/{age_band}/{event_year}")
+        logger.error(f"[X] Failed to reprocess {cohort_type}/{age_band}/{event_year}")
         return False
 
     base_path = base_path or BASE_PATH_COHORT
@@ -370,7 +370,7 @@ def check_and_reprocess_all_cohorts(
         print("No cohorts found.")
         return [], []
 
-    print(f"→ Found {len(cohort_paths)} cohort files")
+    print(f"--> Found {len(cohort_paths)} cohort files")
 
     results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -478,7 +478,7 @@ def check_existing_cohorts(age_bands=None, event_years=None, bucket_name: str = 
             try:
                 s3.head_object(Bucket=bucket_name, Key=lock_key)
                 lock_exists = True
-                print(f"✗ Lock file exists for {band}/{year}, skipping...")
+                print(f"[X] Lock file exists for {band}/{year}, skipping...")
             except s3.exceptions.ClientError as e:
                 if e.response['Error']['Code'] not in ("404", "NotFound"):
                     raise
@@ -487,14 +487,14 @@ def check_existing_cohorts(age_bands=None, event_years=None, bucket_name: str = 
                 continue
 
             if falls_exists:
-                print(f"✓ Falls cohort exists for {band}/{year}")
+                print(f"[1] Falls cohort exists for {band}/{year}")
             else:
-                print(f"→ Missing falls cohort for {band}/{year}")
+                print(f"--> Missing falls cohort for {band}/{year}")
 
             if ed_exists:
-                print(f"✓ ED cohort exists for {band}/{year}")
+                print(f"[1] ED cohort exists for {band}/{year}")
             else:
-                print(f"→ Missing ED cohort for {band}/{year}")
+                print(f"--> Missing ED cohort for {band}/{year}")
 
             if falls_exists and ed_exists:
                 existing_cohorts.append((band, year))
@@ -514,8 +514,8 @@ def check_existing_cohorts(age_bands=None, event_years=None, bucket_name: str = 
                 processed_combinations.add(combo_key)
 
     print(f"\nSummary:")
-    print(f"✓ {len(existing_cohorts)} age_band/year combinations fully processed")
-    print(f"→ {len(jobs_to_process)} combinations need processing")
+    print(f"[1] {len(existing_cohorts)} age_band/year combinations fully processed")
+    print(f"--> {len(jobs_to_process)} combinations need processing")
 
     if existing_cohorts:
         print("\nExisting cohorts:")
@@ -614,16 +614,16 @@ def run_cohort(job, script_path, python_bin=sys.executable, target_icd=None, con
         print(f"Return code: {returncode}", flush=True)
 
         if has_lock_message or "Lock already exists" in lock_check_buffer:
-            print(f"✓ Job for {job_id} skipped due to existing lock", flush=True)
+            print(f"[1] Job for {job_id} skipped due to existing lock", flush=True)
             return f"SKIPPED_LOCKED: {job_id}"
         elif returncode != 0:
-            print(f"✗ Job for {job_id} failed with code {returncode}", flush=True)
+            print(f"[X] Job for {job_id} failed with code {returncode}", flush=True)
             return f"FAILED: {job_id} (code: {returncode})"
         else:
-            print(f"✓ Job for {job_id} completed successfully with code {returncode}", flush=True)
+            print(f"[1] Job for {job_id} completed successfully with code {returncode}", flush=True)
             return f"SUCCESS: {job_id}"
     except Exception as e:
-        error_msg = f"✗ Job for {job_id} raised exception: {str(e)}"
+        error_msg = f"[X] Job for {job_id} raised exception: {str(e)}"
         print(error_msg, flush=True)
         print(traceback.format_exc(), flush=True)
         return f"ERROR: {job_id} - {str(e)}"

@@ -195,7 +195,7 @@ def remove_target_leakage_features(df: pd.DataFrame, cohort: str, age_band: str)
         if len(dtw_features) > 10:
             print(f"  ... and {len(dtw_features) - 10} more")
 
-    # 4b. Trajectory / sequence / itemset (defensive only; feature engineering never generates these—only n_events, item_*, PGx)
+    # 4b. Trajectory / sequence / itemset (defensive only; feature engineering never generates these-only n_events, item_*, PGx)
     traj_seq_itemset = [
         c for c in cols
         if "trajectory" in c.lower() or "sequence" in c.lower() or "itemset" in c.lower()
@@ -696,7 +696,7 @@ def _create_aggregated_feature_importance_visualizations(
         bar_chart_path = plots_dir / f"{cohort}_{age_band_fname}_top50_features_bar_chart.png"
         plt.savefig(bar_chart_path, bbox_inches='tight', facecolor='white')
         plt.close()
-        print(f"✓ Saved bar chart: {bar_chart_path}")
+        print(f"[1] Saved bar chart: {bar_chart_path}")
         
         # ============================================================================
         # PLOT 2: Heatmap (if we have multiple importance metrics or model counts)
@@ -744,7 +744,7 @@ def _create_aggregated_feature_importance_visualizations(
         heatmap_path = plots_dir / f"{cohort}_{age_band_fname}_feature_importance_heatmap.png"
         plt.savefig(heatmap_path, bbox_inches='tight', facecolor='white')
         plt.close()
-        print(f"✓ Saved heatmap: {heatmap_path}")
+        print(f"[1] Saved heatmap: {heatmap_path}")
         
         # Upload to S3 if available
         try:
@@ -760,7 +760,7 @@ def _create_aggregated_feature_importance_visualizations(
                         capture_output=True, text=True, timeout=60
                     )
                     if result.returncode == 0:
-                        print(f"✓ Uploaded to S3: {s3_path}")
+                        print(f"[1] Uploaded to S3: {s3_path}")
         except Exception as e:
             print(f"[WARNING] Could not upload plots to S3: {e}")
         
@@ -1060,7 +1060,7 @@ def build_final_features(cohort: str, age_band: str) -> pd.DataFrame:
         # Ensure binary labels
         grouped["target"] = grouped["target"].astype(int).clip(lower=0, upper=1)
 
-        # n_event_bin: compute from n_events (P25/P50/P95 → low/medium/high/extreme).
+        # n_event_bin: compute from n_events (P25/P50/P95 --> low/medium/high/extreme).
         # Saved as JSON so DTW, FP-Growth, BupaR, and inference use the identical cut-points.
         _thresholds = _compute_bin_thresholds(grouped["n_events"])
         grouped["n_event_bin"] = _assign_n_event_bins(grouped["n_events"], _thresholds)
@@ -1363,7 +1363,7 @@ def build_final_features(cohort: str, age_band: str) -> pd.DataFrame:
                     if col in grouped.columns:
                         grouped[col] = grouped[col].fillna(0).astype(int)
                 
-                print(f"✅ Created {len(binary_feature_exprs)} binary features from aggregated FI codes (processed in {n_batches} batches)")
+                print(f"[1] Created {len(binary_feature_exprs)} binary features from aggregated FI codes (processed in {n_batches} batches)")
             else:
                 print("[WARNING] No binary features to create")
         else:
@@ -1416,7 +1416,7 @@ def build_final_features(cohort: str, age_band: str) -> pd.DataFrame:
                 
                 print(f"PGx features not found locally. Downloading from S3: {s3_path}")
                 s3_client.download_file(S3_BUCKET, s3_key, str(download_dest))
-                print(f"✓ Downloaded PGx features to {download_dest}")
+                print(f"[1] Downloaded PGx features to {download_dest}")
                 pgx_path = download_dest
                 break
             except s3_client.exceptions.ClientError as e:
@@ -1700,7 +1700,7 @@ def copy_full_cohort_artifacts_to_bin_directory(
     reason_line = (reason or "unknown").strip()
     marker = (
         "This folder mirrors full-cohort (aggregate) model artifacts; models were not trained "
-        f"only on the «{bin_name}» event-density bin.\n"
+        f"only on the '{bin_name}' event-density bin.\n"
         f"Reason: {reason_line}\n"
         f"Cohort: {cohort} | Age band: {age_band}\n"
     )
@@ -1729,7 +1729,7 @@ def repair_per_bin_fallbacks_from_aggregate(
 ) -> None:
     """
     For sparse bins (no training rows / single class), training copies full-cohort artifacts
-    into bin_models/{bin}/ — but that only runs inside train_per_bin(). If the main() idempotency
+    into bin_models/{bin}/ - but that only runs inside train_per_bin(). If the main() idempotency
     path returns early (local + S3 look complete for aggregate, or checkpoint) or a run stopped
     mid-loop, a bin can be missing joblibs while aggregate models exist. This repair mirrors
     aggregate into any bin directory that is missing deployment joblibs, without retraining.
@@ -1765,7 +1765,7 @@ def repair_per_bin_fallbacks_from_aggregate(
                 cohort,
                 age_band,
                 bin_name,
-                reason="repair: sparse bin or interrupted run — mirrored from aggregate so deploy has a full bin tree",
+                reason="repair: sparse bin or interrupted run - mirrored from aggregate so deploy has a full bin tree",
             )
         except Exception as e:
             if logger:
@@ -2553,7 +2553,7 @@ def train_and_evaluate(
             print(classification_report(y_test, y_pred_ens, digits=3))
 
     # ------------------------------------------------------------------
-    # Model Selection: XGBoost, XGBoost RF, CatBoost — Primary = AUC-PR, Tie-break = Recall
+    # Model Selection: XGBoost, XGBoost RF, CatBoost - Primary = AUC-PR, Tie-break = Recall
     # ------------------------------------------------------------------
     print("\n=== Model Selection (Recall and AUC-PR) ===")
     
@@ -2832,7 +2832,7 @@ def train_and_evaluate(
     # Fit Platt calibration from OOF predictions (sigmoid: LogReg on OOF probas vs actuals)
     # ------------------------------------------------------------------
     # The MC test-fold predictions are out-of-fold (OOF) for the base models.
-    # Fitting a logistic regression on the concatenated OOF probabilities → actual labels
+    # Fitting a logistic regression on the concatenated OOF probabilities --> actual labels
     # gives a second-stage calibrator (Platt scaling) that corrects systematic over/under-
     # prediction so dashboard risk scores reflect observed event rates.
     # Saved as calibration_{model_type}.joblib; Lambda loads these at inference time.
@@ -2858,7 +2858,7 @@ def train_and_evaluate(
         _cal.fit(_p_all, _t_all)
         _cal_path = _cal_models_dir / f"calibration_{_mname}.joblib"
         joblib.dump(_cal, _cal_path)
-        print(f"[CALIB] {_mname}: fitted Platt calibrator on {len(_t_all)} OOF samples → {_cal_path}")
+        print(f"[CALIB] {_mname}: fitted Platt calibrator on {len(_t_all)} OOF samples --> {_cal_path}")
         # Calibration diagnostics: mean raw vs mean calibrated probability
         _cal_proba = _cal.predict_proba(_p_all)[:, 1]
         _cal_diag[_mname] = {
@@ -2871,7 +2871,7 @@ def train_and_evaluate(
         }
         _diff = abs(_np.mean(_cal_proba) - float(_np.mean(_t_all)))
         print(
-            f"[CALIB] {_mname}: raw mean={_np.mean(_p_all):.4f} → "
+            f"[CALIB] {_mname}: raw mean={_np.mean(_p_all):.4f} --> "
             f"calibrated mean={_np.mean(_cal_proba):.4f} (observed rate={_np.mean(_t_all):.4f}, "
             f"residual={_diff:.4f})"
         )
@@ -2879,7 +2879,7 @@ def train_and_evaluate(
     _cal_diag_path = _cal_models_dir / "calibration_diagnostics.json"
     with open(_cal_diag_path, "w") as _fh:
         json.dump(_cal_diag, _fh, indent=2)
-    print(f"[CALIB] Diagnostics saved → {_cal_diag_path}")
+    print(f"[CALIB] Diagnostics saved --> {_cal_diag_path}")
 
     # ------------------------------------------------------------------
     # Train final models on full data and export best models
@@ -3108,9 +3108,9 @@ def train_and_evaluate(
                                 except:
                                     pass
                                 
-                                print(f"✅ Fixed base_score from {base_score} to {fixed_score} before saving joblib")
+                                print(f"[1] Fixed base_score from {base_score} to {fixed_score} before saving joblib")
                 except Exception as e:
-                    print(f"⚠️  Warning: Could not fix base_score before saving: {e}. SHAP may fail.")
+                    print(f"[WARN]  Warning: Could not fix base_score before saving: {e}. SHAP may fail.")
             
             joblib.dump(model_to_save, xgb_joblib_path)
         
@@ -3326,7 +3326,7 @@ def evaluate_temporal_holdout(
     try:
         target_col = "target"
         if target_col not in df_holdout.columns:
-            print("[WARN] evaluate_temporal_holdout: no 'target' column in holdout — skipping.")
+            print("[WARN] evaluate_temporal_holdout: no 'target' column in holdout - skipping.")
             return
         y_true = df_holdout[target_col].values
         holdout_prevalence = float(np.mean(y_true)) if len(y_true) else 0.0
@@ -3339,7 +3339,7 @@ def evaluate_temporal_holdout(
 
         xgb_path = out_dir / "final_model_json" / f"{cohort}_{age_band_fname}_best_xgboost_model.json"
         if not xgb_path.exists():
-            print(f"[WARN] evaluate_temporal_holdout: model not found at {xgb_path} — skipping.")
+            print(f"[WARN] evaluate_temporal_holdout: model not found at {xgb_path} - skipping.")
             return
 
         model = _load_model(xgb_path)
@@ -3360,7 +3360,7 @@ def evaluate_temporal_holdout(
         }
         with open(out_path, "w") as f:
             json.dump(metrics, f, indent=2)
-        print(f"[INFO] Temporal holdout metrics → {out_path}")
+        print(f"[INFO] Temporal holdout metrics --> {out_path}")
         print(
             f"       AUROC={metrics['auroc']:.4f}  PR-AUC={metrics['pr_auc']:.4f}  "
             f"PR-lift={(metrics['pr_auc_lift_over_prevalence'] or 0):.2f}x  n={metrics['n_holdout']}"
@@ -3503,7 +3503,7 @@ def main() -> None:
                 f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model/{args.cohort}/{args.age_band}/{args.cohort}_{age_band_fname_check}_model_selection_metadata.json",
             ]
 
-        # Per-bin mode: require every per-bin artifact on S3 (checkpoint alone is not enough — missing bins must rerun).
+        # Per-bin mode: require every per-bin artifact on S3 (checkpoint alone is not enough - missing bins must rerun).
         _s3_ok = check_step_outputs_exist(s3_output_paths, logger)
         _checkpoint_ok = check_step_checkpoint_exists("6_final_model", args.cohort, args.age_band, logger)
         if args.train_mode == "per_bin":
@@ -3667,7 +3667,7 @@ def main() -> None:
                 len(df), len(df_holdout_2019),
             )
         except Exception as _te:
-            logger.warning("Temporal split failed (%s) — training on all years (no holdout).", _te)
+            logger.warning("Temporal split failed (%s) - training on all years (no holdout).", _te)
 
         df.to_csv(features_path, index=False)
         logger.info("Saved final features (no leakage) to %s", features_path)

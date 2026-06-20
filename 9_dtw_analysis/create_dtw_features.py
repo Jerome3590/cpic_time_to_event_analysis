@@ -39,7 +39,7 @@ try:
 except ImportError:
     DTW_AVAILABLE = False
 
-# Same pattern as BupaR/FP-Growth: use setup_pipeline_logger (repo root from py_helpers → project-level logs)
+# Same pattern as BupaR/FP-Growth: use setup_pipeline_logger (repo root from py_helpers --> project-level logs)
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:

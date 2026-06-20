@@ -163,7 +163,7 @@ class PipelineLogger:
         # Always print completion summary to console for visibility
         status = "ERROR" if self.errors else ("WARN" if self.warnings else "OK")
         print(f"[{self.step_name}] {self.cohort}/{self.age_band} done "
-              f"({self.format_elapsed_time(elapsed)}) — {status} "
+              f"({self.format_elapsed_time(elapsed)}) - {status} "
               f"| warnings={len(self.warnings)} errors={len(self.errors)}")
         if self.errors:
             for err in self.errors[:3]:
@@ -203,7 +203,7 @@ def setup_pipeline_logger(
     current_file = Path(__file__).resolve()
     repo_root = current_file.parents[1]  # py_helpers is one level down from repo root
     
-    # Default log directory — all steps use logs/{step_name}/ at repo root
+    # Default log directory - all steps use logs/{step_name}/ at repo root
     if log_dir is None:
         log_dir = repo_root / "logs" / step_name
     
@@ -266,7 +266,7 @@ def setup_pipeline_logger(
     pipeline_logger.info("Log File: %s", log_file_path)
     pipeline_logger.info("=" * 80)
     pipeline_logger.info("")
-    print(f"[{step_name}] {cohort}/{age_band} started — log: {log_file_path}")
+    print(f"[{step_name}] {cohort}/{age_band} started - log: {log_file_path}")
     
     return pipeline_logger
 
@@ -280,7 +280,7 @@ def log_step_start(logger: PipelineLogger, step_description: str, **metadata):
         step_description: Human-readable step description
         **metadata: Additional key-value pairs to log
     """
-    logger.info("▶ START: %s", step_description)
+    logger.info("[START] START: %s", step_description)
     if metadata:
         for key, value in metadata.items():
             logger.info("  %s: %s", key, value)
@@ -302,7 +302,7 @@ def log_step_complete(logger: PipelineLogger, step_description: str, **metadata)
     else:
         elapsed_str = "unknown"
     
-    logger.info("✓ COMPLETE: %s (took %s)", step_description, elapsed_str)
+    logger.info("[1] COMPLETE: %s (took %s)", step_description, elapsed_str)
     if metadata:
         for key, value in metadata.items():
             logger.info("  %s: %s", key, value)
@@ -318,7 +318,7 @@ def log_step_failed(logger: PipelineLogger, step_description: str, error: Except
         step_description: Human-readable step description
         error: Exception that caused the failure
     """
-    logger.error("✗ FAILED: %s", step_description)
+    logger.error("[X] FAILED: %s", step_description)
     logger.exception("  Exception: %s", str(error))
     logger.info("")
 

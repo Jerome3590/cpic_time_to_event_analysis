@@ -412,9 +412,9 @@ def run_analysis(years=(2016, 2020), out_dir="/home/pgx3874/cpic_time_to_event_a
     try:
         from py_helpers.visualization_utils import write_target_code_latest
         write_target_code_latest(all_targets_df)
-        print("📤 Unified latest written to S3 (target_code)")
+        print("[UPLOAD] Unified latest written to S3 (target_code)")
     except Exception as e:
-        print(f"⚠️ Failed writing unified latest: {e}")
+        print(f"[WARN] Failed writing unified latest: {e}")
 
     return {
         'icd_aggregated': icd_agg_df,
@@ -615,7 +615,7 @@ def precompute_cohort_target_averages(conn=None, aws_profile=None):
         return config
 
     except Exception as e:
-        print(f"\n✗ Error computing cohort target averages: {e}")
+        print(f"\n[X] Error computing cohort target averages: {e}")
         import traceback
         traceback.print_exc()
         return None
@@ -628,7 +628,7 @@ def get_icd_frequency_data(conn, path, y0, y1):
     - icd_by_position_df: frequency by (event_year, icd_position, icd_code)
     - icd_agg_df: frequency by (event_year, icd_code) across all positions
     """
-    print("📊 Querying ICD diagnostic code frequencies by year...")
+    print("[INFO] Querying ICD diagnostic code frequencies by year...")
 
     # One read using Hive partition awareness; create a temp base table
     conn.execute(
@@ -727,7 +727,7 @@ def get_icd_frequency_data(conn, path, y0, y1):
     ).df()
     # No normalization on age-band output
 
-    print(f"✅ Retrieved {len(icd_agg_df):,} ICD-year combinations (aggregated across positions)")
+    print(f"[1] Retrieved {len(icd_agg_df):,} ICD-year combinations (aggregated across positions)")
     return icd_by_position_df, icd_agg_df, icd_age_df, icd_agg_raw
 
 
@@ -737,7 +737,7 @@ def get_cpt_frequency_data(conn, path, y0, y1):
     We use both cpt_mod_1_code and cpt_mod_2_code, and also aggregate across them.
     Returns two DataFrames similar to ICD.
     """
-    print("📊 Querying CPT code frequencies by year...")
+    print("[INFO] Querying CPT code frequencies by year...")
 
     # One read using Hive partition awareness; create a temp base table
     conn.execute(
@@ -787,7 +787,7 @@ def get_cpt_frequency_data(conn, path, y0, y1):
     ).df()
     cpt_agg_raw = cpt_agg_df.copy()
 
-    print(f"✅ Retrieved {len(cpt_agg_df):,} CPT-year combinations (aggregated across fields)")
+    print(f"[1] Retrieved {len(cpt_agg_df):,} CPT-year combinations (aggregated across fields)")
     # By-age aggregation for CPT (no extra join)
     cpt_age_df = conn.sql(
         """
@@ -862,7 +862,7 @@ def get_icd_cpt_cooccurrence(top_n_icd: int = 25, top_n_cpt: int = 25, years=(20
       pairs_df: DataFrame[event_year, target_icd, target_cpt, frequency]
       heatmap_pivot: pivoted DataFrame[target_icd x target_cpt] of frequencies (overall)
     """
-    print("📊 Computing ICD x CPT co-occurrence heatmap data...")
+    print("[INFO] Computing ICD x CPT co-occurrence heatmap data...")
     conn = create_duckdb_conn()
     y0, y1 = years
     query = f"""
@@ -944,7 +944,7 @@ def _aggregate_and_write_outputs(icd_by_position_df: pd.DataFrame,
         if icd_agg_df is not None and not icd_agg_df.empty:
             icd_agg_df.to_csv(os.path.join(outputs_dir, f"icd_frequency_aggregated_{ts}.csv"), index=False)
     except Exception as e:
-        print(f"⚠️ Local CSV writes failed: {e}")
+        print(f"[WARN] Local CSV writes failed: {e}")
 
     # Write Parquet to S3 via DuckDB from DataFrames
     try:
@@ -1011,7 +1011,7 @@ def _aggregate_and_write_outputs(icd_by_position_df: pd.DataFrame,
                     print(f"[tfa-parent] S3 write: key={key_csv}, size_bytes={size_b}, elapsed_sec={elapsed:.3f}, approx_MBps={mbps:.2f}, etag={post.get('ETag')}")
                 except Exception as _e:
                     print(f"[tfa-parent] S3 throughput logging failed (latest csv): {_e}")
-        print("📤 Unified latest written to S3 via COPY")
+        print("[UPLOAD] Unified latest written to S3 via COPY")
         # Small visualizations for inspection: top codes and stacked-by-year plots
         try:
             import matplotlib.pyplot as plt
@@ -1057,7 +1057,7 @@ def _aggregate_and_write_outputs(icd_by_position_df: pd.DataFrame,
             # Visualization is optional; continue if plotting libs or S3 access missing
             pass
     except Exception as e:
-        print(f"❌ Failed to write outputs via COPY: {e}")
+        print(f"[X] Failed to write outputs via COPY: {e}")
     finally:
         try:
             conn.close()
@@ -1085,11 +1085,11 @@ def _aggregate_and_write_outputs(icd_by_position_df: pd.DataFrame,
             json.dump(icd_map_suggest, f, indent=2, ensure_ascii=False)
         with open(cpt_path, 'w', encoding='utf-8') as f:
             json.dump(cpt_map_suggest, f, indent=2, ensure_ascii=False)
-        print("📝 Suggested mapping files written:")
-        print(f"  • {icd_path} (ICD variants → canonical)")
-        print(f"  • {cpt_path} (CPT variants → canonical)")
+        print("[WRITE] Suggested mapping files written:")
+        print(f"  - {icd_path} (ICD variants --> canonical)")
+        print(f"  - {cpt_path} (CPT variants --> canonical)")
     except Exception as e:
-        print(f"⚠️ Could not write suggested mapping files: {e}")
+        print(f"[WARN] Could not write suggested mapping files: {e}")
 
     return {
         'icd_by_position': icd_by_position_df,
@@ -1102,7 +1102,7 @@ def _aggregate_and_write_outputs(icd_by_position_df: pd.DataFrame,
 
 
 def main(codes_of_interest: Optional[List[str]] = None, years: Tuple[int, int] = (2016, 2020), path: Optional[str] = None, workers: int = 1, log_cpu: bool = False, log_s3: bool = False):
-    print("🎯 TARGET FREQUENCY ANALYSIS (ICD + CPT)")
+    print("[TARGET] TARGET FREQUENCY ANALYSIS (ICD + CPT)")
     print("="*60)
 
     y0, y1 = years
@@ -1122,7 +1122,7 @@ def main(codes_of_interest: Optional[List[str]] = None, years: Tuple[int, int] =
         y0, y1 = years
         parts = parts[(parts['event_year'] >= y0) & (parts['event_year'] <= y1)]
         results = []
-        print(f"🚀 Parallel target frequency analysis with {workers} workers across {len(parts)} partitions...")
+        print(f"[START] Parallel target frequency analysis with {workers} workers across {len(parts)} partitions...")
         with ProcessPoolExecutor(max_workers=workers) as executor:
             futures = [
                 executor.submit(_analyze_partition, row['filename'], row['age_band'], int(row['event_year']), log_cpu)
@@ -1155,7 +1155,7 @@ def main(codes_of_interest: Optional[List[str]] = None, years: Tuple[int, int] =
         try:
             precompute_cohort_target_averages(conn=None, aws_profile=None)
         except Exception as e:
-            print(f"⚠️ Failed to pre-compute cohort target averages: {e}")
+            print(f"[WARN] Failed to pre-compute cohort target averages: {e}")
             print("  Cohort creation pipeline will use fallback averages if config file is missing.")
 
         return result
@@ -1283,9 +1283,9 @@ def main(codes_of_interest: Optional[List[str]] = None, years: Tuple[int, int] =
             ) TO 's3://{S3_BUCKET}/{TARGET_CODE_S3_PREFIX}/cpt_frequency_aggregated_{ts}.parquet' (FORMAT PARQUET)
             """
         )
-        print("📤 COPY outputs written (ICD CSV local, CPT Parquet to S3)")
+        print("[UPLOAD] COPY outputs written (ICD CSV local, CPT Parquet to S3)")
     except Exception as e:
-        print(f"⚠️ COPY outputs failed: {e}")
+        print(f"[WARN] COPY outputs failed: {e}")
 
     # Build unified dataframe of all target codes (ICD + CPT)
     all_targets_df = pd.concat(
@@ -1357,9 +1357,9 @@ def main(codes_of_interest: Optional[List[str]] = None, years: Tuple[int, int] =
             ) TO 's3://{S3_BUCKET}/{TARGET_CODE_S3_PREFIX}/target_code_latest.csv' (FORMAT CSV, HEADER TRUE, OVERWRITE_OR_IGNORE);
             """
         )
-        print("📤 Unified latest written to S3 via COPY")
+        print("[UPLOAD] Unified latest written to S3 via COPY")
     except Exception as e:
-        print(f"❌ Failed to write unified latest via COPY: {e}")
+        print(f"[X] Failed to write unified latest via COPY: {e}")
 
     # Suggest JSON mapping files for QA (variants -> canonical)
     try:
@@ -1388,11 +1388,11 @@ def main(codes_of_interest: Optional[List[str]] = None, years: Tuple[int, int] =
             _json.dump(icd_map_suggest, f, indent=2, ensure_ascii=False)
         with open(cpt_path, 'w', encoding='utf-8') as f:
             _json.dump(cpt_map_suggest, f, indent=2, ensure_ascii=False)
-        print("📝 Suggested mapping files written:")
-        print(f"  • {icd_path} (ICD variants → canonical)")
-        print(f"  • {cpt_path} (CPT variants → canonical)")
+        print("[WRITE] Suggested mapping files written:")
+        print(f"  - {icd_path} (ICD variants --> canonical)")
+        print(f"  - {cpt_path} (CPT variants --> canonical)")
     except Exception as e:
-        print(f"⚠️ Could not write suggested mapping files: {e}")
+        print(f"[WARN] Could not write suggested mapping files: {e}")
 
     # QA check: list any remaining variants that normalize to F1120
     try:
@@ -1405,14 +1405,14 @@ def main(codes_of_interest: Optional[List[str]] = None, years: Tuple[int, int] =
             .sort_values(['total_frequency', 'rows', 'target_code'], ascending=[False, False, True])
         )
         if not qa.empty:
-            print("\n🔎 QA: Variants matching F1120 after normalization:")
+            print("\n[QA] QA: Variants matching F1120 after normalization:")
             for _, r in qa.iterrows():
                 tf = int(r['total_frequency']) if pd.notnull(r['total_frequency']) else 'NULL'
                 print(f"  {r['target_code']}\trows={int(r['rows'])}\ttotal_frequency={tf}")
         else:
-            print("\n🔎 QA: No variants matching F1120 found after normalization.")
+            print("\n[QA] QA: No variants matching F1120 found after normalization.")
     except Exception as e:
-        print(f"⚠️ QA check failed: {e}")
+        print(f"[WARN] QA check failed: {e}")
 
     # Skipping ICD x CPT heatmap for now (too many codes). Keep helper available for future cohort-level filtering.
     pairs_df = None
@@ -1467,7 +1467,7 @@ if __name__ == '__main__':
 
         precompute_cohort_target_averages(conn=None, aws_profile=aws_profile)
     except Exception as e:
-        print(f"⚠️ Failed to pre-compute cohort target averages: {e}")
+        print(f"[WARN] Failed to pre-compute cohort target averages: {e}")
         print("  Cohort creation pipeline will use fallback averages if config file is missing.")
         import traceback
         traceback.print_exc()
@@ -1488,7 +1488,7 @@ if __name__ == '__main__':
                     if isinstance(j, dict):
                         map_dict.update(j)
                 except Exception as _:
-                    print(f"⚠️ Could not load mapping file '{mp}' - skipping")
+                    print(f"[WARN] Could not load mapping file '{mp}' - skipping")
         if map_dict:
             # Apply replacements to any DataFrame-like entries that contain target_code
             for k, v in list(data.items()):
@@ -1524,25 +1524,25 @@ if __name__ == '__main__':
         if os.path.exists(pickle_path):
             try:
                 shutil.copy2(pickle_path, orig_copy)
-                print(f"💾 Existing pickle moved/copied to '{orig_copy}'")
+                print(f"[SAVE] Existing pickle moved/copied to '{orig_copy}'")
             except Exception as e:
-                print(f"⚠️ Could not preserve existing pickle to '{orig_copy}': {e}")
+                print(f"[WARN] Could not preserve existing pickle to '{orig_copy}': {e}")
 
         # Write the current data to the canonical path
         with open(pickle_path, 'wb') as f:
             pickle.dump(data, f)
-        print(f"\n💾 Data saved to '{pickle_path}' for notebook visualization")
+        print(f"\n[SAVE] Data saved to '{pickle_path}' for notebook visualization")
 
         # Also write/overwrite a stable 'updated' copy (no timestamp)
         try:
             shutil.copy2(pickle_path, updated_copy)
-            print(f"💾 Updated copy written to '{updated_copy}'")
+            print(f"[SAVE] Updated copy written to '{updated_copy}'")
         except Exception as e:
-            print(f"⚠️ Failed to write updated copy '{updated_copy}': {e}")
+            print(f"[WARN] Failed to write updated copy '{updated_copy}': {e}")
 
         # No legacy back-compat writes: consumers must use files under outputs_dir
 
     except Exception as e:
-        print(f"❌ Failed to save pickle data: {e}")
+        print(f"[X] Failed to save pickle data: {e}")
 
 

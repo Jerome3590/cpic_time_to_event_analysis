@@ -136,7 +136,7 @@ def get_permutation_importance(model, X_test, y_test, feature_names, scoring='re
         baseline_score = scorer(model, X_perm, y_arr)
 
         logger.info(
-            "Permutation importance: baseline score=%.6f on %d rows × %d features",
+            "Permutation importance: baseline score=%.6f on %d rows x %d features",
             baseline_score,
             n_rows,
             n_features,
@@ -580,7 +580,7 @@ def get_importance_xgboost(model, feature_names, X_test=None, y_test=None, scori
     )
 
     if X_test is None or y_test is None:
-        # No evaluation set → return gain screen only.
+        # No evaluation set --> return gain screen only.
         gain_df = gain_df.sort_values("gain_importance", ascending=False)
         gain_df = gain_df.rename(columns={"gain_importance": "importance"})
         return gain_df

@@ -286,7 +286,7 @@ class BaseSymbolicExplainer(ABC):
     def setup_logging(self, log_file: Optional[str] = None, level: int = logging.INFO) -> None:
         """
         Configure Step 8 logging like Step 7 SHAP: one named logger, file under logs/8_ffa_analysis/,
-        plus stderr — no logging.basicConfig (avoids silent drops when root already has handlers).
+        plus stderr - no logging.basicConfig (avoids silent drops when root already has handlers).
         """
         from pathlib import Path as _Path
 
@@ -958,7 +958,7 @@ class BaseSymbolicExplainer(ABC):
             for rule_id in matched_rules:
                 rule_frequencies[rule_id] += 1
             
-            # Log progress (more often on Windows — avoids "hung" appearance under Jupyter)
+            # Log progress (more often on Windows - avoids "hung" appearance under Jupyter)
             _freq_every = 500 if os.name == "nt" else 1000
             if hasattr(self, 'logger') and (i + 1) % _freq_every == 0:
                 self.logger.info(f"  Processed {i+1}/{len(X)} instances for rule frequency computation...")
@@ -1220,13 +1220,13 @@ class BaseSymbolicExplainer(ABC):
         
         # Standard comparison works correctly for both binary and continuous features
         # For binary features with threshold=0.5:
-        # - value=0, direction=0 (<= 0.5): 0 <= 0.5 = True ✓
-        # - value=1, direction=0 (<= 0.5): 1 <= 0.5 = False ✓
-        # - value=0, direction=1 (> 0.5): 0 > 0.5 = False ✓
-        # - value=1, direction=1 (> 0.5): 1 > 0.5 = True ✓
+        # - value=0, direction=0 (<= 0.5): 0 <= 0.5 = True [1]
+        # - value=1, direction=0 (<= 0.5): 1 <= 0.5 = False [1]
+        # - value=0, direction=1 (> 0.5): 0 > 0.5 = False [1]
+        # - value=1, direction=1 (> 0.5): 1 > 0.5 = True [1]
         # 
         # For edge cases with threshold=0.0 or threshold=1.0:
-        # - threshold=0.0, direction=1 (> 0.0): matches value=1 only ✓
+        # - threshold=0.0, direction=1 (> 0.0): matches value=1 only [1]
         # - threshold=1.0, direction=0 (<= 1.0): matches both 0 and 1 (always true)
         #   This is correct behavior - if threshold=1.0, the condition is always satisfied
         

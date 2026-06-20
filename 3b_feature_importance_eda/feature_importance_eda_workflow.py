@@ -19,7 +19,7 @@ if sys.platform == 'win32':
 IS_WINDOWS = platform.system() == 'Windows'
 IS_LINUX = platform.system() == 'Linux'
 
-print(f"🖥️  Detected OS: {platform.system()}")
+print(f"[SYSTEM]  Detected OS: {platform.system()}")
 
 # Set project root based on OS
 if IS_WINDOWS:
@@ -78,7 +78,7 @@ if IS_WINDOWS:
                 break
     
     if not RSCRIPT_BIN:
-        print(f"⚠️  Rscript not found on Windows, will use auto-detection")
+        print(f"[WARN]  Rscript not found on Windows, will use auto-detection")
         if r_home and rscript_from_r_home:
             print(f"   Note: R_HOME is set to {r_home} but Rscript.exe not found at {rscript_from_r_home}")
 elif IS_LINUX:
@@ -89,10 +89,10 @@ elif IS_LINUX:
         rscript_path = shutil.which("Rscript")
         if rscript_path:
             RSCRIPT_BIN = Path(rscript_path)
-            print(f"⚠️  EC2 Rscript not found, using PATH: {RSCRIPT_BIN}")
+            print(f"[WARN]  EC2 Rscript not found, using PATH: {RSCRIPT_BIN}")
         else:
             RSCRIPT_BIN = None
-            print(f"⚠️  Rscript not found, will use auto-detection")
+            print(f"[WARN]  Rscript not found, will use auto-detection")
     else:
         print(f"   Using Linux/EC2 Rscript: {RSCRIPT_BIN}")
 else:
@@ -103,9 +103,9 @@ else:
         print(f"   Found Rscript: {RSCRIPT_BIN}")
     else:
         RSCRIPT_BIN = None
-        print(f"⚠️  Rscript not found, will use auto-detection")
+        print(f"[WARN]  Rscript not found, will use auto-detection")
 
-print(f"✅ OS detection and path setup complete\n")
+print(f"[1] OS detection and path setup complete\n")
 
 # Ensure PROJECT_ROOT is set and in sys.path before importing
 if 'PROJECT_ROOT' not in globals():
@@ -131,13 +131,13 @@ if 'PROJECT_ROOT' not in globals():
     
     if str(PROJECT_ROOT) not in sys.path:
         sys.path.insert(0, str(PROJECT_ROOT))
-    print(f"⚠️  PROJECT_ROOT was not set, using fallback: {PROJECT_ROOT}")
+    print(f"[WARN]  PROJECT_ROOT was not set, using fallback: {PROJECT_ROOT}")
 
 # Import project utilities for configuration (PROJECT_ROOT already added to sys.path above)
 try:
     from py_helpers.constants import age_band_to_fname
 except ModuleNotFoundError as e:
-    print(f"❌ Error importing py_helpers.constants: {e}")
+    print(f"[X] Error importing py_helpers.constants: {e}")
     print(f"   PROJECT_ROOT: {PROJECT_ROOT}")
     print(f"   sys.path contains PROJECT_ROOT: {str(PROJECT_ROOT) in sys.path}")
     print(f"   Please ensure you've run the OS detection section at the top of this file.")
@@ -193,11 +193,11 @@ if not AGE_BAND:
 
 AGE_BAND_FNAME = age_band_to_fname(AGE_BAND)
 
-print(f"📋 Configuration:")
+print(f"[CHECK] Configuration:")
 print(f"   Cohort: {COHORT}")
 print(f"   Age Band: {AGE_BAND} ({AGE_BAND_FNAME})")
 print(f"   Output Directory: {PROJECT_ROOT / '3b_feature_importance_eda' / 'outputs' / COHORT / AGE_BAND_FNAME}")
-print(f"\n💡 Tip: Set cohort/age_band via:")
+print(f"\n[TIP] Tip: Set cohort/age_band via:")
 print(f"   - Command-line: python feature_importance_eda_workflow.py --cohort falls --age-band 65-74")
 print(f"   - Environment: export FEATURE_IMPORTANCE_EDA_COHORT=falls && export FEATURE_IMPORTANCE_EDA_AGE_BAND=65-74")
 print(f"   - Manual: Edit COHORT and AGE_BAND variables above\n")
@@ -211,27 +211,27 @@ print(f"   - Manual: Edit COHORT and AGE_BAND variables above\n")
 # This workflow reads aggregated feature importances for each cohort and runs additional analyses to identify features that should be filtered:
 # 
 # 1. **Load aggregated feature importances** from Step 3 for the specified cohort
-# 2. **Administrative/Non-informative code filtering** → Remove non-informative ICD/CPT codes (from lookup table)
-# 3. **BupaR post-target analysis** → Identifies pre/post target events (target leakage detection; fall_injury_any for falls, ed_event for ed) with automated ratio-based detection
-# 4. **Interactive review** → Validate and manually add/remove codes to filter
-# 5. **Filter & refine** → Generate final `cohort_feature_importance.csv` with filtered features for Step 4a
+# 2. **Administrative/Non-informative code filtering** --> Remove non-informative ICD/CPT codes (from lookup table)
+# 3. **BupaR post-target analysis** --> Identifies pre/post target events (target leakage detection; fall_injury_any for falls, ed_event for ed) with automated ratio-based detection
+# 4. **Interactive review** --> Validate and manually add/remove codes to filter
+# 5. **Filter & refine** --> Generate final `cohort_feature_importance.csv` with filtered features for Step 4a
 
 # %% [markdown]
 # ## Workflow
 # 
 # ```
 # Step 3: Aggregated Feature Importances (by cohort)
-#          ↓
-#     [Load Aggregated FI] → Read cohort-specific feature importances
-#          ↓
-#     [Admin Code Filtering] → Remove non-informative ICD/CPT codes (from lookup table)
-#          ↓
-#     [BupaR Analysis] → Identify pre/post target events (target leakage) with automated detection
-#          ↓
-#     [Interactive Review] → Manually validate and update filtering codes ← YOU ARE HERE
-#          ↓
-#     [Filter & Refine] → Generate cohort_feature_importance.csv
-#          ↓
+#          v
+#     [Load Aggregated FI] --> Read cohort-specific feature importances
+#          v
+#     [Admin Code Filtering] --> Remove non-informative ICD/CPT codes (from lookup table)
+#          v
+#     [BupaR Analysis] --> Identify pre/post target events (target leakage) with automated detection
+#          v
+#     [Interactive Review] --> Manually validate and update filtering codes <-- YOU ARE HERE
+#          v
+#     [Filter & Refine] --> Generate cohort_feature_importance.csv
+#          v
 #     Step 4a: Model Data Creation
 # ```
 
@@ -270,7 +270,7 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 PLOTS_DIR = OUTPUT_DIR / "plots"
 PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
-print(f"✅ Configuration loaded")
+print(f"[1] Configuration loaded")
 print(f"   Project Root: {PROJECT_ROOT}")
 print(f"   Cohort: {COHORT}")
 print(f"   Age Band: {AGE_BAND} ({AGE_BAND_FNAME})")
@@ -303,7 +303,7 @@ aggregated_fi = None
 for path in possible_paths:
     if path.exists():
         aggregated_fi = pd.read_csv(path)
-        print(f"✅ Loaded aggregated feature importance from: {path}")
+        print(f"[1] Loaded aggregated feature importance from: {path}")
         print(f"   Total features: {len(aggregated_fi):,}")
         break
 
@@ -324,7 +324,7 @@ if aggregated_fi is None:
         _key = f"gold/{_PS}/feature_importance/{COHORT}/{AGE_BAND}/{COHORT}_{AGE_BAND_FNAME}_aggregated_feature_importance.csv"
         _obj = s3_client.get_object(Bucket=S3_BUCKET, Key=_key)
         aggregated_fi = pd.read_csv(io.BytesIO(_obj["Body"].read()))
-        print(f"✅ Loaded aggregated feature importance from S3: s3://{S3_BUCKET}/{_key}")
+        print(f"[1] Loaded aggregated feature importance from S3: s3://{S3_BUCKET}/{_key}")
         print(f"   Total features: {len(aggregated_fi):,}")
         _local = possible_paths[0]
         _local.parent.mkdir(parents=True, exist_ok=True)
@@ -334,7 +334,7 @@ if aggregated_fi is None:
         pass
 
 if aggregated_fi is None:
-    print(f"❌ Could not find aggregated feature importance file")
+    print(f"[X] Could not find aggregated feature importance file")
     print(f"   Checked paths:")
     for path in possible_paths:
         print(f"     - {path}")
@@ -342,11 +342,11 @@ if aggregated_fi is None:
     raise SystemExit(
         "Aggregated feature importance is required for Step 3b. "
         "Run Step 3a (2_feature_importance.ipynb) for this cohort/age_band first. "
-        "Do not continue—feature importances define the feature set and include potential target leakage."
+        "Do not continue-feature importances define the feature set and include potential target leakage."
     )
 else:
     # Display summary
-    print(f"\n📊 Feature Importance Summary:")
+    print(f"\n[INFO] Feature Importance Summary:")
     print(f"   Columns: {list(aggregated_fi.columns)}")
     print(f"\n   Top 10 features:")
     display(aggregated_fi.head(10))
@@ -384,7 +384,7 @@ if administrative_lookup_path.exists():
         if 'administrative_codes' in admin_lookup:
             admin_codes = admin_lookup['administrative_codes']
             
-            print(f"✅ Loaded administrative codes lookup table")
+            print(f"[1] Loaded administrative codes lookup table")
             print(f"   Administrative ICD codes: {len(admin_codes.get('icd', []))}")
             print(f"   Administrative CPT codes: {len(admin_codes.get('cpt', []))}")
             if 'hcpcs' in admin_codes:
@@ -419,20 +419,20 @@ if administrative_lookup_path.exists():
                 if len(admin_codes.get('cpt', [])) > 10:
                     print(f"     ... and {len(admin_codes.get('cpt', [])) - 10} more")
         else:
-            print(f"⚠️  No 'administrative_codes' key found in lookup table")
+            print(f"[WARN]  No 'administrative_codes' key found in lookup table")
             ADMINISTRATIVE_CODES = {'icd': set(), 'cpt': set(), 'hcpcs': set()}
     except Exception as e:
-        print(f"⚠️  Could not load administrative codes lookup table: {e}")
+        print(f"[WARN]  Could not load administrative codes lookup table: {e}")
         print(f"   Path checked: {administrative_lookup_path}")
         ADMINISTRATIVE_CODES = {'icd': set(), 'cpt': set(), 'hcpcs': set()}
 else:
-    print(f"ℹ️  Administrative codes lookup table not found. Checked paths:")
+    print(f"[INFO]  Administrative codes lookup table not found. Checked paths:")
     for _p in _administrative_lookup_candidates:
         print(f"     - {_p}")
     print(f"   Will proceed without pre-identified administrative codes")
     ADMINISTRATIVE_CODES = {'icd': set(), 'cpt': set(), 'hcpcs': set()}
 
-print(f"\n✅ Administrative code filtering ready")
+print(f"\n[1] Administrative code filtering ready")
 print(f"   These codes will be filtered in the 'Filter and Refine' step")
 
 # %% [markdown]
@@ -453,13 +453,13 @@ print(f"   These codes will be filtered in the 'Filter and Refine' step")
 
 # Check configured path first
 if RSCRIPT_BIN and RSCRIPT_BIN.exists():
-    print(f"✅ Rscript found at configured path: {RSCRIPT_BIN}")
+    print(f"[1] Rscript found at configured path: {RSCRIPT_BIN}")
     rscript_path = str(RSCRIPT_BIN)
 else:
     # Try to find in PATH
     rscript_path = shutil.which("Rscript")
     if rscript_path:
-        print(f"✅ Rscript found in PATH: {rscript_path}")
+        print(f"[1] Rscript found in PATH: {rscript_path}")
     else:
         # Try common EC2 locations
         common_paths = [
@@ -469,12 +469,12 @@ else:
         found = False
         for path in common_paths:
             if path.exists():
-                print(f"✅ Rscript found at: {path}")
+                print(f"[1] Rscript found at: {path}")
                 rscript_path = str(path)
                 found = True
                 break
         if not found:
-            print(f"⚠️  Rscript not found")
+            print(f"[WARN]  Rscript not found")
             print(f"   The Python script will try to find it automatically")
             rscript_path = None
 
@@ -581,22 +581,22 @@ bupar_results_path = OUTPUT_DIR / f"{COHORT}_{AGE_BAND_FNAME}_bupar_post_target_
 # Check if file exists in wrong location (features/ subdirectory) and move it
 wrong_location = OUTPUT_DIR / "features" / f"{COHORT}_{AGE_BAND_FNAME}_bupar_post_target_analysis.csv"
 if wrong_location.exists() and not bupar_results_path.exists():
-    print(f"⚠️  Found BupaR results in wrong location: {wrong_location}")
+    print(f"[WARN]  Found BupaR results in wrong location: {wrong_location}")
     print(f"   Moving to correct location: {bupar_results_path}")
     wrong_location.rename(bupar_results_path)
 elif wrong_location.exists() and bupar_results_path.exists():
     # Both exist - remove the one in wrong location
-    print(f"⚠️  BupaR results exist in both locations. Removing wrong location: {wrong_location}")
+    print(f"[WARN]  BupaR results exist in both locations. Removing wrong location: {wrong_location}")
     wrong_location.unlink()
 
 if bupar_results_path.exists():
     bupar_results = pd.read_csv(bupar_results_path)
-    print(f"✅ Loaded BupaR results: {len(bupar_results)} features analyzed")
+    print(f"[1] Loaded BupaR results: {len(bupar_results)} features analyzed")
     
     # Show post-target leakage features
     post_target_leakage = bupar_results[bupar_results.get('is_post_target_leakage', pd.Series([0]*len(bupar_results))) == 1]
     
-    print(f"\n📊 BupaR Analysis Summary:")
+    print(f"\n[INFO] BupaR Analysis Summary:")
     print(f"   Total features analyzed: {len(bupar_results)}")
     print(f"   Post-target leakage features: {len(post_target_leakage)}")
     
@@ -606,7 +606,7 @@ if bupar_results_path.exists():
         total_post = bupar_results['post_count'].sum()
         
         if total_pre == 0 and total_post > 0:
-            print(f"\n   ⚠️  CRITICAL FINDING: No pre-{TARGET_LABEL} events found!")
+            print(f"\n   [WARN]  CRITICAL FINDING: No pre-{TARGET_LABEL} events found!")
             print(f"   All {total_post:,} events occur AFTER the target event.")
             print(f"   This means ALL features are post-target leakage and should be filtered.")
             print(f"   Consider checking:")
@@ -615,18 +615,18 @@ if bupar_results_path.exists():
             print(f"     - Cohort definition and target event identification")
     
     if len(post_target_leakage) > 0:
-        print(f"\n   ⚠️  Post-target leakage features identified:")
+        print(f"\n   [WARN]  Post-target leakage features identified:")
         display(post_target_leakage[['feature', 'is_post_target_leakage']].head(20))
     else:
-        print(f"\n   ✅ No post-target leakage features identified")
+        print(f"\n   [1] No post-target leakage features identified")
         if COHORT == "ed":
-            print(f"   ℹ️  (Expected for ed: model_events are built before first qualifying ED visit, so post-target leakage should be minimal.)")
+            print(f"   [INFO]  (Expected for ed: model_events are built before first qualifying ED visit, so post-target leakage should be minimal.)")
     
     # Display full results
     print(f"\n   Full BupaR results:")
     display(bupar_results.head(20))
 else:
-    print(f"❌ BupaR results not found: {bupar_results_path}")
+    print(f"[X] BupaR results not found: {bupar_results_path}")
     bupar_results = pd.DataFrame()
 
 # %% [markdown]
@@ -741,8 +741,8 @@ if not bupar_results.empty and post_ratio_col:
         
         Total Features Analyzed: {len(bupar_results_viz):,}
         
-        Post-Target Leakage (≥80%): {len(bupar_results_viz[bupar_results_viz[post_ratio_col] >= 0.8]):,}
-        Pre-Target Predictive (≥80%): {len(bupar_results_viz[pre_col >= 0.8]):,}
+        Post-Target Leakage (>=80%): {len(bupar_results_viz[bupar_results_viz[post_ratio_col] >= 0.8]):,}
+        Pre-Target Predictive (>=80%): {len(bupar_results_viz[pre_col >= 0.8]):,}
         High Risk Post (50-80%): {len(bupar_results_viz[(bupar_results_viz[post_ratio_col] >= 0.5) & 
                                                       (bupar_results_viz[post_ratio_col] < 0.8)]):,}
         Low Risk (<50% post): {len(bupar_results_viz[bupar_results_viz[post_ratio_col] < 0.5]):,}
@@ -770,7 +770,7 @@ if not bupar_results.empty and post_ratio_col:
         # Save the plot
         plot_path = PLOTS_DIR / f"{COHORT}_{AGE_BAND_FNAME}_post_target_leakage_analysis.png"
         plt.savefig(plot_path, dpi=150, bbox_inches='tight')
-        print(f"✅ Saved leakage analysis plot: {plot_path}")
+        print(f"[1] Saved leakage analysis plot: {plot_path}")
         
         # Display in notebook
         display(fig)
@@ -778,7 +778,7 @@ if not bupar_results.empty and post_ratio_col:
         
         # Create a detailed table of top leakage candidates
         if len(leakage_features) > 0:
-            print(f"\n📋 Top 20 Post-{TARGET_LABEL.capitalize()} Leakage Candidates:")
+            print(f"\n[CHECK] Top 20 Post-{TARGET_LABEL.capitalize()} Leakage Candidates:")
             print(f"{'='*100}")
             top_leakage = leakage_features.nlargest(20, post_ratio_col)
             
@@ -804,13 +804,13 @@ if not bupar_results.empty and post_ratio_col:
             leakage_csv = OUTPUT_DIR / f"{COHORT}_{AGE_BAND_FNAME}_post_target_leakage_candidates.csv"
             leakage_features_sorted = leakage_features.sort_values(post_ratio_col, ascending=False)
             leakage_features_sorted.to_csv(leakage_csv, index=False)
-            print(f"\n💾 Saved detailed leakage candidates to: {leakage_csv}")
+            print(f"\n[SAVE] Saved detailed leakage candidates to: {leakage_csv}")
         
         # Also show pre-target predictive features
         if 'is_pre_target_predictive' in bupar_results_viz.columns and pre_ratio_col and pre_ratio_col in bupar_results_viz.columns:
             predictive_features = bupar_results_viz[bupar_results_viz['is_pre_target_predictive'] == 1]
             if len(predictive_features) > 0:
-                print(f"\n✅ Top 20 Pre-{TARGET_LABEL.capitalize()} Predictive Features (safe to use):")
+                print(f"\n[1] Top 20 Pre-{TARGET_LABEL.capitalize()} Predictive Features (safe to use):")
                 print(f"{'='*100}")
                 top_predictive = predictive_features.nlargest(20, pre_ratio_col)
                 
@@ -822,12 +822,12 @@ if not bupar_results.empty and post_ratio_col:
                 
                 display(display_df)
     else:
-        print(f"⚠️  No features with post-{TARGET_LABEL} ratio data available for visualization")
+        print(f"[WARN]  No features with post-{TARGET_LABEL} ratio data available for visualization")
 elif not bupar_results.empty:
-    print("ℹ️  Post-target ratio data not available (using BupaR fallback mode)")
+    print("[INFO]  Post-target ratio data not available (using BupaR fallback mode)")
     print("   Run with event-level data to get detailed ratio visualizations")
 else:
-    print("⚠️  No BupaR results available for visualization")
+    print("[WARN]  No BupaR results available for visualization")
 
 # %% [markdown]
 # ### 5. View BupaR Visualizations
@@ -848,23 +848,23 @@ if COHORT == "falls":
 # Check if plots directory exists and list available plots
 if PLOTS_DIR.exists():
     available_plots = list(PLOTS_DIR.glob("*.png"))
-    print(f"📁 Plots directory: {PLOTS_DIR}")
+    print(f"[PATH] Plots directory: {PLOTS_DIR}")
     print(f"   Found {len(available_plots)} PNG files")
     if available_plots:
         print(f"   Available plots:")
         for p in sorted(available_plots):
             print(f"     - {p.name}")
 else:
-    print(f"⚠️  Plots directory does not exist: {PLOTS_DIR}")
+    print(f"[WARN]  Plots directory does not exist: {PLOTS_DIR}")
 
-print(f"\n🔍 Looking for BupaR plots...")
+print(f"\n[CHECK] Looking for BupaR plots...")
 for plot_name in bupar_plots:
     plot_path = PLOTS_DIR / plot_name
     if plot_path.exists():
-        print(f"✅ Displaying: {plot_name}")
+        print(f"[1] Displaying: {plot_name}")
         display(Image(str(plot_path)))
     else:
-        print(f"⚠️  Plot not found: {plot_path}")
+        print(f"[WARN]  Plot not found: {plot_path}")
         # Try alternative path (in case plots are in features/ subdirectory)
         alt_path = OUTPUT_DIR / "features" / plot_name
         if alt_path.exists():
@@ -904,17 +904,17 @@ if 'ADMINISTRATIVE_CODES' in globals():
     # Add ICD codes to administrative codes
     if 'icd' in admin_codes_dict and len(admin_codes_dict['icd']) > 0:
         filtering_recommendations['administrative_codes'].update(admin_codes_dict['icd'])
-        print(f"✅ Added {len(admin_codes_dict['icd'])} administrative ICD codes (from Section B)")
+        print(f"[1] Added {len(admin_codes_dict['icd'])} administrative ICD codes (from Section B)")
     
     # Add CPT codes to administrative codes
     if 'cpt' in admin_codes_dict and len(admin_codes_dict['cpt']) > 0:
         filtering_recommendations['administrative_codes'].update(admin_codes_dict['cpt'])
-        print(f"✅ Added {len(admin_codes_dict['cpt'])} administrative CPT codes (from Section B)")
+        print(f"[1] Added {len(admin_codes_dict['cpt'])} administrative CPT codes (from Section B)")
     
     # Add HCPCS codes if present
     if 'hcpcs' in admin_codes_dict and len(admin_codes_dict['hcpcs']) > 0:
         filtering_recommendations['administrative_codes'].update(admin_codes_dict['hcpcs'])
-        print(f"✅ Added {len(admin_codes_dict['hcpcs'])} administrative HCPCS codes (from Section B)")
+        print(f"[1] Added {len(admin_codes_dict['hcpcs'])} administrative HCPCS codes (from Section B)")
     
     total_admin_codes = (
         len(admin_codes_dict.get('icd', set())) + 
@@ -924,7 +924,7 @@ if 'ADMINISTRATIVE_CODES' in globals():
     if total_admin_codes > 0:
         print(f"   Total administrative codes added: {total_admin_codes}")
 else:
-    print(f"ℹ️  ADMINISTRATIVE_CODES not found (Section B may not have been run)")
+    print(f"[INFO]  ADMINISTRATIVE_CODES not found (Section B may not have been run)")
     print(f"   Will proceed without pre-identified administrative codes")
 
 # Check for pre-existing filtering config JSON file (from previous runs)
@@ -953,7 +953,7 @@ if existing_filtering_config_path.exists():
                 start_idx = admin_count + bupar_count
                 filtering_recommendations['manual_additional'] = set(codes_list[start_idx:])
             
-            print(f"✅ Loaded pre-existing filtering config from: {existing_filtering_config_path}")
+            print(f"[1] Loaded pre-existing filtering config from: {existing_filtering_config_path}")
             print(f"   Pre-existing codes to filter: {len(existing_codes)}")
             print(f"     - Administrative codes: {admin_count}")
             print(f"     - BupaR post-target codes: {bupar_count}")
@@ -961,7 +961,7 @@ if existing_filtering_config_path.exists():
             if 'codes_to_keep' in existing_config and len(existing_config['codes_to_keep']) > 0:
                 print(f"   Codes to keep: {len(existing_config['codes_to_keep'])}")
     except Exception as e:
-        print(f"⚠️  Could not load pre-existing filtering config: {e}")
+        print(f"[WARN]  Could not load pre-existing filtering config: {e}")
         print(f"   Will proceed with fresh analysis")
 
 # Add BupaR recommendations
@@ -971,7 +971,7 @@ if 'bupar_results' in locals() and not bupar_results.empty:
     filtering_recommendations['bupar_post_target'].update(set(bupar_filtered['feature'].tolist()))
 
 # Display summary
-print("📋 Filtering Recommendations Summary:")
+print("[CHECK] Filtering Recommendations Summary:")
 print(f"   Administrative/non-informative codes: {len(filtering_recommendations['administrative_codes'])}")
 print(f"   BupaR post-target leakage codes: {len(filtering_recommendations['bupar_post_target'])}")
 print(f"   Manual additional codes: {len(filtering_recommendations['manual_additional'])}")
@@ -979,7 +979,7 @@ print(f"   Manual additional codes: {len(filtering_recommendations['manual_addit
 # Show administrative codes separately
 if len(filtering_recommendations['administrative_codes']) > 0:
     admin_codes_list = sorted(list(filtering_recommendations['administrative_codes']))
-    print(f"\n   📋 Administrative Codes to Remove ({len(admin_codes_list)} codes):")
+    print(f"\n   [CHECK] Administrative Codes to Remove ({len(admin_codes_list)} codes):")
     print(f"   {'='*80}")
     for i, code in enumerate(admin_codes_list, 1):
         print(f"   {i:4d}. {code}")
@@ -1046,7 +1046,7 @@ final_codes_to_filter = (
     filtering_recommendations['manual_additional']
 )
 
-print(f"✅ Updated filtering list")
+print(f"[1] Updated filtering list")
 print(f"   Total codes to filter: {len(final_codes_to_filter)}")
 print(f"\n   Codes to filter:")
 for code in sorted(final_codes_to_filter):
@@ -1065,7 +1065,7 @@ filtering_config_path = OUTPUT_DIR / f"{COHORT}_{AGE_BAND_FNAME}_manual_filterin
 with open(filtering_config_path, 'w') as f:
     json.dump(filtering_config, f, indent=2)
 
-print(f"\n   💾 Saved filtering config to: {filtering_config_path}")
+print(f"\n   [SAVE] Saved filtering config to: {filtering_config_path}")
 
 # %% [markdown]
 # ## E. Generate Final Refined Feature Importances
@@ -1087,7 +1087,7 @@ if 'COHORT' not in globals():
 if 'AGE_BAND' not in globals():
     raise NameError("AGE_BAND is not defined. Please run the 'Configuration and Setup' section first.")
 
-print("🚀 Filtering and Refining Features...")
+print("[START] Filtering and Refining Features...")
 print(f"Started at: {datetime.now()}")
 
 cmd = [
@@ -1105,9 +1105,9 @@ if result.stderr:
     print("STDERR:", result.stderr)
 
 if result.returncode == 0:
-    print(f"\n✅ Filter and refine completed successfully")
+    print(f"\n[1] Filter and refine completed successfully")
 else:
-    print(f"\n❌ Filter and refine failed with return code {result.returncode}")
+    print(f"\n[X] Filter and refine failed with return code {result.returncode}")
 
 # %% [markdown]
 # ### 3. Review Final Refined Feature Importances
@@ -1118,7 +1118,7 @@ refined_fi_path = OUTPUT_DIR / f"{COHORT}_{AGE_BAND_FNAME}_cohort_feature_import
 
 if refined_fi_path.exists():
     refined_fi = pd.read_csv(refined_fi_path)
-    print(f"✅ Loaded refined feature importance: {len(refined_fi)} features")
+    print(f"[1] Loaded refined feature importance: {len(refined_fi)} features")
     
     # Load filtering summary
     summary_path = OUTPUT_DIR / f"{COHORT}_{AGE_BAND_FNAME}_feature_filtering_summary.json"
@@ -1126,7 +1126,7 @@ if refined_fi_path.exists():
         with open(summary_path, 'r') as f:
             filtering_summary = json.load(f)
         
-        print(f"\n📊 Filtering Summary:")
+        print(f"\n[INFO] Filtering Summary:")
         print(f"   Original features: {filtering_summary.get('original_count', 'N/A')}")
         print(f"   Filtered by post-target: {filtering_summary.get('filtered_by_post_target', 0)}")
         print(f"   Filtered by non-value-added: {filtering_summary.get('filtered_by_non_value_added', 0)}")
@@ -1136,9 +1136,9 @@ if refined_fi_path.exists():
     print(f"\n   Top 20 refined features:")
     display(refined_fi.head(20))
     
-    print(f"\n   ✅ File ready for Step 4a: {refined_fi_path}")
+    print(f"\n   [1] File ready for Step 4a: {refined_fi_path}")
 else:
-    print(f"❌ Refined feature importance not found: {refined_fi_path}")
+    print(f"[X] Refined feature importance not found: {refined_fi_path}")
 
 # %% [markdown]
 # ### 4. Verify S3 Upload
@@ -1158,7 +1158,7 @@ s3_key = f"gold/{_VERIFY_PS}/feature_importance/{COHORT}/{AGE_BAND}/{COHORT}_{AG
 
 try:
     s3_client.head_object(Bucket=s3_bucket, Key=s3_key)
-    print(f"✅ File exists in S3: s3://{s3_bucket}/{s3_key}")
+    print(f"[1] File exists in S3: s3://{s3_bucket}/{s3_key}")
     
     # Get file size
     response = s3_client.head_object(Bucket=s3_bucket, Key=s3_key)
@@ -1167,21 +1167,21 @@ try:
     print(f"   Last modified: {response['LastModified']}")
 except s3_client.exceptions.ClientError as e:
     if e.response['Error']['Code'] == '404':
-        print(f"❌ File not found in S3: s3://{s3_bucket}/{s3_key}")
+        print(f"[X] File not found in S3: s3://{s3_bucket}/{s3_key}")
     else:
-        print(f"❌ Error checking S3: {e}")
+        print(f"[X] Error checking S3: {e}")
 
 # %% [markdown]
 # ## Summary
 # 
-# ✅ **Feature Importance EDA Interactive Analysis Complete**
+# [1] **Feature Importance EDA Interactive Analysis Complete**
 # 
 # **Outputs Generated:**
-# - ✅ Administrative code filtering (from lookup table)
-# - ✅ BupaR post-target analysis results with automated leakage detection
-# - ✅ Post-target leakage visualizations
-# - ✅ Refined `cohort_feature_importance.csv` for Step 4a
-# - ✅ Filtering summary JSON
+# - [1] Administrative code filtering (from lookup table)
+# - [1] BupaR post-target analysis results with automated leakage detection
+# - [1] Post-target leakage visualizations
+# - [1] Refined `cohort_feature_importance.csv` for Step 4a
+# - [1] Filtering summary JSON
 # 
 # **Next Steps:**
 # - Proceed to **Step 4a: Model Data Creation** using the refined feature importances

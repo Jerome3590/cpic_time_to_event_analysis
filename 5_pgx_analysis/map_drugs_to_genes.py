@@ -705,7 +705,7 @@ def ensure_global_drug_mapping(
     if df is not None and len(df) == 0:
         need_force = True
     elif global_mapping_path.exists() and global_mapping_path.stat().st_size < 64:
-        # Header-only or tiny broken file — rebuild
+        # Header-only or tiny broken file - rebuild
         need_force = True
 
     logger.warning(
@@ -793,13 +793,13 @@ def map_drugs_to_genes(
             if global_validation_path.exists():
                 logger.info(f"Validating global drug mapping from {global_validation_path}")
                 validate_fuzzy_matches(global_validation_path, min_score=fuzzy_threshold)
-                logger.info("✓ All global drug matches meet threshold requirements")
+                logger.info("[1] All global drug matches meet threshold requirements")
     
     # Validate existing fuzzy matches if validation file exists
     if validation_output_path and validation_output_path.exists():
         logger.info(f"Validating existing fuzzy matches from {validation_output_path}")
         validate_fuzzy_matches(validation_output_path, min_score=fuzzy_threshold)
-        logger.info("✓ All fuzzy matches meet threshold requirements")
+        logger.info("[1] All fuzzy matches meet threshold requirements")
     
     # Fetch CPIC drugs for fuzzy matching (from local Excel/JSON; avoid API in local_only mode)
     cpic_drug_list = []
@@ -1126,7 +1126,7 @@ def map_drugs_to_genes(
         
         # Validate all matches meet threshold
         validate_fuzzy_matches(validation_path, min_score=fuzzy_threshold)
-        logger.info(f"✓ All {len(fuzzy_matches_for_validation)} fuzzy matches meet {fuzzy_threshold}% threshold")
+        logger.info(f"[1] All {len(fuzzy_matches_for_validation)} fuzzy matches meet {fuzzy_threshold}% threshold")
     
     # Save to file if output path provided
     if output_path:

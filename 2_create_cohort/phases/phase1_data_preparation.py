@@ -58,8 +58,8 @@ def run_phase1_data_preparation(context):
         pharmacy_paths = get_gold_data_paths("pharmacy", age_band, event_year)
         if not medical_paths or not pharmacy_paths:
             raise FileNotFoundError(f"Gold paths resolved empty for age_band={age_band}, event_year={event_year}")
-        logger.info(f"→ [PHASE 1] Medical data path(s): {medical_paths}")
-        logger.info(f"→ [PHASE 1] Pharmacy data path(s): {pharmacy_paths}")
+        logger.info(f"--> [PHASE 1] Medical data path(s): {medical_paths}")
+        logger.info(f"--> [PHASE 1] Pharmacy data path(s): {pharmacy_paths}")
 
         def _parquet_from(paths):
             """SQL FROM clause: single path or UNION ALL of two paths. Escape single quotes for SQL."""
@@ -120,7 +120,7 @@ def run_phase1_data_preparation(context):
           AND event_date IS NOT NULL;
         """
         execute_sql_with_dev_validation(cohort_conn_duckdb, logger, medical_sql)
-        logger.info("→ [PHASE 1] Medical data loaded from GOLD final table")
+        logger.info("--> [PHASE 1] Medical data loaded from GOLD final table")
         
         # Apply additional medical filters into final view 'medical'
         # IMPORTANT: Calendar-year filtering enforces strict partitioning
@@ -136,7 +136,7 @@ def run_phase1_data_preparation(context):
           AND event_date <= '{event_year}-12-31';
         """
         execute_sql_with_dev_validation(cohort_conn_duckdb, logger, medical_filtered_sql)
-        logger.info("→ [PHASE 1] Medical data filtered and cleaned")
+        logger.info("--> [PHASE 1] Medical data filtered and cleaned")
         
         # Pharmacy: use GOLD final table; demographics may be absent -> set to NULLs where not present
         pharmacy_from = _parquet_from(pharmacy_paths)
@@ -162,7 +162,7 @@ def run_phase1_data_preparation(context):
           AND TRY_STRPTIME(CAST(incurred_date AS VARCHAR), '%Y%m%d') IS NOT NULL;
         """
         execute_sql_with_dev_validation(cohort_conn_duckdb, logger, pharmacy_sql)
-        logger.info("→ [PHASE 1] Pharmacy data loaded from GOLD final table")
+        logger.info("--> [PHASE 1] Pharmacy data loaded from GOLD final table")
         
         # Apply additional pharmacy filters into final view 'pharmacy'
         # IMPORTANT: Calendar-year filtering enforces strict partitioning
@@ -179,7 +179,7 @@ def run_phase1_data_preparation(context):
           AND drug_name <> '';
         """
         execute_sql_with_dev_validation(cohort_conn_duckdb, logger, pharmacy_filtered_sql)
-        logger.info("→ [PHASE 1] Pharmacy data filtered and cleaned")
+        logger.info("--> [PHASE 1] Pharmacy data filtered and cleaned")
         
         # QA checks
         # Cast COUNT(*) to BIGINT to avoid INT32 overflow for large counts
@@ -190,8 +190,8 @@ def run_phase1_data_preparation(context):
         pharmacy_count_result = cohort_conn_duckdb.sql("SELECT COUNT(*)::BIGINT FROM pharmacy").fetchone()[0]
         pharmacy_count = int(pharmacy_count_result) if pharmacy_count_result is not None else 0
         
-        logger.info(f"→ [PHASE 1] QA: Medical records: {medical_count:,}")
-        logger.info(f"→ [PHASE 1] QA: Pharmacy records: {pharmacy_count:,}")
+        logger.info(f"--> [PHASE 1] QA: Medical records: {medical_count:,}")
+        logger.info(f"--> [PHASE 1] QA: Pharmacy records: {pharmacy_count:,}")
         
         falls_primary_medical = cohort_conn_duckdb.sql("""
         SELECT
@@ -207,7 +207,7 @@ def run_phase1_data_preparation(context):
           )
         """).fetchone()
 
-        logger.info(f"→ [PHASE 1] Falls target ICD prefix QA (primary column only):")
+        logger.info(f"--> [PHASE 1] Falls target ICD prefix QA (primary column only):")
         logger.info(f"  Total falls-prefix records: {falls_primary_medical[0]:,}")
         logger.info(f"  Distinct falls-prefix patients: {falls_primary_medical[1]:,}")
         
@@ -240,7 +240,7 @@ def run_phase1_data_preparation(context):
             FROM medical
             WHERE {hcg_condition}
             """).fetchone()[0]
-            logger.info(f"→ [PHASE 1] HCG CODES CHECK (ED visit codes for ED cohort - using hcg_detail for precision):")
+            logger.info(f"--> [PHASE 1] HCG CODES CHECK (ED visit codes for ED cohort - using hcg_detail for precision):")
             logger.info(f"  Total HCG records: {total_hcg:,}")
             logger.info(f"  Distinct HCG patients: {distinct_hcg:,}")
             logger.info(f"  HCG codes breakdown (line + detail):")
@@ -248,7 +248,7 @@ def run_phase1_data_preparation(context):
                 # Row: (hcg_line, hcg_detail, count_by_code, distinct_hcg_patients)
                 logger.info(f"    '{row[0]}' / '{row[1]}': {row[2]:,} records, {row[3]:,} patients")
         else:
-            logger.warning(f"→ [PHASE 1] HCG CODES CHECK: No ED visit HCG codes found in medical data")
+            logger.warning(f"--> [PHASE 1] HCG CODES CHECK: No ED visit HCG codes found in medical data")
         
         # Force checkpoint
         force_checkpoint(cohort_conn_duckdb, logger)

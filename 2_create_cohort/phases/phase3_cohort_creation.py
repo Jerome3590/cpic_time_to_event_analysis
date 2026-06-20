@@ -57,7 +57,7 @@ def _save_phase3_log_checkpoint(context, checkpoint_name: str):
             logger=logger,
         )
     except Exception as exc:
-        logger.warning("→ [PHASE 3 STEP 3] Could not save checkpoint logs '%s': %s", checkpoint_name, exc)
+        logger.warning("--> [PHASE 3 STEP 3] Could not save checkpoint logs '%s': %s", checkpoint_name, exc)
 
 
 def run_phase3_step3_final_cohort_fact(context):
@@ -76,7 +76,7 @@ def run_phase3_step3_final_cohort_fact(context):
     time_window_days = age_params["time_window_days"]
     max_ed_visits = age_params["max_ed_visits_per_year"]
     
-    logger.info(f"→ [PHASE 3 STEP 3] Age-band-specific parameters for {age_band}:")
+    logger.info(f"--> [PHASE 3 STEP 3] Age-band-specific parameters for {age_band}:")
     logger.info(f"  Time window: {time_window_days} days (drug event before ED visit)")
     logger.info(f"  Max ED visits per year: {max_ed_visits} (excludes chronic ED users)")
 
@@ -105,12 +105,12 @@ def run_phase3_step3_final_cohort_fact(context):
         label_ed = 'ed'
         
         # Log resolved dynamic targeting state for clarity and reproducibility
-        logger.info(f"→ [PHASE 3 STEP 3] Dynamic targeting: {dynamic_targeting}")
-        logger.info(f"→ [PHASE 3 STEP 3] Falls target mode: {is_falls_target}")
-        logger.info(f"→ [PHASE 3 STEP 3] Target label: '{label_target}', ED label: '{label_ed}'")
+        logger.info(f"--> [PHASE 3 STEP 3] Dynamic targeting: {dynamic_targeting}")
+        logger.info(f"--> [PHASE 3 STEP 3] Falls target mode: {is_falls_target}")
+        logger.info(f"--> [PHASE 3 STEP 3] Target label: '{label_target}', ED label: '{label_ed}'")
         if dynamic_targeting:
-            logger.info(f"→ [PHASE 3 STEP 3] Target ICD codes: {target_icd or 'none'}")
-            logger.info(f"→ [PHASE 3 STEP 3] Target CPT codes: {target_cpt or 'none'}")
+            logger.info(f"--> [PHASE 3 STEP 3] Target ICD codes: {target_icd or 'none'}")
+            logger.info(f"--> [PHASE 3 STEP 3] Target CPT codes: {target_cpt or 'none'}")
         _save_phase3_log_checkpoint(context, "phase3_step3_start")
         
         # Enable query profiling with unique filename (prevents overwrite in parallel runs)
@@ -130,7 +130,7 @@ def run_phase3_step3_final_cohort_fact(context):
             total_rows = int(total_rows_df.iloc[0]["row_count"]) if not total_rows_df.empty else 0
             total_patients = int(total_rows_df.iloc[0]["patient_count"]) if not total_rows_df.empty else 0
             logger.info(
-                "→ [PHASE 3 STEP 3 DEBUG] unified_event_fact_table rows=%s distinct_patients=%s",
+                "--> [PHASE 3 STEP 3 DEBUG] unified_event_fact_table rows=%s distinct_patients=%s",
                 f"{total_rows:,}",
                 f"{total_patients:,}",
             )
@@ -142,7 +142,7 @@ def run_phase3_step3_final_cohort_fact(context):
             GROUP BY event_classification
             ORDER BY row_count DESC
             """).fetchdf()
-            logger.info("→ [PHASE 3 STEP 3 DEBUG] event_classification counts:\n%s", event_class_df.to_string(index=False))
+            logger.info("--> [PHASE 3 STEP 3 DEBUG] event_classification counts:\n%s", event_class_df.to_string(index=False))
 
             injury_condition = get_icd_prefixes_sql_condition(FALL_INJURY_ICD_PREFIXES)
             external_condition = get_icd_prefixes_sql_condition(FALL_EXTERNAL_CAUSE_PREFIXES)
@@ -154,7 +154,7 @@ def run_phase3_step3_final_cohort_fact(context):
                 CAST(COUNT(DISTINCT CASE WHEN {opioid_icd_condition} THEN mi_person_key END) AS BIGINT) AS target_condition_patients
             FROM unified_event_fact_table
             """).fetchdf()
-            logger.info("→ [PHASE 3 STEP 3 DEBUG] falls target prefix counts:\n%s", debug_counts_df.to_string(index=False))
+            logger.info("--> [PHASE 3 STEP 3 DEBUG] falls target prefix counts:\n%s", debug_counts_df.to_string(index=False))
             _save_phase3_log_checkpoint(context, "phase3_step3_falls_prefix_counts")
 
             cross_row_debug_df = cohort_conn_duckdb.sql(f"""
@@ -177,7 +177,7 @@ def run_phase3_step3_final_cohort_fact(context):
             FROM injury_events i
             INNER JOIN external_events e ON i.mi_person_key = e.mi_person_key
             """).fetchdf()
-            logger.info("→ [PHASE 3 STEP 3 DEBUG] falls cross-row overlap counts:\n%s", cross_row_debug_df.to_string(index=False))
+            logger.info("--> [PHASE 3 STEP 3 DEBUG] falls cross-row overlap counts:\n%s", cross_row_debug_df.to_string(index=False))
             _save_phase3_log_checkpoint(context, "phase3_step3_falls_cross_row_counts")
 
             external_sample_df = cohort_conn_duckdb.sql(f"""
@@ -190,7 +190,7 @@ def run_phase3_step3_final_cohort_fact(context):
             WHERE {external_condition}
             LIMIT 10
             """).fetchdf()
-            logger.info("→ [PHASE 3 STEP 3 DEBUG] sample external fall-cause ICD rows:\n%s", external_sample_df.to_string(index=False))
+            logger.info("--> [PHASE 3 STEP 3 DEBUG] sample external fall-cause ICD rows:\n%s", external_sample_df.to_string(index=False))
             _save_phase3_log_checkpoint(context, "phase3_step3_external_fall_sample")
 
             sample_df = cohort_conn_duckdb.sql(f"""
@@ -203,19 +203,19 @@ def run_phase3_step3_final_cohort_fact(context):
             WHERE ({injury_condition}) OR ({external_condition})
             LIMIT 10
             """).fetchdf()
-            logger.info("→ [PHASE 3 STEP 3 DEBUG] sample injury/external ICD rows:\n%s", sample_df.to_string(index=False))
+            logger.info("--> [PHASE 3 STEP 3 DEBUG] sample injury/external ICD rows:\n%s", sample_df.to_string(index=False))
             _save_phase3_log_checkpoint(context, "phase3_step3_injury_external_sample")
         except Exception as debug_exc:
-            logger.warning("→ [PHASE 3 STEP 3 DEBUG] target debug logging failed: %s", debug_exc)
+            logger.warning("--> [PHASE 3 STEP 3 DEBUG] target debug logging failed: %s", debug_exc)
             _save_phase3_log_checkpoint(context, "phase3_step3_debug_failed")
 
-        logger.info("→ [PHASE 3 STEP 3] Materializing target_patients view (computed once, reused everywhere)...")
+        logger.info("--> [PHASE 3 STEP 3] Materializing target_patients view (computed once, reused everywhere)...")
         _save_phase3_log_checkpoint(context, "phase3_step3_before_target_materialization")
         if is_falls_target:
             injury_condition = get_icd_prefixes_sql_condition(FALL_INJURY_ICD_PREFIXES)
             external_condition = get_icd_prefixes_sql_condition(FALL_EXTERNAL_CAUSE_PREFIXES)
             logger.info(
-                "→ [PHASE 3 STEP 3] FALLS target definition: same patient injury + W00-W19 external cause within +/- %s days",
+                "--> [PHASE 3 STEP 3] FALLS target definition: same patient injury + W00-W19 external cause within +/- %s days",
                 FALL_TARGET_WINDOW_DAYS,
             )
             materialize_target_patients_sql = f"""
@@ -260,7 +260,7 @@ def run_phase3_step3_final_cohort_fact(context):
         # Use fetchdf() to avoid Python connector's INT32 casting issue
         target_patient_count_df = cohort_conn_duckdb.sql("SELECT CAST(COUNT(*) AS BIGINT) AS count FROM target_patients_materialized").fetchdf()
         target_patient_count = int(target_patient_count_df.iloc[0]['count']) if not target_patient_count_df.empty else 0
-        logger.info(f"→ [PHASE 3 STEP 3] Materialized {target_patient_count:,} target patients")
+        logger.info(f"--> [PHASE 3 STEP 3] Materialized {target_patient_count:,} target patients")
         _save_phase3_log_checkpoint(context, "phase3_step3_after_target_materialization")
         
         # Check target case counts BEFORE creating cohorts
@@ -372,13 +372,13 @@ def run_phase3_step3_final_cohort_fact(context):
         if requested_cohort == "falls":
             ed_case_count = 0
             excluded_by_filters = 0
-            logger.info("→ [PHASE 3 STEP 3] Skipping ED target counts for falls-only run")
+            logger.info("--> [PHASE 3 STEP 3] Skipping ED target counts for falls-only run")
         else:
             ed_case_count_df = cohort_conn_duckdb.sql(ed_case_count_query).fetchdf()
             ed_case_count = int(ed_case_count_df.iloc[0]['count']) if not ed_case_count_df.empty else 0
             excluded_by_filters = ed_total_before_filter - ed_case_count
 
-        logger.info(f"→ [PHASE 3 STEP 3] Target case counts:")
+        logger.info(f"--> [PHASE 3 STEP 3] Target case counts:")
         logger.info(f"  FALLS target patients ({label_target}): {target_case_count:,}")
         if requested_cohort != "falls":
             logger.info(f"  ED target patients ({label_ed}): {ed_case_count:,}")
@@ -391,12 +391,12 @@ def run_phase3_step3_final_cohort_fact(context):
         _save_phase3_log_checkpoint(context, "phase3_step3_target_case_counts")
         
         if requested_cohort != "ed" and target_case_count == 0:
-            logger.warning(f"⚠️ [PHASE 3 STEP 3] WARNING: No target cases found for FALLS cohort ({label_target})")
+            logger.warning(f"[WARN] [PHASE 3 STEP 3] WARNING: No target cases found for FALLS cohort ({label_target})")
             logger.warning(f"   Cohort will be empty and will not be saved to S3")
             logger.warning(f"   Check: Are target ICD codes present in {age_band}/{event_year}?")
         
         if requested_cohort != "falls" and ed_case_count == 0:
-            logger.warning(f"⚠️ [PHASE 3 STEP 3] WARNING: No target cases found for ED cohort ({label_ed})")
+            logger.warning(f"[WARN] [PHASE 3 STEP 3] WARNING: No target cases found for ED cohort ({label_ed})")
             logger.warning(f"   Will create control-only cohort for model training consistency")
         
         # Load pre-computed average target count for control-only cohorts
@@ -412,9 +412,9 @@ def run_phase3_step3_final_cohort_fact(context):
                 if os.path.exists(config_file):
                     with open(config_file, 'r') as f:
                         config = json.load(f)
-                    logger.info(f"→ [PHASE 3 STEP 3] Loaded pre-computed averages from local config")
+                    logger.info(f"--> [PHASE 3 STEP 3] Loaded pre-computed averages from local config")
                 else:
-                    logger.info(f"→ [PHASE 3 STEP 3] Local config not found, trying S3...")
+                    logger.info(f"--> [PHASE 3 STEP 3] Local config not found, trying S3...")
                     key = f"gold/{PROJECT_SLUG}/qa_results/pre_cohort_audit/target_averages.json"
                     s3_path = f"s3://{S3_BUCKET}/{key}"
                     try:
@@ -422,30 +422,30 @@ def run_phase3_step3_final_cohort_fact(context):
                         bucket = S3_BUCKET
                         response = s3_client.get_object(Bucket=bucket, Key=key)
                         config = json.loads(response['Body'].read().decode('utf-8'))
-                        logger.info(f"→ [PHASE 3 STEP 3] Loaded pre-computed averages from S3: {s3_path}")
+                        logger.info(f"--> [PHASE 3 STEP 3] Loaded pre-computed averages from S3: {s3_path}")
                         try:
                             with open(config_file, 'w') as f:
                                 json.dump(config, f, indent=2)
-                            logger.info(f"→ [PHASE 3 STEP 3] Saved S3 config to local file for future use")
+                            logger.info(f"--> [PHASE 3 STEP 3] Saved S3 config to local file for future use")
                         except Exception:
                             pass
                     except Exception as s3_e:
-                        logger.warning(f"⚠️ Could not load from S3: {s3_e}")
+                        logger.warning(f"[WARN] Could not load from S3: {s3_e}")
                         logger.warning(f"   Pre-computed averages not available - using fallback")
             except Exception as e:
-                logger.warning(f"⚠️ Could not load pre-computed averages: {e}")
+                logger.warning(f"[WARN] Could not load pre-computed averages: {e}")
                 config = None
             
             if config and 'averages' in config and 'combined' in config['averages']:
                 avg_target_count = int(config['averages']['combined']['average'])
-                logger.info(f"→ [PHASE 3 STEP 3] Using pre-computed average combined targets: {avg_target_count:,}")
+                logger.info(f"--> [PHASE 3 STEP 3] Using pre-computed average combined targets: {avg_target_count:,}")
             else:
                 avg_target_count = 1000
-                logger.warning(f"⚠️ [PHASE 3 STEP 3] Using fallback average target count: {avg_target_count:,}")
+                logger.warning(f"[WARN] [PHASE 3 STEP 3] Using fallback average target count: {avg_target_count:,}")
         
         # Create FALLS cohort with 5:1 control-to-target ratio
         if requested_cohort == "ed":
-            logger.info("→ [PHASE 3 STEP 3] Skipping FALLS cohort creation for ed-only run")
+            logger.info("--> [PHASE 3 STEP 3] Skipping FALLS cohort creation for ed-only run")
             falls_cohort_sql = """
             CREATE OR REPLACE TEMP VIEW falls_cohort AS
             SELECT *
@@ -531,7 +531,7 @@ def run_phase3_step3_final_cohort_fact(context):
             """
         else:
             # Zero targets: create control-only cohort
-            logger.info(f"→ [PHASE 3 STEP 3] Creating control-only FALLS cohort (no targets found)")
+            logger.info(f"--> [PHASE 3 STEP 3] Creating control-only FALLS cohort (no targets found)")
             control_limit = avg_target_count * 5 if avg_target_count else 5000
             # HIGH-IMPACT FIX #2: Hash-based sampling
             falls_cohort_sql = f"""
@@ -565,9 +565,9 @@ def run_phase3_step3_final_cohort_fact(context):
             """
         execute_sql_with_dev_validation(cohort_conn_duckdb, logger, falls_cohort_sql)
         if requested_cohort == "ed":
-            logger.info("→ [PHASE 3 STEP 3] FALLS cohort skipped for ed-only run")
+            logger.info("--> [PHASE 3 STEP 3] FALLS cohort skipped for ed-only run")
         else:
-            logger.info("→ [PHASE 3 STEP 3] FALLS cohort created")
+            logger.info("--> [PHASE 3 STEP 3] FALLS cohort created")
             _save_phase3_log_checkpoint(context, "phase3_step3_falls_cohort_created")
 
         if requested_cohort == "falls":
@@ -583,9 +583,9 @@ def run_phase3_step3_final_cohort_fact(context):
             falls_controls = int(falls_ratio_df.iloc[0]['control_cases']) if not falls_ratio_df.empty and falls_ratio_df.iloc[0]['control_cases'] is not None else 0
             falls_control_ratio = falls_controls / falls_targets if falls_targets > 0 else 0
 
-            logger.info("→ [PHASE 3 STEP 3] Skipping ED cohort creation for falls-only run")
-            logger.info(f"→ [PHASE 3 STEP 3] QA: FALLS patients: {falls_count:,}")
-            logger.info(f"→ [PHASE 3 STEP 3] QA: FALLS control ratio: {falls_control_ratio:.2f}:1")
+            logger.info("--> [PHASE 3 STEP 3] Skipping ED cohort creation for falls-only run")
+            logger.info(f"--> [PHASE 3 STEP 3] QA: FALLS patients: {falls_count:,}")
+            logger.info(f"--> [PHASE 3 STEP 3] QA: FALLS control ratio: {falls_control_ratio:.2f}:1")
             _save_phase3_log_checkpoint(context, "phase3_step3_falls_only_complete")
 
             force_checkpoint(cohort_conn_duckdb, logger)
@@ -923,7 +923,7 @@ def run_phase3_step3_final_cohort_fact(context):
             """
         else:
             # Zero targets: create control-only cohort
-            logger.info(f"→ [PHASE 3 STEP 3] Creating control-only ED cohort (no targets found)")
+            logger.info(f"--> [PHASE 3 STEP 3] Creating control-only ED cohort (no targets found)")
             control_limit = avg_target_count * 5 if avg_target_count else 5000
             # HIGH-IMPACT FIX #1: Replace NOT IN with NOT EXISTS
             # HIGH-IMPACT FIX #2: Hash-based sampling
@@ -960,7 +960,7 @@ def run_phase3_step3_final_cohort_fact(context):
         # Log drug-to-ED gap distribution for validation
         if ed_case_count > 0:
             try:
-                logger.info("→ [PHASE 3 STEP 3] Drug-to-ED gap distribution (excluding 0-day discharge prescriptions)...")
+                logger.info("--> [PHASE 3 STEP 3] Drug-to-ED gap distribution (excluding 0-day discharge prescriptions)...")
                 # First, log the distribution of days_from_drug_to_ed
                 gap_distribution_df = cohort_conn_duckdb.sql(f"""
                 WITH hcg_patients_with_visit_counts AS (
@@ -1074,7 +1074,7 @@ def run_phase3_step3_final_cohort_fact(context):
                     
                     # Additional diagnostic: Show sample dates to understand why all gaps are 0
                     if int(gap_dist['min_days']) == 0 and int(gap_dist['max_days']) == 0:
-                        logger.warning("⚠️ All drug-to-ED gaps are 0 days - investigating date matching...")
+                        logger.warning("[WARN] All drug-to-ED gaps are 0 days - investigating date matching...")
                         sample_dates_df = cohort_conn_duckdb.sql(f"""
                         WITH hcg_patients_with_visit_counts AS (
                             SELECT
@@ -1281,7 +1281,7 @@ def run_phase3_step3_final_cohort_fact(context):
                 logger.warning(f"Could not calculate CTE diagnostic counts: {e}")
         
         execute_sql_with_dev_validation(cohort_conn_duckdb, logger, ed_cohort_sql)
-        logger.info("→ [PHASE 3 STEP 3] ED cohort created")
+        logger.info("--> [PHASE 3 STEP 3] ED cohort created")
         _save_phase3_log_checkpoint(context, "phase3_step3_ed_cohort_created")
         
         # Log drug window statistics for ed cohort
@@ -1299,7 +1299,7 @@ def run_phase3_step3_final_cohort_fact(context):
                 """).fetchdf()
                 drug_window_stats = drug_window_stats_df.iloc[0] if not drug_window_stats_df.empty else None
                 if drug_window_stats is not None and drug_window_stats['total_drug_events'] > 0:
-                    logger.info(f"→ [PHASE 3 STEP 3] ED Drug Window Stats (target cases):")
+                    logger.info(f"--> [PHASE 3 STEP 3] ED Drug Window Stats (target cases):")
                     logger.info(f"  Total drug events: {int(drug_window_stats['total_drug_events']):,}")
                     logger.info(f"  Patients with drugs: {int(drug_window_stats['patients_with_drugs']):,}")
                     logger.info(f"  Drugs in {time_window_days}-day window: {int(drug_window_stats['drugs_in_time_window']):,}")
@@ -1307,7 +1307,7 @@ def run_phase3_step3_final_cohort_fact(context):
                         logger.info(f"  Avg days in window: {float(drug_window_stats['avg_days_in_window']):.1f}")
                 
                 # Log temporal relationship between drug and ED events (QA check)
-                logger.info("→ [PHASE 3 STEP 3] ED Drug-ED Temporal Relationship (QA check):")
+                logger.info("--> [PHASE 3 STEP 3] ED Drug-ED Temporal Relationship (QA check):")
                 temporal_relationship_df = cohort_conn_duckdb.sql(f"""
                 WITH target_patients AS (
                     SELECT DISTINCT mi_person_key
@@ -1386,9 +1386,9 @@ def run_phase3_step3_final_cohort_fact(context):
             ed_controls = int(ed_ratio_df.iloc[0]['control_cases']) if not ed_ratio_df.empty and ed_ratio_df.iloc[0]['control_cases'] is not None else 0
             ed_control_ratio = ed_controls / ed_targets if ed_targets > 0 else 0
 
-            logger.info("→ [PHASE 3 STEP 3] Skipping FALLS QA for ed-only run")
-            logger.info(f"→ [PHASE 3 STEP 3] QA: ED patients: {ed_count:,}")
-            logger.info(f"→ [PHASE 3 STEP 3] QA: ED control ratio: {ed_control_ratio:.2f}:1")
+            logger.info("--> [PHASE 3 STEP 3] Skipping FALLS QA for ed-only run")
+            logger.info(f"--> [PHASE 3 STEP 3] QA: ED patients: {ed_count:,}")
+            logger.info(f"--> [PHASE 3 STEP 3] QA: ED control ratio: {ed_control_ratio:.2f}:1")
             _save_phase3_log_checkpoint(context, "phase3_step3_ed_only_complete")
 
             force_checkpoint(cohort_conn_duckdb, logger)
@@ -1445,26 +1445,26 @@ def run_phase3_step3_final_cohort_fact(context):
         falls_control_ratio = falls_ratio[1] / falls_ratio[0] if falls_ratio[0] > 0 else 0
         ed_control_ratio = ed_ratio[1] / ed_ratio[0] if ed_ratio[0] > 0 else 0
         
-        logger.info(f"→ [PHASE 3 STEP 3] QA: FALLS patients: {falls_count:,}")
-        logger.info(f"→ [PHASE 3 STEP 3] QA: ED patients: {ed_count:,}")
-        logger.info(f"→ [PHASE 3 STEP 3] QA: FALLS control ratio: {falls_control_ratio:.2f}:1")
-        logger.info(f"→ [PHASE 3 STEP 3] QA: ED control ratio: {ed_control_ratio:.2f}:1")
+        logger.info(f"--> [PHASE 3 STEP 3] QA: FALLS patients: {falls_count:,}")
+        logger.info(f"--> [PHASE 3 STEP 3] QA: ED patients: {ed_count:,}")
+        logger.info(f"--> [PHASE 3 STEP 3] QA: FALLS control ratio: {falls_control_ratio:.2f}:1")
+        logger.info(f"--> [PHASE 3 STEP 3] QA: ED control ratio: {ed_control_ratio:.2f}:1")
         
         if falls_ratio[0] > 0 and falls_control_ratio < 5.0:
             logger.warning(
-                f"⚠️ [PHASE 3 STEP 3] FALLS cohort has control ratio {falls_control_ratio:.2f}:1 "
+                f"[WARN] [PHASE 3 STEP 3] FALLS cohort has control ratio {falls_control_ratio:.2f}:1 "
                 f"(target: 5:1). This is expected for small partitions ({age_band}/{event_year}). "
                 f"All available controls used: Target cases: {falls_ratio[0]:,}, Control cases: {falls_ratio[1]:,}"
             )
         
         if ed_ratio[0] > 0 and ed_control_ratio < 5.0:
             logger.warning(
-                f"⚠️ [PHASE 3 STEP 3] ED cohort has control ratio {ed_control_ratio:.2f}:1 "
+                f"[WARN] [PHASE 3 STEP 3] ED cohort has control ratio {ed_control_ratio:.2f}:1 "
                 f"(target: 5:1). This is expected for small partitions ({age_band}/{event_year}). "
                 f"All available controls used: Target cases: {ed_ratio[0]:,}, Control cases: {ed_ratio[1]:,}"
             )
         
-        # target ICD-specific checks in cohorts (all 10 ICD diagnosis columns — matches exclusion logic)
+        # target ICD-specific checks in cohorts (all 10 ICD diagnosis columns - matches exclusion logic)
         f1120_condition = get_opioid_icd_sql_condition()
         # Use fetchdf() to avoid INT32 overflow in COUNT queries
         f1120_opioid_check_df = cohort_conn_duckdb.sql(f"""
@@ -1500,13 +1500,13 @@ def run_phase3_step3_final_cohort_fact(context):
             int(f1120_ed_check_df.iloc[0]['f1120_control_patients']) if not f1120_ed_check_df.empty and f1120_ed_check_df.iloc[0]['f1120_control_patients'] is not None else 0
         )
         
-        logger.info(f"→ [PHASE 3 STEP 3] target ICD IN FALLS COHORT (any of 10 ICD diagnosis columns):")
+        logger.info(f"--> [PHASE 3 STEP 3] target ICD IN FALLS COHORT (any of 10 ICD diagnosis columns):")
         logger.info(f"  Total target ICD records: {f1120_opioid_check[0]:,}")
         logger.info(f"  Distinct target ICD patients: {f1120_opioid_check[1]:,}")
         logger.info(f"  target ICD target patients: {f1120_opioid_check[2]:,}")
         logger.info(f"  target ICD control patients: {f1120_opioid_check[3]:,}")
         
-        logger.info(f"→ [PHASE 3 STEP 3] target ICD IN ED COHORT (any of 10 ICD diagnosis columns; expect 0 targets):")
+        logger.info(f"--> [PHASE 3 STEP 3] target ICD IN ED COHORT (any of 10 ICD diagnosis columns; expect 0 targets):")
         logger.info(f"  Total target ICD records: {f1120_ed_check[0]:,}")
         logger.info(f"  Distinct target ICD patients: {f1120_ed_check[1]:,}")
         logger.info(f"  target ICD target patients: {f1120_ed_check[2]:,}")
@@ -1540,7 +1540,7 @@ def run_phase3_step3_final_cohort_fact(context):
             int(ed_check_df.iloc[0]['hcg_target_patients_with_drugs']) if not ed_check_df.empty and ed_check_df.iloc[0]['hcg_target_patients_with_drugs'] is not None else 0
         )
         
-        logger.info(f"→ [PHASE 3 STEP 3] ED/HCG IN ED COHORT:")
+        logger.info(f"--> [PHASE 3 STEP 3] ED/HCG IN ED COHORT:")
         logger.info(f"  Total HCG records: {ed_check[0]:,}")
         logger.info(f"  Distinct HCG patients: {ed_check[1]:,}")
         logger.info(f"  HCG target patients: {ed_check[2]:,}")

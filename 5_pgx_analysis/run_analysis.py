@@ -234,7 +234,7 @@ def run_pgx_analysis(
             logger.info("CPIC drug mapping found locally: %s", _cpic_map_path)
         else:
             logger.warning(
-                "CPIC drug mapping NOT found at %s — subprocess will attempt S3 download. "
+                "CPIC drug mapping NOT found at %s - subprocess will attempt S3 download. "
                 "Run build_global_drug_cpic_mapping.py --force first to avoid CPIC drugs = 0.",
                 _cpic_map_path,
             )

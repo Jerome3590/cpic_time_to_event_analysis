@@ -5,18 +5,18 @@ Shared event-density (n_event) binning utilities.
 Single source of truth for the low / medium / high / extreme bin scheme used
 consistently across:
 
-  - Model training  (6_final_model/run_final_model.py)  → n_event_bin feature + per-bin models
-  - DTW trajectories (9_dashboard_visuals/dtw/create_dtw_trajectories.py) → event_density_bin
-  - FP-Growth        (9_dashboard_visuals/fpgrowth/cohort_fpgrowth.py)    → Transaction_Density
+  - Model training  (6_final_model/run_final_model.py)  --> n_event_bin feature + per-bin models
+  - DTW trajectories (9_dashboard_visuals/dtw/create_dtw_trajectories.py) --> event_density_bin
+  - FP-Growth        (9_dashboard_visuals/fpgrowth/cohort_fpgrowth.py)    --> Transaction_Density
   - BupaR / others   (any step that reads model_events.parquet)
 
 Bin definition
 --------------
 Given a numeric series of per-patient event counts (or any utilization metric):
 
-  low     : value ≤ P25
-  medium  : P25 < value ≤ P50
-  high    : P50 < value ≤ P95
+  low     : value <= P25
+  medium  : P25 < value <= P50
+  high    : P50 < value <= P95
   extreme : value > P95
 
 Cut-points: P25, P50, P95 of the population being analysed.
@@ -31,13 +31,13 @@ can use exactly the same cuts as the model that was trained:
 
 API
 ---
-  DENSITY_BINS          – ordered tuple of bin labels
-  compute_bin_thresholds(series)               → dict
-  assign_n_event_bin(value, thresholds)        → str
-  assign_n_event_bins(series, thresholds=None) → pd.Series[str]
+  DENSITY_BINS          - ordered tuple of bin labels
+  compute_bin_thresholds(series)               --> dict
+  assign_n_event_bin(value, thresholds)        --> str
+  assign_n_event_bins(series, thresholds=None) --> pd.Series[str]
   save_thresholds(thresholds, path)
-  load_thresholds(path)                        → dict | None
-  load_or_compute_thresholds(model_events_path, cache_path=None, cohort=None, age_band=None) → dict
+  load_thresholds(path)                        --> dict | None
+  load_or_compute_thresholds(model_events_path, cache_path=None, cohort=None, age_band=None) --> dict
 """
 
 from __future__ import annotations
@@ -322,7 +322,7 @@ def _step6_cohort_age_output_dirs(project_root: Path, cohort: str, age_band: str
     Step 6 output directory(ies) for (cohort, age_band): repo + data root if different.
 
     On EC2, training often writes under ``DATA_ROOT/6_final_model/outputs/`` while orchestration
-    uses ``PROJECT_ROOT`` — both must be checked so SHAP/FFA see every trained bin.
+    uses ``PROJECT_ROOT`` - both must be checked so SHAP/FFA see every trained bin.
     """
     abf = _age_band_fname(age_band)
     p1 = Path(project_root) / "6_final_model" / "outputs" / cohort / abf
@@ -447,14 +447,14 @@ def validate_per_bin_outputs(
     ----------
     project_root      : repository root
     cohort, age_band  : target cohort/age band
-    bins              : bins to check; None → all DENSITY_BINS
+    bins              : bins to check; None --> all DENSITY_BINS
     raise_on_missing  : raise FileNotFoundError listing missing bins + fix
                         commands when True (default). Set False for a
                         non-fatal status report.
 
     Returns
     -------
-    dict mapping each checked bin name → bool (True = artifacts found in outputs/)
+    dict mapping each checked bin name --> bool (True = artifacts found in outputs/)
     """
     if bins is None:
         bins = DENSITY_BINS
@@ -474,7 +474,7 @@ def validate_per_bin_outputs(
             Path(project_root) / "6_final_model" / "outputs" / cohort / abf / "bin_models" / b
         )
         print(f"  [{mark}] {b:<8s}  {bpath}")
-    print(f"  Summary — found: {found or '(none)'}  |  missing: {missing or '(none)'}")
+    print(f"  Summary - found: {found or '(none)'}  |  missing: {missing or '(none)'}")
     print()
 
     if missing and raise_on_missing:

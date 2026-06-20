@@ -36,7 +36,7 @@ def create_simple_duckdb_connection(logger, tmp_dir: Optional[str] = None, s3_re
         try:
             # First try to load (fast if already installed)
             conn.sql("LOAD httpfs;")
-            logger.debug("✅ Loaded httpfs extension (already installed)")
+            logger.debug("[1] Loaded httpfs extension (already installed)")
         except Exception as load_error:
             # Load failed - check if extension is installed but not loaded
             try:
@@ -46,28 +46,28 @@ def create_simple_duckdb_connection(logger, tmp_dir: Optional[str] = None, s3_re
                     # Extension is installed, try loading again
                     try:
                         conn.sql("LOAD httpfs;")
-                        logger.info("✅ Loaded httpfs extension (was installed)")
+                        logger.info("[1] Loaded httpfs extension (was installed)")
                     except Exception:
                         # Still fails, install fresh
                         logger.info("httpfs load failed, reinstalling...")
                         conn.sql("INSTALL httpfs; LOAD httpfs;")
-                        logger.info("✅ Installed and loaded httpfs extension")
+                        logger.info("[1] Installed and loaded httpfs extension")
                 else:
                     # Extension not installed, install it
                     logger.info("httpfs not installed, installing...")
                     conn.sql("INSTALL httpfs; LOAD httpfs;")
-                    logger.info("✅ Installed and loaded httpfs extension")
+                    logger.info("[1] Installed and loaded httpfs extension")
             except Exception:
                 # If check fails, fall back to install
                 logger.info("httpfs check failed, installing...")
                 conn.sql("INSTALL httpfs; LOAD httpfs;")
-                logger.info("✅ Installed and loaded httpfs extension")
+                logger.info("[1] Installed and loaded httpfs extension")
 
         # Check and load aws extension
         try:
             # First try to load (fast if already installed)
             conn.sql("LOAD aws;")
-            logger.debug("✅ Loaded aws extension (already installed)")
+            logger.debug("[1] Loaded aws extension (already installed)")
         except Exception as load_error:
             # Load failed - check if extension is installed but not loaded
             try:
@@ -77,28 +77,28 @@ def create_simple_duckdb_connection(logger, tmp_dir: Optional[str] = None, s3_re
                     # Extension is installed, try loading again
                     try:
                         conn.sql("LOAD aws;")
-                        logger.info("✅ Loaded aws extension (was installed)")
+                        logger.info("[1] Loaded aws extension (was installed)")
                     except Exception:
                         # Still fails, install fresh
                         logger.info("aws load failed, reinstalling...")
                         conn.sql("INSTALL aws; LOAD aws;")
-                        logger.info("✅ Installed and loaded aws extension")
+                        logger.info("[1] Installed and loaded aws extension")
                 else:
                     # Extension not installed, install it
                     logger.info("aws not installed, installing...")
                     conn.sql("INSTALL aws; LOAD aws;")
-                    logger.info("✅ Installed and loaded aws extension")
+                    logger.info("[1] Installed and loaded aws extension")
             except Exception:
                 # If check fails, fall back to install
                 logger.info("aws check failed, installing...")
                 conn.sql("INSTALL aws; LOAD aws;")
-                logger.info("✅ Installed and loaded aws extension")
+                logger.info("[1] Installed and loaded aws extension")
         conn.sql("CALL load_aws_credentials();")
         conn.sql(f"SET s3_region='{s3_region}'")
         conn.sql("SET s3_url_style='path'")
         
         # Configure S3 uploader settings for large files
-        # ⚠️ DISABLED: These parameters cause memory issues - let DuckDB auto-configure
+        # [WARN] DISABLED: These parameters cause memory issues - let DuckDB auto-configure
         #conn.sql("SET s3_uploader_max_filesize='5368709120'")  # 5GB max file size
         #conn.sql("SET s3_uploader_max_parts_per_file='10000'")  # Max parts per file
         
@@ -107,21 +107,21 @@ def create_simple_duckdb_connection(logger, tmp_dir: Optional[str] = None, s3_re
             os.makedirs(tmp_dir, exist_ok=True)
             conn.sql(f"SET temp_directory = '{tmp_dir}'")
         
-        # Set threads — CPIC_DUCKDB_THREADS takes priority, PGX_DUCKDB_THREADS as fallback
+        # Set threads - CPIC_DUCKDB_THREADS takes priority, PGX_DUCKDB_THREADS as fallback
         threads = int(os.getenv("CPIC_DUCKDB_THREADS") or os.getenv("PGX_DUCKDB_THREADS", "1"))
         conn.sql(f"PRAGMA threads={threads}")
         
-        # Memory limit — CPIC_DUCKDB_MEMORY_LIMIT takes priority
+        # Memory limit - CPIC_DUCKDB_MEMORY_LIMIT takes priority
         memory_limit = os.getenv("CPIC_DUCKDB_MEMORY_LIMIT") or os.getenv("PGX_DUCKDB_MEMORY_LIMIT")
         if memory_limit:
             conn.sql(f"SET memory_limit='{memory_limit}'")
-            logger.info(f"✅ Simple DuckDB connection created - {threads} threads, memory_limit={memory_limit}")
+            logger.info(f"[1] Simple DuckDB connection created - {threads} threads, memory_limit={memory_limit}")
         else:
-            logger.info(f"✅ Simple DuckDB connection created - {threads} threads (auto memory limit)")
+            logger.info(f"[1] Simple DuckDB connection created - {threads} threads (auto memory limit)")
         return conn
         
     except Exception as e:
-        logger.error(f"❌ Error creating DuckDB connection: {e}")
+        logger.error(f"[X] Error creating DuckDB connection: {e}")
         raise
 
 
@@ -212,13 +212,13 @@ def check_memory_usage(conn, logger, step_name: str = "Memory check"):
             else:
                 memory_str = f"{memory_usage} bytes"
             
-            logger.info(f"📊 {step_name}: Memory usage: {memory_str}")
+            logger.info(f"[INFO] {step_name}: Memory usage: {memory_str}")
             return (memory_usage,)  # match original return style (tuple with one element)
         else:
-            logger.warning(f"⚠️ Could not get memory usage from duckdb_memory()")
+            logger.warning(f"[WARN] Could not get memory usage from duckdb_memory()")
             return (0,)
     except Exception as e:
-        logger.warning(f"⚠️ Memory check failed: {e}")
+        logger.warning(f"[WARN] Memory check failed: {e}")
         return (0,)
 
 def get_duckdb_info(conn, logger):
@@ -226,18 +226,18 @@ def get_duckdb_info(conn, logger):
     try:
         # Get DuckDB version
         version = conn.sql("SELECT version()").fetchone()[0]
-        logger.info(f"📊 DuckDB version: {version}")
+        logger.info(f"[INFO] DuckDB version: {version}")
         
         # Get memory usage
         check_memory_usage(conn, logger, "Current memory usage")
         
         # Get thread count
         threads = conn.sql("SELECT current_setting('threads')").fetchone()[0]
-        logger.info(f"📊 Threads: {threads}")
+        logger.info(f"[INFO] Threads: {threads}")
         
         # Get memory limit
         memory_limit = conn.sql("SELECT current_setting('memory_limit')").fetchone()[0]
-        logger.info(f"📊 Memory limit: {memory_limit}")
+        logger.info(f"[INFO] Memory limit: {memory_limit}")
         
         return {
             "version": version,
@@ -246,7 +246,7 @@ def get_duckdb_info(conn, logger):
         }
         
     except Exception as e:
-        logger.warning(f"⚠️ Could not get DuckDB info: {e}")
+        logger.warning(f"[WARN] Could not get DuckDB info: {e}")
         return {}
 
 def close_duckdb_connection(conn, logger):
@@ -254,16 +254,16 @@ def close_duckdb_connection(conn, logger):
     try:
         if conn:
             conn.close()
-            logger.info("✅ DuckDB connection closed")
+            logger.info("[1] DuckDB connection closed")
     except Exception as e:
-        logger.warning(f"⚠️ Could not close DuckDB connection: {e}")
+        logger.warning(f"[WARN] Could not close DuckDB connection: {e}")
 
 # Legacy function names for backward compatibility
 # Removed init_duckdb() to avoid name collision with clean_medical.py
 
 def tune_duckdb_for_mp(conn, logger, memory_limit: str = "2GB", threads: int = 1):
     """Legacy function - no-op for simplified version"""
-    logger.info("📊 Simplified DuckDB - no manual tuning needed")
+    logger.info("[INFO] Simplified DuckDB - no manual tuning needed")
     return conn
 
 
@@ -424,7 +424,7 @@ def cleanup_old_duckdb_temp_dirs(max_age_hours: int = 1) -> int:
         pass
     
     if cleaned_count > 0:
-        print(f"🧹 Cleaned up {cleaned_count} old DuckDB temp directories")
+        print(f"[CLEAN] Cleaned up {cleaned_count} old DuckDB temp directories")
     
     return cleaned_count
 
@@ -571,25 +571,25 @@ def create_duckdb_conn(threads: Optional[int] = 1, tmp_dir: Optional[str] = None
         
         # Load httpfs extension (fast, per-connection operation)
         con.sql("LOAD httpfs;")
-        print(f"[duckdb-{worker_pid}] ✅ httpfs loaded", flush=True)
+        print(f"[duckdb-{worker_pid}] [1] httpfs loaded", flush=True)
         
         # Load aws extension (fast, per-connection operation)
         con.sql("LOAD aws;")
-        print(f"[duckdb-{worker_pid}] ✅ aws loaded", flush=True)
+        print(f"[duckdb-{worker_pid}] [1] aws loaded", flush=True)
         
         # Load AWS credentials (per-connection operation)
         print(f"[duckdb-{worker_pid}] Loading AWS credentials...", flush=True)
         con.sql("CALL load_aws_credentials();")
-        print(f"[duckdb-{worker_pid}] ✅ AWS credentials loaded", flush=True)
+        print(f"[duckdb-{worker_pid}] [1] AWS credentials loaded", flush=True)
         
         # Set S3 configuration (per-connection)
         con.sql("SET s3_region='us-east-1'")
         con.sql("SET s3_url_style='path'")
-        print(f"[duckdb-{worker_pid}] ✅ S3 configuration set", flush=True)
+        print(f"[duckdb-{worker_pid}] [1] S3 configuration set", flush=True)
     except Exception as e:
         import sys
         worker_pid = os.getpid()
-        print(f"[duckdb-{worker_pid}] ❌ ERROR during extension/credential setup: {e}", file=sys.stderr, flush=True)
+        print(f"[duckdb-{worker_pid}] [X] ERROR during extension/credential setup: {e}", file=sys.stderr, flush=True)
         raise
     try:
         worker_pid = os.getpid()
@@ -599,7 +599,7 @@ def create_duckdb_conn(threads: Optional[int] = 1, tmp_dir: Optional[str] = None
         print(f"[duckdb-{worker_pid}] Setting temp directory...", flush=True)
         os.makedirs(tmp_dir, exist_ok=True)
         con.sql(f"SET temp_directory = '{tmp_dir}'")
-        print(f"[duckdb-{worker_pid}] ✅ Temp directory set: {tmp_dir}", flush=True)
+        print(f"[duckdb-{worker_pid}] [1] Temp directory set: {tmp_dir}", flush=True)
         
         # Disable progress bar to avoid noisy ETA lines in logs/notebooks
         con.sql("PRAGMA enable_progress_bar=false")
@@ -614,7 +614,7 @@ def create_duckdb_conn(threads: Optional[int] = 1, tmp_dir: Optional[str] = None
             threads = 1
         print(f"[duckdb-{worker_pid}] Setting threads={threads}...", flush=True)
         con.sql(f"PRAGMA threads={threads}")
-        print(f"[duckdb-{worker_pid}] ✅ Threads set", flush=True)
+        print(f"[duckdb-{worker_pid}] [1] Threads set", flush=True)
         
         # Note: s3_max_connections is not a valid DuckDB parameter (removed)
         # S3 connection concurrency is managed automatically by DuckDB
@@ -638,13 +638,13 @@ def create_duckdb_conn(threads: Optional[int] = 1, tmp_dir: Optional[str] = None
         if s3_uploader_max_parts_per_file and s3_uploader_max_parts_per_file.isdigit():
             con.sql(f"SET s3_uploader_max_parts_per_file={int(s3_uploader_max_parts_per_file)}")
         
-        print(f"[duckdb-{worker_pid}] ✅ S3 configuration complete", flush=True)
+        print(f"[duckdb-{worker_pid}] [1] S3 configuration complete", flush=True)
         
         # Dynamic memory limit calculation to avoid aggregate oversubscription
         print(f"[duckdb-{worker_pid}] Calculating memory limit...", flush=True)
         mem_limit = calculate_memory_limit_per_worker(total_workers=total_workers)
         con.sql(f"SET memory_limit='{mem_limit}'")
-        print(f"[duckdb-{worker_pid}] ✅ Memory limit set: {mem_limit}", flush=True)
+        print(f"[duckdb-{worker_pid}] [1] Memory limit set: {mem_limit}", flush=True)
         
         # Log memory limit for debugging (only in worker processes, not enumeration)
         if total_workers and total_workers > 1:
@@ -658,7 +658,7 @@ def create_duckdb_conn(threads: Optional[int] = 1, tmp_dir: Optional[str] = None
     except Exception as e:
         import sys
         worker_pid = os.getpid()
-        print(f"[duckdb-{worker_pid}] ❌ ERROR during DuckDB configuration: {e}", file=sys.stderr, flush=True)
+        print(f"[duckdb-{worker_pid}] [X] ERROR during DuckDB configuration: {e}", file=sys.stderr, flush=True)
         # Don't silently pass - re-raise to see the error
         raise
     return con
@@ -788,7 +788,7 @@ def build_sparse_feature_parquets(
     Returns
     -------
     dict
-        Mapping with keys 'samples', 'vocab', 'events' → Path objects for the
+        Mapping with keys 'samples', 'vocab', 'events' --> Path objects for the
         written Parquet files (best-effort when using s3:// URIs).
     """
     out_dir = Path(output_dir)

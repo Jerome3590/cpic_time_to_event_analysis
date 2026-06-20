@@ -95,7 +95,7 @@ def run(profile: str | None, show_outputs: bool) -> None:
             entries.sort(key=lambda e: (e[0], e[1]))
             print("  Step: {}  ({} checkpoint(s))".format(step_name, len(entries)))
             for cohort, age_band, last_mod in entries[:12]:
-                mt_str = last_mod.strftime("%Y-%m-%d %H:%M UTC") if last_mod else "—"
+                mt_str = last_mod.strftime("%Y-%m-%d %H:%M UTC") if last_mod else "-"
                 print("    {}  {} / {}  {}".format(mt_str, cohort, age_band, ""))
             if len(entries) > 12:
                 print("    ... and {} more".format(len(entries) - 12))

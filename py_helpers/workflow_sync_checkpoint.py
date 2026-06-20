@@ -124,7 +124,7 @@ def sync_local_to_s3(
     Sync a local directory to an S3 prefix (idempotent ``aws s3 sync``).
 
     Only **uploads** new or changed objects (size / etag); does **not** pass
-    ``--delete``, so objects that exist only in S3 are left unchanged — no need
+    ``--delete``, so objects that exist only in S3 are left unchanged - no need
     to clear old files before syncing.
 
     Args:

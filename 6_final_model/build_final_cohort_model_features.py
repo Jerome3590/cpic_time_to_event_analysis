@@ -82,7 +82,7 @@ def build_final_features(project_root: Path, cohort_name: str, age_band: str) ->
     base_df['mi_person_key'] = base_df['mi_person_key'].astype(str)
     base_df['target'] = base_df['target'].astype(int).clip(lower=0, upper=1)
 
-    # n_event_bin: P25/P50/P95 of n_events → low/medium/high/extreme (same logic as run_final_model.py)
+    # n_event_bin: P25/P50/P95 of n_events --> low/medium/high/extreme (same logic as run_final_model.py)
     _thresholds = _compute_bin_thresholds(base_df['n_events'])
     base_df['n_event_bin'] = _assign_n_event_bins(base_df['n_events'], _thresholds)
     _bin_ord = {b: i for i, b in enumerate(_DENSITY_BINS)}
@@ -365,11 +365,11 @@ def build_final_features(project_root: Path, cohort_name: str, age_band: str) ->
         merged = merged.merge(base_df[['mi_person_key', 'target']], on="mi_person_key", how="left")
 
     # Drop n_events (continuous claim count) and n_event_bin (string) from the
-    # model feature table.  n_event_bin_ordinal (0–3) is the only density signal
+    # model feature table.  n_event_bin_ordinal (0-3) is the only density signal
     # the per-bin models should see; the per-bin routing already stratifies by
     # density, and the continuous n_events dominates gradient-boosted model
     # splits to the point where individual drug/ICD/CPT features cannot produce
-    # meaningful leave-one-out counterfactuals (Δp̂ ≈ 0 for any single code).
+    # meaningful leave-one-out counterfactuals (Deltap_hat ~ 0 for any single code).
     # Both columns are retained in base_df for threshold computation but must
     # not appear as model inputs.
     cols_to_drop = [c for c in ("n_events", "n_event_bin") if c in merged.columns]

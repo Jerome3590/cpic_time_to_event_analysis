@@ -596,10 +596,10 @@ class CatBoostSymbolicExplainer(BaseSymbolicExplainer):
                 feat_idx, thresh, direction = id_condition_map[lit]
                 val = instance[feat_idx]
                 cond = (val <= thresh) if direction == 0 else (val > thresh)
-                print(f" - Feature {feat_idx} ({'≤' if direction == 0 else '>'} {thresh}): {val} → {cond}")
+                print(f" - Feature {feat_idx} ({'<=' if direction == 0 else '>'} {thresh}): {val} --> {cond}")
                 if not cond:
                     all_matched = False
-            print(" → MATCH" if all_matched else " → NO MATCH")
+            print(" --> MATCH" if all_matched else " --> NO MATCH")
 
     def _batch_compute_axps(self, X: np.ndarray, target_class: int) -> List[Dict]:
         """
@@ -1436,7 +1436,7 @@ class FeatureVisualization:
             plt.text(
                 x=0,
                 y=row['feature'],
-                s=f" μ={stat['mean']:.2f}\n min={stat['min']:.2f}\n max={stat['max']:.2f}",
+                s=f" mu={stat['mean']:.2f}\n min={stat['min']:.2f}\n max={stat['max']:.2f}",
                 va='center',
                 ha='center',
                 fontsize=8,

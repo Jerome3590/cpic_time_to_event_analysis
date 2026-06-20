@@ -105,13 +105,13 @@ def main():
             print(f"OK: {job_id}")
         except subprocess.CalledProcessError as e:
             failed_count += 1
-            print(f"FAILED: {job_id} — {e}")
+            print(f"FAILED: {job_id} - {e}")
         except KeyboardInterrupt:
             print(f"\nInterrupted. Processed {i-1}/{len(jobs_to_process)}.")
             sys.exit(1)
 
     print(f"\n{'='*70}")
-    print(f"SUMMARY — {COHORT}")
+    print(f"SUMMARY - {COHORT}")
     print(f"  Success: {success_count}  Failed: {failed_count}  Total: {len(jobs_to_process)}")
     print(f"{'='*70}")
 

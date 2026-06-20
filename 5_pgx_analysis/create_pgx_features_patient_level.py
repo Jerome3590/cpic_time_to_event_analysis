@@ -59,7 +59,7 @@ def create_patient_pgx_features(
     pd.DataFrame
         Patient-level PGx features with mi_person_key, pgx_num_drugs, pgx_num_cpic_drugs
     """
-    # Load global drug-to-CPIC mapping (local → S3 → auto-build via build_global_drug_cpic_mapping.py)
+    # Load global drug-to-CPIC mapping (local --> S3 --> auto-build via build_global_drug_cpic_mapping.py)
     cpic_drug_set = set()
     try:
         import sys as _sys

@@ -42,9 +42,9 @@ conn = create_duckdb_conn()
 try:
     conn.sql("INSTALL httpfs; LOAD httpfs;")
     conn.sql("CALL load_aws_credentials('pgx');")
-    print("\n✓ AWS credentials loaded")
+    print("\n[1] AWS credentials loaded")
 except Exception as e:
-    print(f"\n⚠ Warning: Could not load AWS credentials: {e}")
+    print(f"\n[WARN] Warning: Could not load AWS credentials: {e}")
 
 # Try to resolve paths
 medical_path = None
@@ -58,24 +58,24 @@ if os.path.exists(local_medical_dir):
     parquet_files = glob.glob(f"{local_medical_dir}/*.parquet")
     if parquet_files:
         medical_path = parquet_files[0]
-        print(f"\n✓ Using local medical path: {medical_path}")
+        print(f"\n[1] Using local medical path: {medical_path}")
     else:
         medical_path = f"{local_medical_dir}/*.parquet"
 else:
     medical_path = f"s3://{S3_BUCKET}/gold/medical/age_band={age_band}/event_year={event_year}/*.parquet"
-    print(f"\n→ Using S3 medical path: {medical_path}")
+    print(f"\n--> Using S3 medical path: {medical_path}")
 
 if os.path.exists(local_pharmacy_dir):
     import glob
     parquet_files = glob.glob(f"{local_pharmacy_dir}/*.parquet")
     if parquet_files:
         pharmacy_path = parquet_files[0]
-        print(f"✓ Using local pharmacy path: {pharmacy_path}")
+        print(f"[1] Using local pharmacy path: {pharmacy_path}")
     else:
         pharmacy_path = f"{local_pharmacy_dir}/*.parquet"
 else:
     pharmacy_path = f"s3://{S3_BUCKET}/gold/pharmacy/age_band={age_band}/event_year={event_year}/*.parquet"
-    print(f"→ Using S3 pharmacy path: {pharmacy_path}")
+    print(f"--> Using S3 pharmacy path: {pharmacy_path}")
 
 try:
     # First, check the schema and sample a row to see actual column names
@@ -88,11 +88,11 @@ try:
         print(list(medical_sample.columns))
         # Check if incurred_date exists (the actual column in gold parquet files)
         if 'incurred_date' not in medical_sample.columns:
-            print("\n⚠ 'incurred_date' not found. Looking for date columns...")
+            print("\n[WARN] 'incurred_date' not found. Looking for date columns...")
             date_cols = [col for col in medical_sample.columns if 'date' in col.lower()]
             print(f"  Found date-related columns: {date_cols}")
         else:
-            print("✓ Found 'incurred_date' column in medical parquet")
+            print("[1] Found 'incurred_date' column in medical parquet")
     except Exception as e:
         print(f"Could not get medical sample: {e}")
     
@@ -105,7 +105,7 @@ try:
         print(list(pharmacy_sample.columns))
         # Check if incurred_date exists
         if 'incurred_date' not in pharmacy_sample.columns:
-            print("\n⚠ 'incurred_date' not found. Looking for date columns...")
+            print("\n[WARN] 'incurred_date' not found. Looking for date columns...")
             date_cols = [col for col in pharmacy_sample.columns if 'date' in col.lower()]
             print(f"  Found date-related columns: {date_cols}")
     except Exception as e:
@@ -186,7 +186,7 @@ try:
     result1 = conn.sql(query1).fetchdf()
     
     if result1.empty:
-        print("\n⚠ No patients found with HCG ED visits and drug events")
+        print("\n[WARN] No patients found with HCG ED visits and drug events")
     else:
         print(f"\nFound {len(result1)} patients (showing first 20):\n")
         print(result1.to_string(index=False))
@@ -262,7 +262,7 @@ try:
         result2 = conn.sql(query2).fetchdf()
         
         if result2.empty:
-            print("\n⚠ No date pairs found for sample patients")
+            print("\n[WARN] No date pairs found for sample patients")
         else:
             print(f"\nDetailed date pairs for {len(sample_patients)} sample patients:\n")
             print(result2.to_string(index=False))
@@ -334,7 +334,7 @@ try:
     result3 = conn.sql(query3).fetchdf()
     
     if result3.empty:
-        print("\n⚠ No date gaps found")
+        print("\n[WARN] No date gaps found")
     else:
         dist = result3.iloc[0]
         print(f"\nDistribution of days from drug event to ED visit (excluding 0-day discharge prescriptions):")
@@ -422,7 +422,7 @@ try:
     result4 = conn.sql(query4).fetchdf()
     
     if result4.empty:
-        print("\n⚠ No 1-7 day gap cases found")
+        print("\n[WARN] No 1-7 day gap cases found")
     else:
         print(f"\nSample of {len(result4)} cases with 1-7 day gaps (likely adverse drug events):\n")
         print(result4.to_string(index=False))
@@ -430,7 +430,7 @@ try:
         print("0-day gaps (likely discharge prescriptions) have been excluded.")
 
 except Exception as e:
-    print(f"\n✗ Error: {e}")
+    print(f"\n[X] Error: {e}")
     import traceback
     traceback.print_exc()
 finally:

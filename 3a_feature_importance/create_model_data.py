@@ -183,7 +183,7 @@ def filter_cohort_events_for_items(
     """
     Filter GOLD cohort event-level data by important items and write to model_data/.
 
-    - Reads cohort.parquet for the given (cohort_name, age_band, event_year ∈ years)
+    - Reads cohort.parquet for the given (cohort_name, age_band, event_year in years)
     - Keeps rows where ANY of the item-bearing columns match an important item:
         - drug_name
         - ALL ICD diagnosis columns (primary through ten) via ALL_ICD_DIAGNOSIS_COLUMNS
@@ -404,7 +404,7 @@ def main():
     TARGET_COHORTS = {"falls"}
     CONTROL_COHORT = "ed"
 
-    # Default years: match feature-importance temporal setup (2016–2018 train, 2019 test)
+    # Default years: match feature-importance temporal setup (2016-2018 train, 2019 test)
     YEARS = [2016, 2017, 2018, 2019]
 
     for agg_path in aggregated_files:

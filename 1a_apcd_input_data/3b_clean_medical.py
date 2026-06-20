@@ -61,19 +61,19 @@ def build_optimized_pipeline(
     safe_run_id = age_band.replace("-", "_")
     run_id = f"{safe_run_id}_{event_year}_{process_id}"  # Unique ID for this run (underscores for DuckDB table names)
 
-    logger.info(f"📊 Processing: {age_band}/{event_year}")
-    logger.info(f"📊 Process ID: {process_id}")
-    logger.info(f"📊 Medical input: {medical_input}")
-    logger.info(f"📊 Lookahead years: {lookahead_years}")
+    logger.info(f"[INFO] Processing: {age_band}/{event_year}")
+    logger.info(f"[INFO] Process ID: {process_id}")
+    logger.info(f"[INFO] Medical input: {medical_input}")
+    logger.info(f"[INFO] Lookahead years: {lookahead_years}")
 
     # Determine if we're using pre-imputed data or need demographics lookup
     using_imputed_data = demographics_lookup is None
-    logger.info(f"📊 Using pre-imputed data: {using_imputed_data}")
+    logger.info(f"[INFO] Using pre-imputed data: {using_imputed_data}")
     if demographics_lookup:
-        logger.info(f"📊 mi_person_key demographics lookup: {demographics_lookup}")
+        logger.info(f"[INFO] mi_person_key demographics lookup: {demographics_lookup}")
     else:
         logger.info(
-            f"📊 Using pre-imputed partitioned data (no demographics lookup needed)"
+            f"[INFO] Using pre-imputed partitioned data (no demographics lookup needed)"
         )
 
     # Save initial checkpoint
@@ -103,7 +103,7 @@ def build_optimized_pipeline(
                     s3 = boto3.client("s3")
                     s3.head_object(Bucket=bucket, Key=key)
                     logger.info(
-                        f"✅ Output already exists for {age_band}/{event_year}; skipping per resume=true: {output_file}"
+                        f"[1] Output already exists for {age_band}/{event_year}; skipping per resume=true: {output_file}"
                     )
                     return {
                         "output_path": output_file,
@@ -117,7 +117,7 @@ def build_optimized_pipeline(
                 # Local check
                 if os.path.exists(output_file):
                     logger.info(
-                        f"✅ Output already exists for {age_band}/{event_year}; skipping per resume=true: {output_file}"
+                        f"[1] Output already exists for {age_band}/{event_year}; skipping per resume=true: {output_file}"
                     )
                     return {
                         "output_path": output_file,
@@ -125,16 +125,16 @@ def build_optimized_pipeline(
                         "final_patients": None,
                     }
         except Exception as e:
-            logger.warning(f"⚠️ Resume check failed (continuing): {e}")
+            logger.warning(f"[WARN] Resume check failed (continuing): {e}")
 
     # Step 1: Load medical data (optimized for partitioned data if available)
-    logger.info("📊 Step 1: Loading medical data...")
+    logger.info("[INFO] Step 1: Loading medical data...")
     
     # Log memory status before loading
     try:
         if psutil:
             mem = psutil.virtual_memory()
-            logger.info(f"💾 Memory before Step 1: {mem.percent}% used, {mem.available / (1024**3):.1f}GB available")
+            logger.info(f"[SAVE] Memory before Step 1: {mem.percent}% used, {mem.available / (1024**3):.1f}GB available")
     except Exception:
         pass
 
@@ -144,15 +144,15 @@ def build_optimized_pipeline(
     partitioned_path = convert_raw_to_imputed_path(
         medical_input, "medical", age_band, event_year
     )
-    logger.info(f"📊 Checking for imputed partitioned data at: {partitioned_path}")
+    logger.info(f"[INFO] Checking for imputed partitioned data at: {partitioned_path}")
 
     # Validate that the partitioned data actually exists before trying to read it
     if not s3_directory_exists_with_files(partitioned_path, file_pattern="*.parquet"):
-        error_msg = f"❌ No parquet files found at {partitioned_path}. Run global_imputation.py first!"
+        error_msg = f"[X] No parquet files found at {partitioned_path}. Run global_imputation.py first!"
         logger.error(error_msg)
         raise FileNotFoundError(error_msg)
 
-    logger.info("✅ Using imputed partitioned data - optimized loading")
+    logger.info("[1] Using imputed partitioned data - optimized loading")
 
     # Load imputed partitioned data (standardized schema from global_imputation)
     conn.sql(
@@ -224,30 +224,30 @@ def build_optimized_pipeline(
                 AND event_date IS NOT NULL
         """
     )
-    logger.info("📊 Loaded imputed data from partitioned source")
+    logger.info("[INFO] Loaded imputed data from partitioned source")
     
     # Log memory after loading
     try:
         if psutil:
             mem = psutil.virtual_memory()
-            logger.info(f"💾 Memory after loading: {mem.percent}% used, {mem.available / (1024**3):.1f}GB available")
+            logger.info(f"[SAVE] Memory after loading: {mem.percent}% used, {mem.available / (1024**3):.1f}GB available")
     except Exception:
         pass
 
-    logger.info("📊 Counting initial records...")
+    logger.info("[INFO] Counting initial records...")
     initial_count = conn.sql(
         f"SELECT COUNT(*) FROM medical_filtered_{run_id}"
     ).fetchone()[0]
-    logger.info("📊 Counting initial patients...")
+    logger.info("[INFO] Counting initial patients...")
     initial_patients = conn.sql(
         f"SELECT COUNT(DISTINCT mi_person_key) FROM medical_filtered_{run_id}"
     ).fetchone()[0]
 
-    logger.info(f"📊 Initial medical records (year {event_year}): {initial_count:,}")
-    logger.info(f"📊 Initial medical patients: {initial_patients:,}")
+    logger.info(f"[INFO] Initial medical records (year {event_year}): {initial_count:,}")
+    logger.info(f"[INFO] Initial medical patients: {initial_patients:,}")
 
     # Step 2: Apply age band filtering
-    logger.info("📊 Step 2: Applying age band filtering...")
+    logger.info("[INFO] Step 2: Applying age band filtering...")
 
     # Age band filtering is already done in partitioned data, but let's verify
     age_band_count = conn.sql(
@@ -258,10 +258,10 @@ def build_optimized_pipeline(
     """
     ).fetchone()[0]
 
-    logger.info(f"📊 Records matching age band {age_band}: {age_band_count:,}")
+    logger.info(f"[INFO] Records matching age band {age_band}: {age_band_count:,}")
 
     # Step 3: Apply year filtering and date validation
-    logger.info("📊 Step 3: Applying year filtering and date validation...")
+    logger.info("[INFO] Step 3: Applying year filtering and date validation...")
 
     year_count = conn.sql(
         f"""
@@ -274,11 +274,11 @@ def build_optimized_pipeline(
     ).fetchone()[0]
 
     logger.info(
-        f"📊 Records matching year {event_year} with valid dates: {year_count:,}"
+        f"[INFO] Records matching year {event_year} with valid dates: {year_count:,}"
     )
 
     # Step 4: Compute data quality levels (optimized - filter first, then compute)
-    logger.info("📊 Step 4: Computing data quality levels...")
+    logger.info("[INFO] Step 4: Computing data quality levels...")
 
     # Create enriched table with quality tracking (optimized: filter first, then compute quality)
     conn.sql(
@@ -317,18 +317,18 @@ def build_optimized_pipeline(
     enriched_count = conn.sql(
         f"SELECT COUNT(*) FROM medical_enriched_{run_id}"
     ).fetchone()[0]
-    logger.info(f"📊 Enriched medical records: {enriched_count:,}")
+    logger.info(f"[INFO] Enriched medical records: {enriched_count:,}")
     
     # Log memory after quality computation
     try:
         if psutil:
             mem = psutil.virtual_memory()
-            logger.info(f"💾 Memory after Step 4 (quality): {mem.percent}% used, {mem.available / (1024**3):.1f}GB available")
+            logger.info(f"[SAVE] Memory after Step 4 (quality): {mem.percent}% used, {mem.available / (1024**3):.1f}GB available")
     except Exception:
         pass
 
     # Step 5: Final data preparation
-    logger.info("📊 Step 5: Final data preparation...")
+    logger.info("[INFO] Step 5: Final data preparation...")
 
     # Create final table with all necessary columns (consistent partitioning for Glue/Athena)
     conn.sql(
@@ -381,20 +381,20 @@ def build_optimized_pipeline(
         """
     ).fetchone()
 
-    logger.info(f"📊 Final medical records: {final_count:,}")
-    logger.info(f"📊 Final medical patients: {final_patients:,}")
+    logger.info(f"[INFO] Final medical records: {final_count:,}")
+    logger.info(f"[INFO] Final medical patients: {final_patients:,}")
     logger.info(
-        f"📊 Data quality: Complete={quality_stats[1]:,} ({quality_stats[3]}%), Partial={quality_stats[2]:,}"
+        f"[INFO] Data quality: Complete={quality_stats[1]:,} ({quality_stats[3]}%), Partial={quality_stats[2]:,}"
     )
 
     # Step 6: Write directly to S3 (memory-efficient, no intermediate copy)
-    logger.info("📊 Step 6: Writing to S3...")
+    logger.info("[INFO] Step 6: Writing to S3...")
     
     # Log memory before write
     try:
         if psutil:
             mem = psutil.virtual_memory()
-            logger.info(f"💾 Memory before write: {mem.percent}% used, {mem.available / (1024**3):.1f}GB available")
+            logger.info(f"[SAVE] Memory before write: {mem.percent}% used, {mem.available / (1024**3):.1f}GB available")
     except Exception:
         pass
 
@@ -406,13 +406,13 @@ def build_optimized_pipeline(
     try:
         validate_data_for_blank_strings(f"medical_final_{run_id}", logger, conn)
     except Exception as val_e:
-        logger.warning(f"⚠️ Blank string validation warning: {val_e}")
+        logger.warning(f"[WARN] Blank string validation warning: {val_e}")
 
     # Write directly to gold partition (memory-efficient: no ORDER BY, no intermediate copy)
     gold_partition = f"{output_root}/age_band={age_band}/event_year={event_year}"
     gold_file = f"{gold_partition}/medical_data.parquet"
     
-    logger.info(f"Writing Parquet (direct) → {gold_file}")
+    logger.info(f"Writing Parquet (direct) --> {gold_file}")
     
     conn.sql(
         f"""
@@ -427,8 +427,8 @@ def build_optimized_pipeline(
     # COPY command is synchronous - S3 write is complete at this point
     # Verify the write succeeded by checking row count
     actual_output = f"{output_root}/age_band={age_band}/event_year={event_year}/medical_data.parquet"
-    logger.info(f"✓ S3 write complete (synchronous): {actual_output}")
-    logger.info(f"✓ Wrote {final_count:,} records, {final_patients:,} patients")
+    logger.info(f"[1] S3 write complete (synchronous): {actual_output}")
+    logger.info(f"[1] Wrote {final_count:,} records, {final_patients:,} patients")
 
     # Save final checkpoint after successful completion
     save_logs_checkpoint(
@@ -441,22 +441,22 @@ def build_optimized_pipeline(
     )
 
     # Clean up temporary views and tables
-    logger.info("📊 Cleaning up temporary objects...")
+    logger.info("[INFO] Cleaning up temporary objects...")
     try:
         conn.sql(f"DROP TABLE IF EXISTS medical_filtered_{run_id}")
         conn.sql(f"DROP TABLE IF EXISTS medical_enriched_{run_id}")
         conn.sql(f"DROP TABLE IF EXISTS medical_final_{run_id}")
-        logger.info("✅ Temporary objects cleaned up")
+        logger.info("[1] Temporary objects cleaned up")
         
         # Log final memory status
         try:
             if psutil:
                 mem = psutil.virtual_memory()
-                logger.info(f"💾 Memory after cleanup: {mem.percent}% used, {mem.available / (1024**3):.1f}GB available")
+                logger.info(f"[SAVE] Memory after cleanup: {mem.percent}% used, {mem.available / (1024**3):.1f}GB available")
         except Exception:
             pass
     except Exception as e:
-        logger.warning(f"⚠️ Could not clean up some temporary objects: {e}")
+        logger.warning(f"[WARN] Could not clean up some temporary objects: {e}")
 
     return {
         "output_path": actual_output,
@@ -501,9 +501,9 @@ def main():
     )
 
     # Version logging
-    print("🔧 Using Version 1997 + 13 - Simplified Medical Clean Pipeline")
+    print("[CONFIG] Using Version 1997 + 13 - Simplified Medical Clean Pipeline")
     print(
-        "🚀 SIMPLIFIED - Removed complex DuckDB chaining to fix memory_limit issues (based on pharmacy template)"
+        "[START] SIMPLIFIED - Removed complex DuckDB chaining to fix memory_limit issues (based on pharmacy template)"
     )
 
     # Setup logging first
@@ -513,24 +513,24 @@ def main():
     )
 
     # Log pipeline configuration
-    logger.info("🚀 Starting Simplified Medical Pipeline")
+    logger.info("[START] Starting Simplified Medical Pipeline")
     logger.info("=" * 80)
-    logger.info(f"📊 Processing: {args.age_band}/{args.event_year}")
-    logger.info(f"📊 Medical input: {args.medical_input}")
+    logger.info(f"[INFO] Processing: {args.age_band}/{args.event_year}")
+    logger.info(f"[INFO] Medical input: {args.medical_input}")
     if args.demographics_lookup:
-        logger.info(f"📊 Demographics lookup: {args.demographics_lookup}")
+        logger.info(f"[INFO] Demographics lookup: {args.demographics_lookup}")
     else:
-        logger.info(f"📊 Using pre-imputed data (no demographics lookup needed)")
-    logger.info(f"📊 Output root: {args.output_root}")
-    logger.info(f"📊 Lookahead years: {args.lookahead_years}")
-    logger.info("📊 Threads: Auto-detected, Memory: Auto-detected")
-    logger.info(f"📊 Log level: {args.log_level}")
+        logger.info(f"[INFO] Using pre-imputed data (no demographics lookup needed)")
+    logger.info(f"[INFO] Output root: {args.output_root}")
+    logger.info(f"[INFO] Lookahead years: {args.lookahead_years}")
+    logger.info("[INFO] Threads: Auto-detected, Memory: Auto-detected")
+    logger.info(f"[INFO] Log level: {args.log_level}")
     logger.info("=" * 80)
 
     # NOTE: Skipping raw silver path validation since this pipeline uses pre-imputed partitioned data
     # The actual imputed partitioned paths are validated within build_optimized_pipeline()
-    logger.info("ℹ️  Using pre-imputed partitioned data (validation happens per-partition)")
-    logger.info(f"📊 Raw medical input path (for reference): {args.medical_input}")
+    logger.info("[INFO]  Using pre-imputed partitioned data (validation happens per-partition)")
+    logger.info(f"[INFO] Raw medical input path (for reference): {args.medical_input}")
 
     # Create simplified DuckDB connection
     conn = create_simple_duckdb_connection(logger, args.tmp_dir)
@@ -559,7 +559,7 @@ def main():
         )
         # Data is now written directly to gold location, no need for copy logic
         logger.info(
-            f"✅ Pipeline completed successfully for {args.age_band}/{args.event_year}"
+            f"[1] Pipeline completed successfully for {args.age_band}/{args.event_year}"
         )
 
         # Save logs to S3 on success
@@ -572,18 +572,18 @@ def main():
                 "apcd_input_data",
                 logger=logger,
             )
-            logger.info("✅ Logs saved to S3")
+            logger.info("[1] Logs saved to S3")
         except Exception as e:
-            logger.warning(f"⚠️ Could not save logs to S3: {e}")
+            logger.warning(f"[WARN] Could not save logs to S3: {e}")
 
-        print(f"✅ SUCCESS: Processed {args.age_band}/{args.event_year}")
+        print(f"[1] SUCCESS: Processed {args.age_band}/{args.event_year}")
         if results["final_count"] is not None and results["final_patients"] is not None:
             print(
-                f"📊 Final count: {results['final_count']:,} records, {results['final_patients']:,} patients"
+                f"[INFO] Final count: {results['final_count']:,} records, {results['final_patients']:,} patients"
             )
         else:
-            print("📊 Final count: Skipped (data already exists)")
-        print(f"📁 Output: {results['output_path']}")
+            print("[INFO] Final count: Skipped (data already exists)")
+        print(f"[PATH] Output: {results['output_path']}")
 
         # Aggregated summary (success)
         try:
@@ -602,17 +602,17 @@ def main():
                 bucket, root = bucket.split("/", 1)
             key = f"{root.rstrip('/')}/clean_medical/run_id={run_id}/summary.json" if root else f"clean_medical/run_id={run_id}/summary.json"
             boto3.client('s3').put_object(Bucket=bucket, Key=key, Body=json.dumps(agg, indent=2).encode('utf-8'), ContentType='application/json')
-            logger.info(f"📊 Aggregated summary saved: s3://{bucket}/{key}")
+            logger.info(f"[INFO] Aggregated summary saved: s3://{bucket}/{key}")
         except Exception as e:
-            logger.warning(f"⚠️ Could not save aggregated summary: {e}")
+            logger.warning(f"[WARN] Could not save aggregated summary: {e}")
 
     except MemoryError as e:
-        logger.error(f"❌ OUT OF MEMORY: Pipeline killed by memory exhaustion")
-        logger.error(f"❌ Error: {e}", exc_info=True)
+        logger.error(f"[X] OUT OF MEMORY: Pipeline killed by memory exhaustion")
+        logger.error(f"[X] Error: {e}", exc_info=True)
         try:
             if psutil:
                 mem = psutil.virtual_memory()
-                logger.error(f"💾 Memory at failure: {mem.percent}% used, {mem.available / (1024**3):.1f}GB available")
+                logger.error(f"[SAVE] Memory at failure: {mem.percent}% used, {mem.available / (1024**3):.1f}GB available")
         except:
             pass
         
@@ -625,11 +625,11 @@ def main():
                 args.event_year,
                 reason="out_of_memory",
             )
-            logger.info("✅ Error logs saved to S3")
+            logger.info("[1] Error logs saved to S3")
         except Exception as save_e:
-            logger.warning(f"⚠️ Could not save error logs to S3: {save_e}")
+            logger.warning(f"[WARN] Could not save error logs to S3: {save_e}")
         
-        print(f"❌ FAILED: OUT OF MEMORY - {e}")
+        print(f"[X] FAILED: OUT OF MEMORY - {e}")
         # Aggregated summary (OOM)
         try:
             run_finished = time.time()
@@ -645,18 +645,18 @@ def main():
                 bucket, root = bucket.split("/", 1)
             key = f"{root.rstrip('/')}/clean_medical/run_id={run_id}/summary.json" if root else f"clean_medical/run_id={run_id}/summary.json"
             boto3.client('s3').put_object(Bucket=bucket, Key=key, Body=json.dumps(agg, indent=2).encode('utf-8'), ContentType='application/json')
-            logger.info(f"📊 Aggregated summary saved: s3://{bucket}/{key}")
+            logger.info(f"[INFO] Aggregated summary saved: s3://{bucket}/{key}")
         except Exception as e2:
-            logger.warning(f"⚠️ Could not save aggregated summary: {e2}")
+            logger.warning(f"[WARN] Could not save aggregated summary: {e2}")
         sys.exit(137)  # 128 + 9 (SIGKILL)
     except Exception as e:
-        logger.error(f"❌ Optimized pipeline failed: {e}", exc_info=True)
+        logger.error(f"[X] Optimized pipeline failed: {e}", exc_info=True)
         
         # Log memory at failure
         try:
             if psutil:
                 mem = psutil.virtual_memory()
-                logger.error(f"💾 Memory at failure: {mem.percent}% used, {mem.available / (1024**3):.1f}GB available")
+                logger.error(f"[SAVE] Memory at failure: {mem.percent}% used, {mem.available / (1024**3):.1f}GB available")
         except:
             pass
 
@@ -671,11 +671,11 @@ def main():
                 logger=logger,
                 reason="error",
             )
-            logger.info("✅ Error logs saved to S3")
+            logger.info("[1] Error logs saved to S3")
         except Exception as save_e:
-            logger.warning(f"⚠️ Could not save error logs to S3: {save_e}")
+            logger.warning(f"[WARN] Could not save error logs to S3: {save_e}")
 
-        print(f"❌ FAILED: {e}")
+        print(f"[X] FAILED: {e}")
         # Aggregated summary (error)
         try:
             run_finished = time.time()
@@ -691,18 +691,18 @@ def main():
                 bucket, root = bucket.split("/", 1)
             key = f"{root.rstrip('/')}/clean_medical/run_id={run_id}/summary.json" if root else f"clean_medical/run_id={run_id}/summary.json"
             boto3.client('s3').put_object(Bucket=bucket, Key=key, Body=json.dumps(agg, indent=2).encode('utf-8'), ContentType='application/json')
-            logger.info(f"📊 Aggregated summary saved: s3://{bucket}/{key}")
+            logger.info(f"[INFO] Aggregated summary saved: s3://{bucket}/{key}")
         except Exception as e2:
-            logger.warning(f"⚠️ Could not save aggregated summary: {e2}")
+            logger.warning(f"[WARN] Could not save aggregated summary: {e2}")
         sys.exit(1)
 
     finally:
         # Clean up DuckDB connection
         try:
             conn.close()
-            logger.info("🧹 DuckDB connection closed")
+            logger.info("[CLEAN] DuckDB connection closed")
         except Exception as e:
-            logger.warning(f"⚠️ Could not close DuckDB connection: {e}")
+            logger.warning(f"[WARN] Could not close DuckDB connection: {e}")
 
 
 if __name__ == "__main__":

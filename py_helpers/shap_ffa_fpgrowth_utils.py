@@ -36,7 +36,7 @@ def _parse_feature_name(feature: str) -> Tuple[str, str]:
         return ("cpt", code) if code else ("other", "")
     if feature.startswith("item_"):
         code = feature[5:].strip()
-        # Handle second-level prefixes (item_drug_X → drug_X → X)
+        # Handle second-level prefixes (item_drug_X --> drug_X --> X)
         if code.startswith("drug_"):
             code = code[5:].strip()
             return ("drug", code) if code else ("other", "")
@@ -304,8 +304,8 @@ def _allowed_codes_needs_regen(path: Path) -> bool:
     for c in codes:
         code_type, _ = _parse_feature_name(str(c))
         if code_type == "drug":
-            return False   # at least one drug code present — file is valid
-    return True            # only CPT/ICD/other codes — stale, needs regen
+            return False   # at least one drug code present - file is valid
+    return True            # only CPT/ICD/other codes - stale, needs regen
 
 
 def _load_final_feature_importance(

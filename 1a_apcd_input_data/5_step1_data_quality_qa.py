@@ -71,13 +71,13 @@ def run_qa_with_connection(
     all_partitions: bool = False,
 ):
     """Run QA validation using an existing DuckDB connection."""
-    logging.info(f"🔍 Starting QA validation for {dataset_type} using existing connection...")
+    logging.info(f"[CHECK] Starting QA validation for {dataset_type} using existing connection...")
     
     results = {}
     
     # Run validations
     if dataset_type in ["pharmacy", "both"]:
-        logging.info("🏪 Starting pharmacy data validation...")
+        logging.info("[PHARMACY] Starting pharmacy data validation...")
         pharmacy_results = validate_pharmacy_data(conn, partition_filter, sample_size, age_bands, years, all_partitions)
         print_summary_report(pharmacy_results)
         results["pharmacy"] = pharmacy_results
@@ -86,7 +86,7 @@ def run_qa_with_connection(
             save_qa_results(pharmacy_results, "pharmacy")
     
     if dataset_type in ["medical", "both"]:
-        logging.info("🏥 Starting medical data validation...")
+        logging.info("[MEDICAL] Starting medical data validation...")
         medical_results = validate_medical_data(conn, partition_filter, sample_size, age_bands, years, all_partitions)
         print_summary_report(medical_results)
         results["medical"] = medical_results
@@ -94,7 +94,7 @@ def run_qa_with_connection(
         if save_results:
             save_qa_results(medical_results, "medical")
     
-    logging.info("✅ QA validation complete!")
+    logging.info("[1] QA validation complete!")
     return results
 
 
@@ -285,7 +285,7 @@ def validate_pharmacy_data(
     gold_glob: Optional[str] = None,
 ) -> Dict:
     """Streamlined validation of pharmacy data - schema and data quality only."""
-    logging.info("🔍 Starting pharmacy data validation...")
+    logging.info("[CHECK] Starting pharmacy data validation...")
     
     results = {
         "dataset": "pharmacy",
@@ -311,7 +311,7 @@ def validate_pharmacy_data(
         """)
         
         # 1. Schema validation
-        logging.info("📋 Validating schema...")
+        logging.info("[CHECK] Validating schema...")
         schema = conn.sql("DESCRIBE pharmacy_qa").fetchall()
         expected_cols = ['mi_person_key', 'drug_name', 'standardized_drug_name', 'incurred_date', 
                         'event_year', 'age_band', 'gender_source', 'age_source']
@@ -326,7 +326,7 @@ def validate_pharmacy_data(
         }
         
         # 2. Basic counts and structure
-        logging.info("📊 Validating basic data structure...")
+        logging.info("[INFO] Validating basic data structure...")
         structure_stats = conn.sql("""
             SELECT
               COUNT(*) as total_records,
@@ -348,7 +348,7 @@ def validate_pharmacy_data(
         }
         
         # 3. Missing/null critical fields
-        logging.info("🔍 Checking for missing critical data...")
+        logging.info("[CHECK] Checking for missing critical data...")
         missing_stats = conn.sql("""
             SELECT
               COUNT(*) as total_records,
@@ -367,7 +367,7 @@ def validate_pharmacy_data(
         }
         
         # 4. Date validation - invalid dates and year mismatches
-        logging.info("📅 Validating dates...")
+        logging.info("[DATE] Validating dates...")
         date_stats = conn.sql("""
             SELECT
               COUNT(*) as total_records,
@@ -388,7 +388,7 @@ def validate_pharmacy_data(
         }
         
         # 5. Age band validation - invalid bands only
-        logging.info("👥 Validating age bands...")
+        logging.info("[PATIENTS] Validating age bands...")
         age_band_list = conn.sql("""
             SELECT DISTINCT age_band
             FROM pharmacy_qa
@@ -406,7 +406,7 @@ def validate_pharmacy_data(
         }
         
         # 6. Drug name inspection - identify bad values
-        logging.info("💊 Inspecting drug name values...")
+        logging.info("[DRUG] Inspecting drug name values...")
         
         # Top 25 high frequency (most common)
         top_high = conn.sql("""
@@ -487,10 +487,10 @@ def validate_pharmacy_data(
         if results["validations"]["age_bands"]["has_invalid_bands"]:
             results["summary"]["critical_issues"].append(f"Invalid age bands: {results['validations']['age_bands']['invalid_bands']}")
         
-        logging.info(f"✅ Pharmacy validation complete: {results['summary']['overall_status']}")
+        logging.info(f"[1] Pharmacy validation complete: {results['summary']['overall_status']}")
         
     except Exception as e:
-        logging.error(f"❌ Pharmacy validation failed: {e}")
+        logging.error(f"[X] Pharmacy validation failed: {e}")
         results["summary"] = {"overall_status": "ERROR", "error": str(e)}
     
     return results
@@ -506,7 +506,7 @@ def validate_medical_data(
     gold_glob: Optional[str] = None,
 ) -> Dict:
     """Streamlined validation of medical data - schema and data quality only."""
-    logging.info("🔍 Starting medical data validation...")
+    logging.info("[CHECK] Starting medical data validation...")
     
     results = {
         "dataset": "medical",
@@ -531,7 +531,7 @@ def validate_medical_data(
         """)
         
         # 1. Schema validation
-        logging.info("📋 Validating schema...")
+        logging.info("[CHECK] Validating schema...")
         schema = conn.sql("DESCRIBE medical_qa").fetchall()
         expected_cols = ['mi_person_key', 'primary_icd_diagnosis_code', 'event_date', 'event_year', 
                         'age_band', 'data_quality_level', 'member_gender', 'member_race']
@@ -546,7 +546,7 @@ def validate_medical_data(
         }
         
         # 2. Basic counts and structure
-        logging.info("📊 Validating basic data structure...")
+        logging.info("[INFO] Validating basic data structure...")
         structure_stats = conn.sql("""
             SELECT
               COUNT(*) as total_records,
@@ -568,7 +568,7 @@ def validate_medical_data(
         }
         
         # 3. Missing/null critical fields
-        logging.info("🔍 Checking for missing critical data...")
+        logging.info("[CHECK] Checking for missing critical data...")
         missing_stats = conn.sql("""
             SELECT
               COUNT(*) as total_records,
@@ -589,7 +589,7 @@ def validate_medical_data(
         }
         
         # 4. Date validation - invalid dates and year mismatches
-        logging.info("📅 Validating dates...")
+        logging.info("[DATE] Validating dates...")
         date_stats = conn.sql("""
             SELECT
               COUNT(*) as total_records,
@@ -610,7 +610,7 @@ def validate_medical_data(
         }
         
         # 5. Age band validation - invalid bands only
-        logging.info("👥 Validating age bands...")
+        logging.info("[PATIENTS] Validating age bands...")
         age_band_list = conn.sql("""
             SELECT DISTINCT age_band
             FROM medical_qa
@@ -657,10 +657,10 @@ def validate_medical_data(
         if results["validations"]["age_bands"]["has_invalid_bands"]:
             results["summary"]["critical_issues"].append(f"Invalid age bands: {results['validations']['age_bands']['invalid_bands']}")
         
-        logging.info(f"✅ Medical validation complete: {results['summary']['overall_status']}")
+        logging.info(f"[1] Medical validation complete: {results['summary']['overall_status']}")
         
     except Exception as e:
-        logging.error(f"❌ Medical validation failed: {e}")
+        logging.error(f"[X] Medical validation failed: {e}")
         results["summary"] = {"overall_status": "ERROR", "error": str(e)}
     
     return results
@@ -679,56 +679,56 @@ def save_qa_results(results: Dict, dataset_type: str):
             json.dump(results, f, indent=2, default=str)
         
         # Upload to S3 (simplified - would use boto3 in practice)
-        logging.info(f"📤 Saving QA results to {output_path}")
+        logging.info(f"[UPLOAD] Saving QA results to {output_path}")
         # In a real implementation, would use boto3 to upload
-        logging.info(f"✅ QA results saved successfully")
+        logging.info(f"[1] QA results saved successfully")
         
         # Clean up temp file
         os.remove(temp_path)
         
     except Exception as e:
-        logging.error(f"❌ Failed to save QA results: {e}")
+        logging.error(f"[X] Failed to save QA results: {e}")
 
 
 def print_summary_report(results: Dict):
     """Print a human-readable summary report."""
     print("\n" + "="*80)
-    print(f"🔍 DATA QUALITY ASSESSMENT REPORT - {results['dataset'].upper()}")
+    print(f"[CHECK] DATA QUALITY ASSESSMENT REPORT - {results['dataset'].upper()}")
     print("="*80)
     print(f"Timestamp: {results['timestamp']}")
     print(f"Overall Status: {results['summary']['overall_status']}")
     
     # Handle ERROR status gracefully
     if results['summary']['overall_status'] == 'ERROR':
-        print(f"❌ Error: {results['summary'].get('error', 'Unknown error')}")
+        print(f"[X] Error: {results['summary'].get('error', 'Unknown error')}")
         print("="*80)
         return
     
     print(f"Validations Passed: {results['summary']['passing_validations']}/{results['summary']['total_validations']}")
     
     if results['summary'].get('critical_issues'):
-        print("\n🚨 CRITICAL ISSUES:")
+        print("\n[CRITICAL] CRITICAL ISSUES:")
         for issue in results['summary']['critical_issues']:
-            print(f"  ❌ {issue}")
+            print(f"  [X] {issue}")
     else:
-        print("\n✅ No critical issues detected")
+        print("\n[1] No critical issues detected")
     
-    print(f"\n📊 BASIC METRICS:")
+    print(f"\n[INFO] BASIC METRICS:")
     print(f"  Total Records: {results['validations']['structure']['total_records']:,}")
     print(f"  Unique Patients: {results['validations']['structure']['unique_patients']:,}")
     print(f"  Age Bands: {results['validations']['structure']['unique_age_bands']}")
     print(f"  Years: {results['validations']['structure']['unique_years']}")
     
-    print(f"\n📅 DATE RANGE:")
+    print(f"\n[DATE] DATE RANGE:")
     print(f"  Earliest: {results['validations']['structure']['earliest_date']}")
     print(f"  Latest: {results['validations']['structure']['latest_date']}")
     
-    print(f"\n🔍 DATA QUALITY CHECKS:")
-    print(f"  Schema Valid: {'✅ Yes' if results['validations']['schema']['schema_valid'] else '❌ No'}")
+    print(f"\n[CHECK] DATA QUALITY CHECKS:")
+    print(f"  Schema Valid: {'[1] Yes' if results['validations']['schema']['schema_valid'] else '[X] No'}")
     if results['validations']['schema']['missing_columns']:
         print(f"    Missing columns: {results['validations']['schema']['missing_columns']}")
     
-    print(f"  Critical Nulls: {'❌ Yes' if results['validations']['missing_data']['has_critical_nulls'] else '✅ No'}")
+    print(f"  Critical Nulls: {'[X] Yes' if results['validations']['missing_data']['has_critical_nulls'] else '[1] No'}")
     if results['validations']['missing_data']['has_critical_nulls']:
         print(f"    Null person_key: {results['validations']['missing_data']['null_person_key']:,}")
         if results['dataset'] == 'pharmacy':
@@ -737,29 +737,29 @@ def print_summary_report(results: Dict):
             print(f"    Null ICD code: {results['validations']['missing_data']['null_icd']:,}")
         print(f"    Null age_band: {results['validations']['missing_data']['null_age_band']:,}")
     
-    print(f"  Date Issues: {'❌ Yes' if results['validations']['date_quality']['has_date_issues'] else '✅ No'}")
+    print(f"  Date Issues: {'[X] Yes' if results['validations']['date_quality']['has_date_issues'] else '[1] No'}")
     if results['validations']['date_quality']['has_date_issues']:
         print(f"    Null dates: {results['validations']['date_quality']['null_dates']:,}")
         print(f"    Invalid years: {results['validations']['date_quality']['invalid_years']:,}")
         print(f"    Year mismatches: {results['validations']['date_quality']['year_mismatch']:,}")
     
-    print(f"  Invalid Age Bands: {'❌ Yes' if results['validations']['age_bands']['has_invalid_bands'] else '✅ No'}")
+    print(f"  Invalid Age Bands: {'[X] Yes' if results['validations']['age_bands']['has_invalid_bands'] else '[1] No'}")
     if results['validations']['age_bands']['has_invalid_bands']:
         print(f"    Invalid bands: {results['validations']['age_bands']['invalid_bands']}")
     
     # Drug name inspection for pharmacy
     if results['dataset'] == 'pharmacy' and 'drug_name_inspection' in results['validations']:
-        print(f"\n💊 DRUG NAME INSPECTION:")
+        print(f"\n[DRUG] DRUG NAME INSPECTION:")
         
-        print(f"\n  📈 TOP 25 HIGH FREQUENCY (Most Common):")
+        print(f"\n  [CHART] TOP 25 HIGH FREQUENCY (Most Common):")
         for i, drug_info in enumerate(results['validations']['drug_name_inspection']['high_frequency'], 1):
             print(f"    {i:2d}. {drug_info['drug_name']:50s} : {drug_info['frequency']:,} prescriptions")
         
-        print(f"\n  📉 TOP 25 LOW FREQUENCY (Potential Outliers/Bad Values):")
+        print(f"\n  [LOW] TOP 25 LOW FREQUENCY (Potential Outliers/Bad Values):")
         for i, drug_info in enumerate(results['validations']['drug_name_inspection']['low_frequency'], 1):
             print(f"    {i:2d}. {drug_info['drug_name']:50s} : {drug_info['frequency']:,} prescriptions")
         
-        print(f"\n  📊 TOP 25 MID FREQUENCY (Middle of Distribution):")
+        print(f"\n  [INFO] TOP 25 MID FREQUENCY (Middle of Distribution):")
         for i, drug_info in enumerate(results['validations']['drug_name_inspection']['mid_frequency'], 1):
             print(f"    {i:2d}. {drug_info['drug_name']:50s} : {drug_info['frequency']:,} prescriptions")
     
@@ -795,7 +795,7 @@ def main():
     )
     
     # Initialize DuckDB (standalone mode)
-    logging.info("🚀 Initializing DuckDB with S3 support...")
+    logging.info("[START] Initializing DuckDB with S3 support...")
     conn = init_duckdb()
     
     # Build partition filter and lists for partition-first reads
@@ -817,7 +817,7 @@ def main():
 
     # Run validations: parallel across partitions if requested, otherwise run in-process
     if args.workers and args.workers > 1:
-        logging.info(f"🚀 Running QA in parallel with {args.workers} workers...")
+        logging.info(f"[START] Running QA in parallel with {args.workers} workers...")
         agg = run_qa_parallel(
             dataset_type=args.type,
             sample_size=args.sample_size,
@@ -830,18 +830,18 @@ def main():
         # Print concise aggregated summaries
         if 'pharmacy' in agg:
             ph = agg['pharmacy']
-            logging.info(f"📦 Pharmacy partitions processed: {ph['summary']['partition_count']}")
-            logging.info(f"📊 Pharmacy overall status: {ph['summary']['overall_status']}")
-            logging.info(f"✅ Passing validations: {ph['summary'].get('passing_validations',0)} / {ph['summary'].get('total_validations',0)}")
+            logging.info(f"[PACKAGE] Pharmacy partitions processed: {ph['summary']['partition_count']}")
+            logging.info(f"[INFO] Pharmacy overall status: {ph['summary']['overall_status']}")
+            logging.info(f"[1] Passing validations: {ph['summary'].get('passing_validations',0)} / {ph['summary'].get('total_validations',0)}")
             if ph['summary'].get('critical_issues'):
-                logging.warning(f"⚠ Pharmacy critical issues (sample): {ph['summary']['critical_issues'][:5]}")
+                logging.warning(f"[WARN] Pharmacy critical issues (sample): {ph['summary']['critical_issues'][:5]}")
         if 'medical' in agg:
             md = agg['medical']
-            logging.info(f"📦 Medical partitions processed: {md['summary']['partition_count']}")
-            logging.info(f"📊 Medical overall status: {md['summary']['overall_status']}")
-            logging.info(f"✅ Passing validations: {md['summary'].get('passing_validations',0)} / {md['summary'].get('total_validations',0)}")
+            logging.info(f"[PACKAGE] Medical partitions processed: {md['summary']['partition_count']}")
+            logging.info(f"[INFO] Medical overall status: {md['summary']['overall_status']}")
+            logging.info(f"[1] Passing validations: {md['summary'].get('passing_validations',0)} / {md['summary'].get('total_validations',0)}")
             if md['summary'].get('critical_issues'):
-                logging.warning(f"⚠ Medical critical issues (sample): {md['summary']['critical_issues'][:5]}")
+                logging.warning(f"[WARN] Medical critical issues (sample): {md['summary']['critical_issues'][:5]}")
     else:
         # Run single-process QA using the provided DuckDB connection
         run_qa_with_connection(

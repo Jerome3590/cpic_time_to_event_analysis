@@ -155,7 +155,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
         if actual_cohort_names:
             # Use the first distinct value found
             actual_cohort_name = actual_cohort_names[0][0]
-            logger.info(f"📊 Detected cohort_name in file: '{actual_cohort_name}'")
+            logger.info(f"[INFO] Detected cohort_name in file: '{actual_cohort_name}'")
         else:
             # Fallback: try both case variations
             expected_lower = cohort_name.lower()
@@ -177,7 +177,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                 pass
         
         if actual_cohort_name is None:
-            logger.warning(f"⚠️  Could not determine cohort_name value in file, using expected value")
+            logger.warning(f"[WARN]  Could not determine cohort_name value in file, using expected value")
             actual_cohort_name = cohort_name.lower()
 
         # Create view for cohort data, filtering to only the actual cohort_name found in file
@@ -260,7 +260,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                     if all_cohort_names:
                         cohort_names_str = ", ".join([f"{name}={count}" for name, count in all_cohort_names])
                         expected_cohort_name = cohort_name.lower()
-                        logger.info(f"📊 Found cohort_name values in file: {cohort_names_str} (expected: {expected_cohort_name})")
+                        logger.info(f"[INFO] Found cohort_name values in file: {cohort_names_str} (expected: {expected_cohort_name})")
                     
                     total_in_file = conn.sql(f"SELECT COUNT(*) FROM read_parquet('{s3_path}')").fetchone()[0]
                     total_after_filter = conn.sql("SELECT COUNT(*) FROM cohort_qa").fetchone()[0]
@@ -268,7 +268,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                         unexpected_count = total_in_file - total_after_filter
                         cohort_validation["unexpected_cohort_name_count"] = unexpected_count
                         logger.warning(
-                            f"⚠️  Found {unexpected_count} records with unexpected cohort_name in file "
+                            f"[WARN]  Found {unexpected_count} records with unexpected cohort_name in file "
                             f"(filtered out from analysis). Total in file: {total_in_file}, "
                             f"Total after filter: {total_after_filter}"
                         )
@@ -278,7 +278,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
 
                 if mismatch_count > 0:
                     logger.warning(
-                        f"⚠️  Cohort name mismatch: Found {mismatch_count} records with cohort_name != '{expected_cohort_name}' "
+                        f"[WARN]  Cohort name mismatch: Found {mismatch_count} records with cohort_name != '{expected_cohort_name}' "
                         f"(this should be 0 after filtering)"
                     )
             except Exception as e:
@@ -307,7 +307,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                 partition_validation["age_band_mismatch_count"] = age_band_mismatch
                 partition_validation["age_band_match"] = age_band_mismatch == 0
                 if age_band_mismatch > 0:
-                    logger.warning(f"⚠️  Age band mismatch: Found {age_band_mismatch} records with age_band != '{age_band}'")
+                    logger.warning(f"[WARN]  Age band mismatch: Found {age_band_mismatch} records with age_band != '{age_band}'")
             except Exception as e:
                 logger.debug(f"Could not validate age_band: {e}")
         
@@ -323,7 +323,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                 partition_validation["event_year_mismatch_count"] = event_year_mismatch
                 partition_validation["event_year_match"] = event_year_mismatch == 0
                 if event_year_mismatch > 0:
-                    logger.warning(f"⚠️  Event year mismatch: Found {event_year_mismatch} records with event_year != {event_year}")
+                    logger.warning(f"[WARN]  Event year mismatch: Found {event_year_mismatch} records with event_year != {event_year}")
             except Exception as e:
                 logger.debug(f"Could not validate event_year: {e}")
         
@@ -387,7 +387,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                 is_target_case_validation["valid_values"] = invalid_values == 0
                 
                 if invalid_values > 0:
-                    logger.warning(f"⚠️  Invalid is_target_case values: Found {invalid_values} records with values not in (0, 1)")
+                    logger.warning(f"[WARN]  Invalid is_target_case values: Found {invalid_values} records with values not in (0, 1)")
                 
                 # Get target/control counts
                 row2 = conn.sql(
@@ -411,9 +411,9 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                     elif control_cases > 0:
                         # Control-only cohort
                         ctrl_ratio = None
-                        logger.info(f"ℹ️  Control-only cohort detected: {control_cases} controls, 0 targets")
+                        logger.info(f"[INFO]  Control-only cohort detected: {control_cases} controls, 0 targets")
                     else:
-                        logger.warning("⚠️  Empty cohort: no target cases and no control cases")
+                        logger.warning("[WARN]  Empty cohort: no target cases and no control cases")
                 
                 # Validate 5:1 ratio (with tolerance for control-only cohorts)
                 if target_cases > 0:
@@ -429,8 +429,8 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                         )
                         if not ratio_validation["ratio_within_tolerance"]:
                             logger.warning(
-                                f"⚠️  Control-to-target ratio out of tolerance: {ctrl_ratio:.2f}:1 "
-                                f"(expected ~5:1, tolerance ±0.5)"
+                                f"[WARN]  Control-to-target ratio out of tolerance: {ctrl_ratio:.2f}:1 "
+                                f"(expected ~5:1, tolerance +/-0.5)"
                             )
                     results["metrics"]["ratio_validation"] = ratio_validation
                     
@@ -459,7 +459,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                 cohort_separation_validation["unexpected_cohort_name_count"] = unexpected
                 cohort_separation_validation["cohort_name_valid"] = unexpected == 0
                 if unexpected > 0:
-                    logger.warning(f"⚠️  Found {unexpected} records with unexpected cohort_name (expected '{cohort_name}')")
+                    logger.warning(f"[WARN]  Found {unexpected} records with unexpected cohort_name (expected '{cohort_name}')")
             except Exception as e:
                 logger.debug(f"Could not validate cohort_name: {e}")
                 cohort_separation_validation["error"] = str(e)
@@ -513,7 +513,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
 
                     if non_null_count > 0:
                         logger.warning(
-                            f"⚠️  ed control rows should have NULL days_to_target_event, "
+                            f"[WARN]  ed control rows should have NULL days_to_target_event, "
                             f"but found {non_null_count} non-null values"
                         )
 
@@ -549,7 +549,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                     null_validation["null_counts"][field] = null_count
                     if null_count > 0:
                         null_validation["critical_nulls_found"] = True
-                        logger.warning(f"⚠️  Critical field '{field}' has {null_count} NULL values")
+                        logger.warning(f"[WARN]  Critical field '{field}' has {null_count} NULL values")
 
             except Exception as e:
                 logger.debug(f"Could not validate NULL values: {e}")
@@ -579,7 +579,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                 age_validation["age_in_valid_range"] = invalid_ages == 0
 
                 if invalid_ages > 0:
-                    logger.warning(f"⚠️  Found {invalid_ages} records with age outside valid range (1-114)")
+                    logger.warning(f"[WARN]  Found {invalid_ages} records with age outside valid range (1-114)")
 
                 # Check age matches age_band
                 if "age_band" in cols:
@@ -597,7 +597,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                     age_validation["age_matches_band"] = age_band_check == 0
 
                     if age_band_check > 0:
-                        logger.warning(f"⚠️  Found {age_band_check} records where age doesn't match age_band")
+                        logger.warning(f"[WARN]  Found {age_band_check} records where age doesn't match age_band")
 
             except Exception as e:
                 logger.debug(f"Could not validate age: {e}")
@@ -627,7 +627,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                 date_validation["date_year_matches_event_year"] = year_mismatch == 0
 
                 if year_mismatch > 0:
-                    logger.warning(f"⚠️  Found {year_mismatch} records where event_date year doesn't match event_year")
+                    logger.warning(f"[WARN]  Found {year_mismatch} records where event_date year doesn't match event_year")
 
                 # Check dates are in valid range (2016-2020)
                 out_of_range = conn.sql("""
@@ -640,7 +640,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                 date_validation["dates_in_valid_range"] = out_of_range == 0
 
                 if out_of_range > 0:
-                    logger.warning(f"⚠️  Found {out_of_range} records with dates outside valid range (2016-2020)")
+                    logger.warning(f"[WARN]  Found {out_of_range} records with dates outside valid range (2016-2020)")
 
             except Exception as e:
                 logger.debug(f"Could not validate dates: {e}")
@@ -669,7 +669,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                 target_code_validation["fall_cause_icd_count"] = w_count
                 target_code_validation["fall_cause_icd_present"] = w_count > 0
                 if not target_code_validation["fall_cause_icd_present"]:
-                    logger.warning("⚠️  falls cohort: no W00–W19 external cause codes found in case records")
+                    logger.warning("[WARN]  falls cohort: no W00-W19 external cause codes found in case records")
             except Exception as e:
                 logger.debug(f"Could not validate fall cause codes: {e}")
                 target_code_validation["error"] = str(e)
@@ -697,7 +697,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
 
                     if incorrect_nulls > 0:
                         logger.warning(
-                            f"⚠️  falls cohort: {incorrect_nulls} case records with NULL first_fall_date"
+                            f"[WARN]  falls cohort: {incorrect_nulls} case records with NULL first_fall_date"
                         )
 
                 elif cohort_name == "ed" and "first_ed_date" in cols:
@@ -712,7 +712,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
 
                     if incorrect_nulls > 0:
                         logger.warning(
-                            f"⚠️  ed cohort: {incorrect_nulls} case records with NULL first_ed_date"
+                            f"[WARN]  ed cohort: {incorrect_nulls} case records with NULL first_ed_date"
                         )
 
             except Exception as e:
@@ -742,7 +742,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                     data_completeness_validation["medical_events_have_icd"] = medical_missing_icd == 0
 
                     if medical_missing_icd > 0:
-                        logger.warning(f"⚠️  Found {medical_missing_icd} medical events without ICD diagnosis code")
+                        logger.warning(f"[WARN]  Found {medical_missing_icd} medical events without ICD diagnosis code")
 
                 # Pharmacy events should have drug_name
                 if "drug_name" in cols:
@@ -755,7 +755,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                     data_completeness_validation["pharmacy_events_have_drug"] = pharmacy_missing_drug == 0
 
                     if pharmacy_missing_drug > 0:
-                        logger.warning(f"⚠️  Found {pharmacy_missing_drug} pharmacy events without drug_name")
+                        logger.warning(f"[WARN]  Found {pharmacy_missing_drug} pharmacy events without drug_name")
 
             except Exception as e:
                 logger.debug(f"Could not validate data completeness: {e}")
@@ -784,7 +784,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                 metadata_validation["created_at_populated"] = created_at_nulls == 0
 
                 if created_at_nulls > 0:
-                    logger.warning(f"⚠️  Found {created_at_nulls} records with NULL created_at")
+                    logger.warning(f"[WARN]  Found {created_at_nulls} records with NULL created_at")
 
             if "age_band_filter" in cols:
                 age_band_filter_mismatch = conn.sql(f"""
@@ -796,7 +796,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                 metadata_validation["age_band_filter_matches"] = age_band_filter_mismatch == 0
 
                 if age_band_filter_mismatch > 0:
-                    logger.warning(f"⚠️  Found {age_band_filter_mismatch} records where age_band_filter doesn't match '{age_band}'")
+                    logger.warning(f"[WARN]  Found {age_band_filter_mismatch} records where age_band_filter doesn't match '{age_band}'")
 
             if "event_year_filter" in cols:
                 event_year_filter_mismatch = conn.sql(f"""
@@ -808,7 +808,7 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
                 metadata_validation["event_year_filter_matches"] = event_year_filter_mismatch == 0
 
                 if event_year_filter_mismatch > 0:
-                    logger.warning(f"⚠️  Found {event_year_filter_mismatch} records where event_year_filter doesn't match {event_year}")
+                    logger.warning(f"[WARN]  Found {event_year_filter_mismatch} records where event_year_filter doesn't match {event_year}")
 
         except Exception as e:
             logger.debug(f"Could not validate metadata fields: {e}")
@@ -973,12 +973,12 @@ def run_cohort_qa(conn, cohort_name: str, age_band: str, event_year: int, logger
         if status_issues:
             results["status"] = "FAIL"
             results["status_issues"] = status_issues
-            logger.error(f"❌ QA FAILED for {cohort_name} ({age_band}, {event_year}): {len(status_issues)} issue(s)")
+            logger.error(f"[X] QA FAILED for {cohort_name} ({age_band}, {event_year}): {len(status_issues)} issue(s)")
         elif missing:
             results["status"] = "WARN"
         else:
             results["status"] = "PASS"
-            logger.info(f"✅ QA PASSED for {cohort_name} ({age_band}, {event_year})")
+            logger.info(f"[1] QA PASSED for {cohort_name} ({age_band}, {event_year})")
         
         return results
 
@@ -1283,7 +1283,7 @@ def main():
                     drug_window_str = f" drugs_30day={drug_window_val.get('pharmacy_events_in_30day_window', 0)}"
 
                 logger.info(
-                    f"{band} {year} {name} → status={status}{flags_str} "
+                    f"{band} {year} {name} --> status={status}{flags_str} "
                     f"records={metrics.get('total_records')} "
                     f"patients={metrics.get('distinct_patients')} "
                     f"targets={metrics.get('target_cases', 0)} "

@@ -86,15 +86,15 @@ def discover_from_pharmacy(raw_path: str, min_year: int = None, max_year: int = 
             # Fallback to original path if conversion fails
             silver_path = raw_path
         
-        log.info(f"🔍 Raw path: {raw_path}")
-        log.info(f"🔍 Looking for partitions in: {silver_path}")
+        log.info(f"[CHECK] Raw path: {raw_path}")
+        log.info(f"[CHECK] Looking for partitions in: {silver_path}")
         
         # Parse S3 URL
         parsed = urlparse(silver_path)
         bucket = parsed.netloc
         prefix = parsed.path.lstrip('/')
         
-        log.info(f"🔍 S3 bucket: {bucket}, prefix: {prefix}")
+        log.info(f"[CHECK] S3 bucket: {bucket}, prefix: {prefix}")
         
         # Create S3 client
         s3_client = boto3.client('s3')
@@ -136,7 +136,7 @@ def discover_from_pharmacy(raw_path: str, min_year: int = None, max_year: int = 
                             log.debug(f"Skipping malformed path: {key} ({e})")
                             continue
         
-        log.info(f"🔍 Found {total_objects} total objects, extracted {len(pairs)} partition pairs")
+        log.info(f"[CHECK] Found {total_objects} total objects, extracted {len(pairs)} partition pairs")
         
         # Remove duplicates and sort
         pairs = sorted(list(set(pairs)))
@@ -170,14 +170,14 @@ def discover_from_medical(raw_path: str, min_year: int=None, max_year: int=None,
             # Fallback to original path if conversion fails
             silver_path = raw_path
         
-        log.info(f"🔍 Looking for partitions in: {silver_path}")
+        log.info(f"[CHECK] Looking for partitions in: {silver_path}")
         
         # Parse S3 URL
         parsed = urlparse(silver_path)
         bucket = parsed.netloc
         prefix = parsed.path.lstrip('/')
         
-        log.info(f"🔍 S3 bucket: {bucket}, prefix: {prefix}")
+        log.info(f"[CHECK] S3 bucket: {bucket}, prefix: {prefix}")
         
         # Create S3 client
         s3_client = boto3.client('s3')
@@ -219,7 +219,7 @@ def discover_from_medical(raw_path: str, min_year: int=None, max_year: int=None,
                             log.debug(f"Skipping malformed path: {key} ({e})")
                             continue
         
-        log.info(f"🔍 Found {total_objects} total objects, extracted {len(pairs)} partition pairs")
+        log.info(f"[CHECK] Found {total_objects} total objects, extracted {len(pairs)} partition pairs")
         
         # Remove duplicates and sort
         pairs = sorted(list(set(pairs)))
@@ -311,9 +311,9 @@ def run_task(job: str, ab: str, yr: int, lookahead: int,
     if os.path.exists(worker_temp_dir):
         try:
             shutil.rmtree(worker_temp_dir)
-            print(f"🧹 Cleaned up existing tmp directory: {worker_temp_dir}")
+            print(f"[CLEAN] Cleaned up existing tmp directory: {worker_temp_dir}")
         except Exception as e:
-            print(f"⚠️ Warning: Could not clean tmp directory {worker_temp_dir}: {e}")
+            print(f"[WARN] Warning: Could not clean tmp directory {worker_temp_dir}: {e}")
     
     # Also clean up any old duckdb worker directories to free space
     try:
@@ -323,7 +323,7 @@ def run_task(job: str, ab: str, yr: int, lookahead: int,
             if os.path.exists(old_dir):
                 try:
                     shutil.rmtree(old_dir)
-                    print(f"🧹 Cleaned up old tmp directory: {old_dir}")
+                    print(f"[CLEAN] Cleaned up old tmp directory: {old_dir}")
                 except Exception:
                     pass  # Ignore errors for old directories
         
@@ -334,7 +334,7 @@ def run_task(job: str, ab: str, yr: int, lookahead: int,
                 # Only clean files older than 1 hour to avoid race conditions
                 if os.path.getmtime(temp_file) < time.time() - 3600:
                     os.unlink(temp_file)
-                    print(f"🧹 Cleaned up old temp file: {temp_file}")
+                    print(f"[CLEAN] Cleaned up old temp file: {temp_file}")
             except Exception:
                 pass  # Ignore errors for temp files
         
@@ -343,12 +343,12 @@ def run_task(job: str, ab: str, yr: int, lookahead: int,
         for temp_file in worker_temp_files:
             try:
                 os.unlink(temp_file)
-                print(f"🧹 Cleaned up worker temp file: {temp_file}")
+                print(f"[CLEAN] Cleaned up worker temp file: {temp_file}")
             except Exception:
                 pass  # Ignore errors for temp files
                 
     except Exception as e:
-        print(f"⚠️ Warning: Could not clean old tmp directories: {e}")
+        print(f"[WARN] Warning: Could not clean old tmp directories: {e}")
     
     # Check available disk space before proceeding
     try:
@@ -357,28 +357,28 @@ def run_task(job: str, ab: str, yr: int, lookahead: int,
         total, used, free = shutil.disk_usage("/tmp")
         free_gb = free // (1024**3)
         if free_gb < 2:  # Less than 2GB free
-            worker_log.warning(f"⚠️ Low disk space: {free_gb}GB free in /tmp")
+            worker_log.warning(f"[WARN] Low disk space: {free_gb}GB free in /tmp")
             # Try to clean up more aggressively
             try:
                 subprocess.run(["find", "/tmp", "-name", "duckdb*", "-type", "f", "-mtime", "+0", "-delete"], 
                              capture_output=True, timeout=30)
                 subprocess.run(["find", "/tmp", "-name", "duckdb*", "-type", "d", "-mtime", "+0", "-exec", "rm", "-rf", "{}", "+"], 
                              capture_output=True, timeout=30)
-                worker_log.info("🧹 Aggressive cleanup completed")
+                worker_log.info("[CLEAN] Aggressive cleanup completed")
             except Exception as e:
-                worker_log.warning(f"⚠️ Aggressive cleanup failed: {e}")
+                worker_log.warning(f"[WARN] Aggressive cleanup failed: {e}")
         else:
-            worker_log.info(f"💾 Disk space OK: {free_gb}GB free in /tmp")
+            worker_log.info(f"[SAVE] Disk space OK: {free_gb}GB free in /tmp")
     except Exception as e:
-        worker_log.warning(f"⚠️ Could not check disk space: {e}")
+        worker_log.warning(f"[WARN] Could not check disk space: {e}")
     
     # Log system resources for debugging
     try:
         import psutil
         memory = psutil.virtual_memory()
-        worker_log.info(f"💾 System memory: {memory.percent}% used, {memory.available // (1024**3)}GB available")
+        worker_log.info(f"[SAVE] System memory: {memory.percent}% used, {memory.available // (1024**3)}GB available")
         cpu_count = psutil.cpu_count()
-        worker_log.info(f"🖥️ CPU cores: {cpu_count}")
+        worker_log.info(f"[SYSTEM] CPU cores: {cpu_count}")
     except ImportError:
         worker_log.debug("psutil not available for resource monitoring")
     except Exception as e:
@@ -547,7 +547,7 @@ def main():
     ap.add_argument("--pairs-file")
 
     ap.add_argument("--workers", type=int, default=min(48, (os.cpu_count() or 8) * 1.5), 
-                    help="Number of parallel workers (optimized for partitioned data: 48 workers × 1 thread × 2GB)")
+                    help="Number of parallel workers (optimized for partitioned data: 48 workers x 1 thread x 2GB)")
     ap.add_argument("--retries", type=int, default=1)
     ap.add_argument("--lookahead-years", type=int, default=5)
     ap.add_argument("--dry-run", action="store_true")
@@ -562,7 +562,7 @@ def main():
     args = ap.parse_args()
 
     # Version logging
-    print("🔧 Using Version 1997 - APCD Clean Orchestrator")
+    print("[CONFIG] Using Version 1997 - APCD Clean Orchestrator")
 
     # ---- Orchestrator run-level logger (S3-capable) ----
     run_id = time.strftime("%Y%m%d-%H%M%S")
@@ -584,7 +584,7 @@ def main():
 
     # Handle global imputation job
     if args.job == "global-imputation":
-        log.info("🚀 Running Global Demographic Imputation")
+        log.info("[START] Running Global Demographic Imputation")
         try:
             # Call global imputation as subprocess with proper arguments
             
@@ -604,13 +604,13 @@ def main():
             
             log.info(f"Running: {' '.join(cmd)}")
             result = subprocess.run(cmd, check=True, capture_output=False, cwd="/home/pgx3874/cpic_time_to_event_analysis")
-            log.info("✅ Global imputation completed successfully!")
+            log.info("[1] Global imputation completed successfully!")
             return
         except subprocess.CalledProcessError as e:
-            log.error(f"❌ Global imputation failed with exit code {e.returncode}")
+            log.error(f"[X] Global imputation failed with exit code {e.returncode}")
             raise
         except Exception as e:
-            log.error(f"❌ Global imputation failed: {e}")
+            log.error(f"[X] Global imputation failed: {e}")
             raise
 
     # Validate execution mode early
@@ -653,7 +653,7 @@ def main():
         med_path = args.medical_input or args.raw_medical
         val = validate_input_dataset_paths(pharma_path, med_path, log)
         if not val.get('pharmacy', False) and not val.get('medical', False):
-            log.error("❌ Neither pharmacy nor medical input paths validated. Aborting to surface errors early.")
+            log.error("[X] Neither pharmacy nor medical input paths validated. Aborting to surface errors early.")
             save_logs_to_s3(orc_buf, "orchestrator", args.job, run_id, "apcd_input_data", logger=log)
             sys.exit(2)
     except Exception as _e:
@@ -673,7 +673,7 @@ def main():
         n_str = f"~{n} rows" if n >= 0 else "(manual)"
         log.info(f"  {ab}/{yr} {n_str}")
     if len(pairs_with_counts) > 20:
-        log.info(f"  … +{len(pairs_with_counts)-20} more")
+        log.info(f"  ... +{len(pairs_with_counts)-20} more")
     if args.dry_run:
         log.info("Dry run requested; exiting before execution.")
         save_logs_to_s3(orc_buf, "orchestrator", args.job, run_id, "apcd_input_data", logger=log)
@@ -693,8 +693,8 @@ def main():
     successes, failures = 0, 0
     fail_list: list[tuple[str,int,str]] = []
 
-    log.info("Submitting %d partitions with %d workers…", len(pairs_sorted), args.workers)
-    log.info("🚀 Parallel Configuration: %d workers × 1 thread × 2GB RAM each", args.workers)
+    log.info("Submitting %d partitions with %d workers...", len(pairs_sorted), args.workers)
+    log.info("[START] Parallel Configuration: %d workers x 1 thread x 2GB RAM each", args.workers)
     t_start = time.perf_counter()
     with cf.ProcessPoolExecutor(max_workers=args.workers) as ex:
         futs = dict()
@@ -726,7 +726,7 @@ def main():
 
         if not futs:
             save_logs_immediate(orc_buf, "orchestrator", args.job, run_id, "apcd_input_data", logger=log, reason="no_futures")
-            raise SystemExit("No futures submitted — check run_mode and inputs.")
+            raise SystemExit("No futures submitted - check run_mode and inputs.")
 
         try:
             for fut in cf.as_completed(list(futs.keys())):
@@ -734,14 +734,14 @@ def main():
                 try:
                     fut.result()
                     successes += 1
-                    log.info(f"✓ {ab}/{yr}")
+                    log.info(f"[1] {ab}/{yr}")
                 except Exception as e:
                     failures += 1
                     err = repr(e)
                     fail_list.append((ab, yr, err))
-                    log.error(f"✗ {ab}/{yr} -> {err}")
+                    log.error(f"[X] {ab}/{yr} -> {err}")
         except KeyboardInterrupt:
-            log.warning("KeyboardInterrupt received; cancelling remaining futures…")
+            log.warning("KeyboardInterrupt received; cancelling remaining futures...")
             for f in futs:
                 f.cancel()
             raise
@@ -752,33 +752,33 @@ def main():
     success_rate = 100 * successes / total_partitions if total_partitions > 0 else 0
     
     log.info("=" * 80)
-    log.info(f"🎯 ORCHESTRATOR FINAL SUMMARY - {args.job.upper()}")
+    log.info(f"[TARGET] ORCHESTRATOR FINAL SUMMARY - {args.job.upper()}")
     log.info("=" * 80)
-    log.info(f"📊 PROCESSING RESULTS:")
-    log.info(f"   • Total partitions processed: {total_partitions:,}")
-    log.info(f"   • Successful partitions: {successes:,}")
-    log.info(f"   • Failed partitions: {failures:,}")
-    log.info(f"   • Success rate: {success_rate:.1f}%")
-    log.info(f"   • Total processing time: {elapsed:.1f}s")
-    log.info(f"   • Average time per partition: {elapsed/total_partitions:.1f}s")
+    log.info(f"[INFO] PROCESSING RESULTS:")
+    log.info(f"   - Total partitions processed: {total_partitions:,}")
+    log.info(f"   - Successful partitions: {successes:,}")
+    log.info(f"   - Failed partitions: {failures:,}")
+    log.info(f"   - Success rate: {success_rate:.1f}%")
+    log.info(f"   - Total processing time: {elapsed:.1f}s")
+    log.info(f"   - Average time per partition: {elapsed/total_partitions:.1f}s")
     log.info(f"")
-    log.info(f"🔧 EXECUTION DETAILS:")
-    log.info(f"   • Job type: {args.job}")
-    log.info(f"   • Run mode: {args.run_mode}")
-    log.info(f"   • Workers: {args.workers}")
-    log.info(f"   • Year range: {args.min_year or 'all'} - {args.max_year or 'all'}")
-    log.info(f"   • Lookahead years: {args.lookahead_years}")
+    log.info(f"[CONFIG] EXECUTION DETAILS:")
+    log.info(f"   - Job type: {args.job}")
+    log.info(f"   - Run mode: {args.run_mode}")
+    log.info(f"   - Workers: {args.workers}")
+    log.info(f"   - Year range: {args.min_year or 'all'} - {args.max_year or 'all'}")
+    log.info(f"   - Lookahead years: {args.lookahead_years}")
     
     if failures:
         log.info(f"")
-        log.error(f"❌ FAILED PARTITIONS ({failures}):")
+        log.error(f"[X] FAILED PARTITIONS ({failures}):")
         for ab, yr, err in fail_list[:10]:
-            log.error(f"   • {ab}/{yr}: {err}")
+            log.error(f"   - {ab}/{yr}: {err}")
         if len(fail_list) > 10:
-            log.error(f"   • ... and {len(fail_list) - 10} more failures")
+            log.error(f"   - ... and {len(fail_list) - 10} more failures")
     else:
         log.info(f"")
-        log.info(f"🏆 ALL PARTITIONS PROCESSED SUCCESSFULLY!")
+        log.info(f"[TOP] ALL PARTITIONS PROCESSED SUCCESSFULLY!")
     
     log.info("=" * 80)
 

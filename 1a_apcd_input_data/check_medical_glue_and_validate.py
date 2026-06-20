@@ -8,7 +8,7 @@ S3 paths:
   s3://pgxdatalake/silver/imputed/medical_partitioned/ -> database silver_medical
   s3://pgxdatalake/gold/medical/          -> database gold_medical
 
-Athena row-count QA (validate no information loss bronze→gold) lives in aws-pgx-setup/glue:
+Athena row-count QA (validate no information loss bronze-->gold) lives in aws-pgx-setup/glue:
   python aws-pgx-setup/glue/validate_medical_row_coverage.py --athena-output s3://pgxdatalake/athena-query-results/ --credentials-dir /mnt/c/Projects
 
 Runs locally (no EC2 required). Uses AWS profile "mushin" by default (--profile to override).
@@ -250,7 +250,7 @@ def main():
                 if update_crawler_table_prefix(glue, crawler_name, layer_prefix):
                     print(f"  [OK] {crawler_name}: TablePrefix -> '{layer_prefix}'")
                 else:
-                    print(f"  [FAIL] {crawler_name}: update failed")
+                    print(f"  [X] {crawler_name}: update failed")
             except glue.exceptions.EntityNotFoundException:
                 print(f"  [SKIP] {crawler_name}: crawler does not exist")
         print("Re-run crawlers to create tables with correct names. You may drop old doubled tables in Glue.\n")

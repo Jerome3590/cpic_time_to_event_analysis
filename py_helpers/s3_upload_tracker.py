@@ -210,8 +210,8 @@ class S3UploadTracker:
         print("="*80)
         print(f"\nLast Updated: {self.uploads.get('last_updated', 'Never')}")
         print(f"\nTotal Uploads: {summary.get('total_uploads', 0)}")
-        print(f"  ✓ Successful: {summary.get('successful_uploads', 0)}")
-        print(f"  ✗ Failed: {summary.get('failed_uploads', 0)}")
+        print(f"  [1] Successful: {summary.get('successful_uploads', 0)}")
+        print(f"  [X] Failed: {summary.get('failed_uploads', 0)}")
         print(f"\nTotal Size: {summary.get('total_size_mb', 0):.2f} MB")
         
         # By visualization type
@@ -222,8 +222,8 @@ class S3UploadTracker:
             for viz_type, stats in sorted(summary["by_visualization_type"].items()):
                 print(f"\n  {viz_type}:")
                 print(f"    Total: {stats['total']}")
-                print(f"    ✓ Successful: {stats['successful']}")
-                print(f"    ✗ Failed: {stats['failed']}")
+                print(f"    [1] Successful: {stats['successful']}")
+                print(f"    [X] Failed: {stats['failed']}")
         
         # By cohort
         if summary.get("by_cohort"):
@@ -233,7 +233,7 @@ class S3UploadTracker:
             for cohort, stats in sorted(summary["by_cohort"].items()):
                 print(f"\n  {cohort}:")
                 print(f"    Total: {stats['total']}")
-                print(f"    ✓ Successful: {stats['successful']}")
+                print(f"    [1] Successful: {stats['successful']}")
         
         # By age band
         if summary.get("by_age_band"):
@@ -321,9 +321,9 @@ class S3UploadTracker:
         total_missing = sum(len(v) for v in missing.values())
         
         if total_missing == 0:
-            print("\n✓ All expected uploads are present!")
+            print("\n[1] All expected uploads are present!")
         else:
-            print(f"\n✗ Total Missing: {total_missing}")
+            print(f"\n[X] Total Missing: {total_missing}")
             for viz_type, items in sorted(missing.items()):
                 print(f"\n  {viz_type}: {len(items)} missing")
                 for item in items[:10]:  # Show first 10
@@ -341,7 +341,7 @@ class S3UploadTracker:
             "summary": {}
         }
         self._save_tracker()
-        print("✓ Tracker cleared")
+        print("[1] Tracker cleared")
     
     def check_s3_state(
         self,
@@ -433,7 +433,7 @@ class S3UploadTracker:
         )
         
         if "error" in result:
-            print(f"\n✗ Error: {result['error']}\n")
+            print(f"\n[X] Error: {result['error']}\n")
             return
         
         print("\n" + "="*80)
@@ -447,17 +447,17 @@ class S3UploadTracker:
         
         missing_from_s3 = result["tracked_but_missing_from_s3"]
         if missing_from_s3:
-            print(f"\n⚠ Tracked but MISSING from S3: {len(missing_from_s3)}")
+            print(f"\n[WARN] Tracked but MISSING from S3: {len(missing_from_s3)}")
             for key in missing_from_s3[:10]:
                 print(f"  - {key}")
             if len(missing_from_s3) > 10:
                 print(f"  ... and {len(missing_from_s3) - 10} more")
         else:
-            print("\n✓ All tracked uploads are present in S3")
+            print("\n[1] All tracked uploads are present in S3")
         
         not_tracked = result["in_s3_but_not_tracked"]
         if not_tracked:
-            print(f"\nℹ In S3 but NOT tracked: {len(not_tracked)}")
+            print(f"\n[INFO] In S3 but NOT tracked: {len(not_tracked)}")
             for key in not_tracked[:10]:
                 print(f"  - {key}")
             if len(not_tracked) > 10:
@@ -542,10 +542,10 @@ class S3UploadTracker:
             # Single line format for frequent updates
             bar_length = 40
             filled = int(bar_length * stats["percentage"] / 100)
-            bar = "█" * filled + "░" * (bar_length - filled)
+            bar = "#" * filled + "-" * (bar_length - filled)
             
             eta_str = f"{stats['eta_minutes']:.1f}m" if stats['eta_minutes'] else "?"
-            rate_str = f"{stats['uploads_per_minute']:.1f}/min" if stats['uploads_per_minute'] > 0 else "—"
+            rate_str = f"{stats['uploads_per_minute']:.1f}/min" if stats['uploads_per_minute'] > 0 else "-"
             
             print(
                 f"\r[{bar}] {stats['completed']}/{stats['expected_total']} "
@@ -575,7 +575,7 @@ class S3UploadTracker:
             # Progress bar
             bar_length = 50
             filled = int(bar_length * stats["percentage"] / 100)
-            bar = "█" * filled + "░" * (bar_length - filled)
+            bar = "#" * filled + "-" * (bar_length - filled)
             print(f"\n[{bar}] {stats['percentage']:.1f}%")
             print("-"*80 + "\n")
 
@@ -640,7 +640,7 @@ class BatchUploadMonitor:
             cohort=self.cohort,
             compact=False
         )
-        print(f"✓ Batch upload completed in {elapsed:.1f} minutes\n")
+        print(f"[1] Batch upload completed in {elapsed:.1f} minutes\n")
 
 
 def get_file_size_mb(file_path: Path) -> float:

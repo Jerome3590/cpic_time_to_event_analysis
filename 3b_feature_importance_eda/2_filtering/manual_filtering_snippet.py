@@ -19,7 +19,7 @@ except NameError:
         'bupar_post_target': set(),
         'manual_additional': set()
     }
-    print("ℹ️  Initialized filtering_recommendations with empty sets")
+    print("[INFO]  Initialized filtering_recommendations with empty sets")
 
 # Load existing config if it exists (idempotency)
 filtering_config_path = OUTPUT_DIR / f"{COHORT}_{AGE_BAND_FNAME}_manual_filtering_config.json"
@@ -41,9 +41,9 @@ if filtering_config_path.exists():
             if len(all_codes) > (admin_count + bupar_count):
                 start_idx = admin_count + bupar_count
                 existing_manual_codes = all_codes[start_idx:]
-        print(f"✅ Loaded existing config: {len(existing_manual_codes)} manual codes, {len(existing_codes_to_keep)} codes to keep")
+        print(f"[1] Loaded existing config: {len(existing_manual_codes)} manual codes, {len(existing_codes_to_keep)} codes to keep")
     except Exception as e:
-        print(f"⚠️  Could not load existing config: {e}")
+        print(f"[WARN]  Could not load existing config: {e}")
         print(f"   Starting with empty lists")
 
 # Default: empty lists (can be overridden by user)
@@ -88,7 +88,7 @@ final_codes_to_filter = (
     filtering_recommendations['manual_additional']
 )
 
-print(f"✅ Updated filtering list")
+print(f"[1] Updated filtering list")
 print(f"   Total codes to filter: {len(final_codes_to_filter)}")
 print(f"     - Administrative codes: {len(filtering_recommendations['administrative_codes'])}")
 print(f"     - BupaR post-target codes: {len(filtering_recommendations['bupar_post_target'])}")
@@ -97,7 +97,7 @@ print(f"     - Codes to keep: {len(all_codes_to_keep)}")
 
 # Safe to proceed even if all lists are empty - workflow will continue
 if len(final_codes_to_filter) == 0:
-    print(f"\n   ℹ️  No codes to filter - workflow will proceed without filtering")
+    print(f"\n   [INFO]  No codes to filter - workflow will proceed without filtering")
     print(f"   (This is safe and expected if no manual codes are added)")
 
 if len(final_codes_to_filter) > 0:
@@ -119,4 +119,4 @@ filtering_config = {
 with open(filtering_config_path, 'w') as f:
     json.dump(filtering_config, f, indent=2)
 
-print(f"\n   💾 Saved filtering config to: {filtering_config_path}")
+print(f"\n   [SAVE] Saved filtering config to: {filtering_config_path}")

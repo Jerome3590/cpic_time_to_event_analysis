@@ -196,7 +196,7 @@ def build_feature_lookup(cohort: str, age_band: str) -> pd.DataFrame:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Create a numeric feature index→name lookup table for the final model."
+        description="Create a numeric feature index-->name lookup table for the final model."
     )
     parser.add_argument("--cohort", required=True, help="Cohort name, e.g. falls")
     parser.add_argument("--age_band", required=True, help="Age band, e.g. 65-74")

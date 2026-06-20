@@ -55,7 +55,7 @@ def validate_s3_input_paths(pharmacy_input: str, medical_input: str, logger):
     except Exception as e:
         logger.warning(f"Could not validate S3 input paths: {e}")
         # Fallback to simple existence check
-        logger.info("→ Falling back to simple path validation...")
+        logger.info("--> Falling back to simple path validation...")
         
         results = {"pharmacy": False, "medical": False, "details": {}}
         
@@ -63,7 +63,7 @@ def validate_s3_input_paths(pharmacy_input: str, medical_input: str, logger):
             logger.warning(f"Pharmacy input path may not exist: {pharmacy_input}")
             results["details"]["pharmacy"] = "Path validation failed"
         else:
-            logger.info(f"✓ Pharmacy input path validated: {pharmacy_input}")
+            logger.info(f"[1] Pharmacy input path validated: {pharmacy_input}")
             results["pharmacy"] = True
             results["details"]["pharmacy"] = "Path exists"
             
@@ -71,7 +71,7 @@ def validate_s3_input_paths(pharmacy_input: str, medical_input: str, logger):
             logger.warning(f"Medical input path may not exist: {medical_input}")
             results["details"]["medical"] = "Path validation failed"
         else:
-            logger.info(f"✓ Medical input path validated: {medical_input}")
+            logger.info(f"[1] Medical input path validated: {medical_input}")
             results["medical"] = True
             results["details"]["medical"] = "Path exists"
             
@@ -94,7 +94,7 @@ def validate_s3_output_path(output_path: str, age_band: str, event_year: int, lo
         # Parse S3 path components
         try:
             bucket, key = _parse_s3_path_components(output_path)
-            logger.info(f"✓ S3 output validated - Bucket: {bucket}, Key: {key}")
+            logger.info(f"[1] S3 output validated - Bucket: {bucket}, Key: {key}")
             
             # Ensure it's the medical_clean directory with correct partitioning
             if "medical_clean" not in key:
@@ -266,15 +266,15 @@ def sanitize_for_s3_key(value):
 
 def validate_s3_source_paths(age_band, event_year, logger):
     """Validate that S3 source paths exist and contain expected data."""
-    logger.info(f"→ Validating S3 source paths for {age_band}/{event_year}...")
+    logger.info(f"--> Validating S3 source paths for {age_band}/{event_year}...")
     
     try:
         # Check medical/pharmacy sources in SILVER zone
         medical_path = f"s3://pgxdatalake/silver/medical/age_band={age_band}/event_year={event_year}/"
         pharmacy_path = f"s3://pgxdatalake/silver/pharmacy/age_band={age_band}/event_year={event_year}/"
         
-        logger.info(f"→ Checking medical source: {medical_path}")
-        logger.info(f"→ Checking pharmacy source: {pharmacy_path}")
+        logger.info(f"--> Checking medical source: {medical_path}")
+        logger.info(f"--> Checking pharmacy source: {pharmacy_path}")
         
         # List objects in these paths
         try:
@@ -291,11 +291,11 @@ def validate_s3_source_paths(age_band, event_year, logger):
             medical_count = len(medical_objects.get('Contents', []))
             pharmacy_count = len(pharmacy_objects.get('Contents', []))
             
-            logger.info(f"→ Medical source files: {medical_count}")
-            logger.info(f"→ Pharmacy source files: {pharmacy_count}")
+            logger.info(f"--> Medical source files: {medical_count}")
+            logger.info(f"--> Pharmacy source files: {pharmacy_count}")
             
             if medical_count == 0:
-                logger.error(f"→ ERROR: No medical data files found at {medical_path}")
+                logger.error(f"--> ERROR: No medical data files found at {medical_path}")
                 
                 # Check what age_bands are actually available
                 available_medical = s3_client.list_objects_v2(
@@ -304,12 +304,12 @@ def validate_s3_source_paths(age_band, event_year, logger):
                     Delimiter="/"
                 )
                 
-                logger.error("→ Available medical age_bands:")
+                logger.error("--> Available medical age_bands:")
                 for prefix in available_medical.get('CommonPrefixes', []):
-                    logger.error(f"→   {prefix['Prefix']}")
+                    logger.error(f"-->   {prefix['Prefix']}")
             
             if pharmacy_count == 0:
-                logger.error(f"→ ERROR: No pharmacy data files found at {pharmacy_path}")
+                logger.error(f"--> ERROR: No pharmacy data files found at {pharmacy_path}")
                 
                 # Check what age_bands are actually available
                 available_pharmacy = s3_client.list_objects_v2(
@@ -318,22 +318,22 @@ def validate_s3_source_paths(age_band, event_year, logger):
                     Delimiter="/"
                 )
                 
-                logger.error("→ Available pharmacy age_bands:")
+                logger.error("--> Available pharmacy age_bands:")
                 for prefix in available_pharmacy.get('CommonPrefixes', []):
-                    logger.error(f"→   {prefix['Prefix']}")
+                    logger.error(f"-->   {prefix['Prefix']}")
             
             if medical_count == 0 and pharmacy_count == 0:
-                logger.error(f"→ CRITICAL: No source data found for {age_band}/{event_year}")
+                logger.error(f"--> CRITICAL: No source data found for {age_band}/{event_year}")
                 return False
             
-            logger.info(f"→ ✓ S3 source validation completed")
+            logger.info(f"--> [1] S3 source validation completed")
             return True
         except Exception as s3_e:
-            logger.error(f"→ ERROR checking S3 paths: {str(s3_e)}")
+            logger.error(f"--> ERROR checking S3 paths: {str(s3_e)}")
             return False
             
     except Exception as e:
-        logger.error(f"→ ERROR during S3 validation: {str(e)}")
+        logger.error(f"--> ERROR during S3 validation: {str(e)}")
         return False
 
 
@@ -370,7 +370,7 @@ def parse_path_params(s3_path: str) -> dict:
 
         return parsed
     except Exception as e:
-        print(f"✗ Error parsing S3 path: {e}")
+        print(f"[X] Error parsing S3 path: {e}")
         return {}
 
 
@@ -465,16 +465,16 @@ def validate_output_paths(paths, logger):
                     return False
                 except s3_client.exceptions.ClientError as e:
                     if e.response["Error"]["Code"] == "404":
-                        logger.info(f"  → {key}: {path} (does not exist - will create)")
+                        logger.info(f"  --> {key}: {path} (does not exist - will create)")
                     else:
                         raise
             except Exception as e:
-                logger.warning(f"⚠ Warning: Error checking path {path}: {str(e)}")
+                logger.warning(f"[WARN] Warning: Error checking path {path}: {str(e)}")
                 all_paths_valid = False
                 continue
 
         if not all_paths_valid:
-            logger.warning("⚠ Warning: Some paths could not be validated, but will attempt to continue")
+            logger.warning("[WARN] Warning: Some paths could not be validated, but will attempt to continue")
 
         logger.info("All output paths are valid")
         return True
@@ -519,13 +519,13 @@ def s3_delete_object_if_exists(s3_path: str, logger: Optional[logging.Logger] = 
 
         if not exists:
             if logger:
-                logger.info(f"✓ No existing object to delete: {s3_path}")
+                logger.info(f"[1] No existing object to delete: {s3_path}")
             return True
 
         # Delete
         s3_client.delete_object(Bucket=bucket, Key=key)
         if logger:
-            logger.info(f"→ Deleted existing object: {s3_path}")
+            logger.info(f"--> Deleted existing object: {s3_path}")
 
         if not wait:
             return True
@@ -541,16 +541,16 @@ def s3_delete_object_if_exists(s3_path: str, logger: Optional[logging.Logger] = 
             except s3_client.exceptions.ClientError as e:
                 if e.response["Error"]["Code"] in ["404", "403"]:
                     if logger:
-                        logger.info(f"✓ Deletion confirmed: {s3_path}")
+                        logger.info(f"[1] Deletion confirmed: {s3_path}")
                     return True
                 else:
                     raise
         if logger:
-            logger.warning(f"⚠ Timed out waiting for deletion to propagate: {s3_path}")
+            logger.warning(f"[WARN] Timed out waiting for deletion to propagate: {s3_path}")
         return False
     except Exception as e:
         if logger:
-            logger.error(f"✗ Error deleting object {s3_path}: {str(e)}")
+            logger.error(f"[X] Error deleting object {s3_path}: {str(e)}")
         raise
 
 
@@ -581,7 +581,7 @@ def s3_delete_prefix(prefix_path: str, logger: Optional[logging.Logger] = None, 
             deleted = len(del_resp.get('Deleted', []))
             deleted_total += deleted
             if logger:
-                logger.info(f"→ Deleted {deleted} objects under s3://{bucket}/{key_prefix} (running total {deleted_total})")
+                logger.info(f"--> Deleted {deleted} objects under s3://{bucket}/{key_prefix} (running total {deleted_total})")
 
             # Pagination
             if response.get('IsTruncated'):
@@ -598,14 +598,14 @@ def s3_delete_prefix(prefix_path: str, logger: Optional[logging.Logger] = None, 
                 verify = s3_client.list_objects_v2(Bucket=bucket, Prefix=key_prefix, MaxKeys=1)
                 if len(verify.get('Contents', [])) == 0:
                     if logger:
-                        logger.info(f"✓ Prefix is now empty: s3://{bucket}/{key_prefix}")
+                        logger.info(f"[1] Prefix is now empty: s3://{bucket}/{key_prefix}")
                     break
                 _time.sleep(1)
 
         return deleted_total
     except Exception as e:
         if logger:
-            logger.error(f"✗ Error deleting prefix {prefix_path}: {str(e)}")
+            logger.error(f"[X] Error deleting prefix {prefix_path}: {str(e)}")
         raise
 
 def s3_directory_exists_with_files(s3_path: str, file_pattern: str = "*.parquet", bucket_name: Optional[str] = None) -> bool:
@@ -673,13 +673,13 @@ def validate_input_dataset_paths(pharmacy_input: str, medical_input: str, logger
     results = {"pharmacy": False, "medical": False, "details": {}}
     
     try:
-        logger.info("→ Validating input dataset paths...")
+        logger.info("--> Validating input dataset paths...")
         
         # Validate pharmacy input
         pharmacy_base = pharmacy_input.replace("/**/*.parquet", "").replace("/*", "")
         if s3_directory_exists_with_files(pharmacy_base, "*.parquet"):
             results["pharmacy"] = True
-            logger.info(f"✓ Pharmacy input path validated: {pharmacy_input}")
+            logger.info(f"[1] Pharmacy input path validated: {pharmacy_input}")
             results["details"]["pharmacy"] = "Directory exists with parquet files"
         else:
             # Try falling back to imputed/partitioned layout (global_imputation writes here)
@@ -687,7 +687,7 @@ def validate_input_dataset_paths(pharmacy_input: str, medical_input: str, logger
                 imputed_pharmacy = convert_raw_to_imputed_path(pharmacy_input, 'pharmacy')
                 if s3_directory_exists_with_files(imputed_pharmacy, "*.parquet"):
                     results["pharmacy"] = True
-                    logger.info(f"✓ Pharmacy imputed partition path validated: {imputed_pharmacy}")
+                    logger.info(f"[1] Pharmacy imputed partition path validated: {imputed_pharmacy}")
                     results["details"]["pharmacy"] = f"Found imputed partitioned data at {imputed_pharmacy}"
                 else:
                     logger.warning(f"Pharmacy input path may not exist or contain parquet files: {pharmacy_input}")
@@ -700,7 +700,7 @@ def validate_input_dataset_paths(pharmacy_input: str, medical_input: str, logger
         medical_base = medical_input.replace("/**/*.parquet", "").replace("/*", "")
         if s3_directory_exists_with_files(medical_base, "*.parquet"):
             results["medical"] = True
-            logger.info(f"✓ Medical input path validated: {medical_input}")
+            logger.info(f"[1] Medical input path validated: {medical_input}")
             results["details"]["medical"] = "Directory exists with parquet files"
         else:
             # Try falling back to imputed/partitioned layout (global_imputation writes here)
@@ -708,7 +708,7 @@ def validate_input_dataset_paths(pharmacy_input: str, medical_input: str, logger
                 imputed_medical = convert_raw_to_imputed_path(medical_input, 'medical')
                 if s3_directory_exists_with_files(imputed_medical, "*.parquet"):
                     results["medical"] = True
-                    logger.info(f"✓ Medical imputed partition path validated: {imputed_medical}")
+                    logger.info(f"[1] Medical imputed partition path validated: {imputed_medical}")
                     results["details"]["medical"] = f"Found imputed partitioned data at {imputed_medical}"
                 else:
                     logger.warning(f"Medical input path may not exist or contain parquet files: {medical_input}")
@@ -719,11 +719,11 @@ def validate_input_dataset_paths(pharmacy_input: str, medical_input: str, logger
             
         # Summary
         if results["pharmacy"] and results["medical"]:
-            logger.info("✓ All input dataset paths validated successfully")
+            logger.info("[1] All input dataset paths validated successfully")
         elif results["pharmacy"] or results["medical"]:
-            logger.warning("⚠ Some input dataset paths could not be validated")
+            logger.warning("[WARN] Some input dataset paths could not be validated")
         else:
-            logger.warning("⚠ No input dataset paths could be validated")
+            logger.warning("[WARN] No input dataset paths could be validated")
             
         return results
         
@@ -872,9 +872,9 @@ def save_to_s3_json(
         )
 
         if logger:
-            logger.info(f"✓ Saved JSON file to {s3_path}")
+            logger.info(f"[1] Saved JSON file to {s3_path}")
     except Exception as e:
-        msg = f"✗ Error saving JSON file to {s3_path}: {str(e)}"
+        msg = f"[X] Error saving JSON file to {s3_path}: {str(e)}"
         if logger:
             logger.error(msg)
         else:
@@ -911,12 +911,12 @@ def load_from_s3_json(
         data = json.loads(json_content)
         
         if logger:
-            logger.info(f"✓ Successfully loaded JSON from {s3_path}")
+            logger.info(f"[1] Successfully loaded JSON from {s3_path}")
             
         return data
         
     except Exception as e:
-        msg = f"✗ Error loading JSON from {s3_path}: {str(e)}"
+        msg = f"[X] Error loading JSON from {s3_path}: {str(e)}"
         if logger:
             logger.error(msg)
         else:
@@ -953,11 +953,11 @@ def save_to_s3_text(
         )
 
         if logger:
-            logger.info(f"✓ Saved text file to {s3_path}")
+            logger.info(f"[1] Saved text file to {s3_path}")
         else:
-            print(f"✓ Saved text file to {s3_path}")
+            print(f"[1] Saved text file to {s3_path}")
     except Exception as e:
-        msg = f"✗ Error saving text file to {s3_path}: {str(e)}"
+        msg = f"[X] Error saving text file to {s3_path}: {str(e)}"
         if logger:
             logger.error(msg)
         else:
@@ -1014,15 +1014,15 @@ def save_to_s3_html(html_string, s3_path, logger=None):
         try:
             s3_client.head_object(Bucket=bucket, Key=key)
             if logger:
-                logger.info(f"✓ Successfully saved and verified HTML to s3://{bucket}/{key}")
+                logger.info(f"[1] Successfully saved and verified HTML to s3://{bucket}/{key}")
             else:
-                print(f"✓ Successfully saved and verified HTML to s3://{bucket}/{key}")
+                print(f"[1] Successfully saved and verified HTML to s3://{bucket}/{key}")
         except Exception as verify_error:
             if logger:
-                logger.error(f"⚠ File saved but verification failed: {str(verify_error)}")
+                logger.error(f"[WARN] File saved but verification failed: {str(verify_error)}")
                 logger.error(f"Error type: {type(verify_error).__name__}")
             else:
-                print(f"⚠ File saved but verification failed: {str(verify_error)}")
+                print(f"[WARN] File saved but verification failed: {str(verify_error)}")
 
     except Exception as e:
         if logger:
@@ -1050,7 +1050,7 @@ def save_pipeline_metrics(metrics, age_band, event_year, cohort_name, conn, logg
             try:
                 json.dumps(val, default=convert_json_serializable)
             except Exception as inner_e:
-                logger.error(f"Key: {key} → Error: {inner_e} → Value: {val}")
+                logger.error(f"Key: {key} --> Error: {inner_e} --> Value: {val}")
         raise
 
     try:
@@ -1337,11 +1337,11 @@ def save_checkpoint(
         })
 
         save_to_s3_json(checkpoint_data, checkpoint_path, logger)
-        logger.info(f"✓ Checkpoint saved for {step_name}: {checkpoint_path}")
+        logger.info(f"[1] Checkpoint saved for {step_name}: {checkpoint_path}")
         return True
 
     except Exception as e:
-        logger.error(f"✗ Error saving checkpoint for {step_name}: {str(e)}")
+        logger.error(f"[X] Error saving checkpoint for {step_name}: {str(e)}")
         return False
 
 
@@ -1385,13 +1385,13 @@ def load_checkpoint(
         response = s3_client.get_object(Bucket=bucket, Key=key)
         checkpoint_data = json.loads(response['Body'].read().decode('utf-8'))
 
-        logger.info(f"✓ Checkpoint loaded for {step_name}: {load_path}")
+        logger.info(f"[1] Checkpoint loaded for {step_name}: {load_path}")
         logger.info(f"  Checkpoint timestamp: {checkpoint_data.get('checkpoint_metadata', {}).get('timestamp', 'unknown')}")
 
         return checkpoint_data
 
     except Exception as e:
-        logger.error(f"✗ Error loading checkpoint for {step_name}: {str(e)}")
+        logger.error(f"[X] Error loading checkpoint for {step_name}: {str(e)}")
         return None
 
 
@@ -1422,11 +1422,11 @@ def delete_checkpoint(
         for path in (checkpoint_path, legacy_checkpoint_path):
             bucket, key = _parse_s3_path_components(path)
             s3_client.delete_object(Bucket=bucket, Key=key)
-        logger.info(f"✓ Checkpoint deleted for {step_name}: {checkpoint_path}")
+        logger.info(f"[1] Checkpoint deleted for {step_name}: {checkpoint_path}")
         return True
 
     except Exception as e:
-        logger.error(f"✗ Error deleting checkpoint for {step_name}: {str(e)}")
+        logger.error(f"[X] Error deleting checkpoint for {step_name}: {str(e)}")
         return False
 
 
@@ -1479,7 +1479,7 @@ def list_checkpoints(
         return checkpoints
 
     except Exception as e:
-        logger.error(f"✗ Error listing checkpoints: {str(e)}")
+        logger.error(f"[X] Error listing checkpoints: {str(e)}")
         return []
 
 
@@ -1507,11 +1507,11 @@ def cleanup_checkpoints(
         for step_name in checkpoints:
             delete_checkpoint(step_name, age_band, event_year, logger, bucket_name)
 
-        logger.info(f"✓ Cleaned up {len(checkpoints)} checkpoints for {age_band}/{event_year}")
+        logger.info(f"[1] Cleaned up {len(checkpoints)} checkpoints for {age_band}/{event_year}")
         return True
 
     except Exception as e:
-        logger.error(f"✗ Error cleaning up checkpoints: {str(e)}")
+        logger.error(f"[X] Error cleaning up checkpoints: {str(e)}")
         return False
 
 
@@ -1584,11 +1584,11 @@ def save_checkpoint_with_data(
 
                 if isinstance(data_source, str):
                     # data_source is a view name - query it
-                    logger.info(f"→ Saving checkpoint data: {view_name} from view {data_source}")
+                    logger.info(f"--> Saving checkpoint data: {view_name} from view {data_source}")
                     df = conn.sql(f"SELECT * FROM {data_source}").df()
                 else:
                     # data_source is already a DataFrame
-                    logger.info(f"→ Saving checkpoint data: {view_name} from DataFrame")
+                    logger.info(f"--> Saving checkpoint data: {view_name} from DataFrame")
                     df = data_source
 
                 # Save as parquet
@@ -1597,21 +1597,21 @@ def save_checkpoint_with_data(
                 # Add to checkpoint metadata
                 checkpoint_data["data_files"][view_name] = data_path
 
-                logger.info(f"→ ✓ Saved checkpoint data file: {data_path}")
+                logger.info(f"--> [1] Saved checkpoint data file: {data_path}")
 
             except Exception as data_e:
-                logger.error(f"→ ✗ Error saving checkpoint data file {view_name}: {str(data_e)}")
+                logger.error(f"--> [X] Error saving checkpoint data file {view_name}: {str(data_e)}")
                 # Continue with other files, but mark this one as failed
                 checkpoint_data["data_files"][view_name] = f"ERROR: {str(data_e)}"
 
         # Save the metadata checkpoint
         save_to_s3_json(checkpoint_data, checkpoint_path, logger)
-        logger.info(f"✓ Checkpoint saved for {step_name}: {checkpoint_path}")
+        logger.info(f"[1] Checkpoint saved for {step_name}: {checkpoint_path}")
         logger.info(f"  Data files: {list(checkpoint_data['data_files'].keys())}")
         return True
 
     except Exception as e:
-        logger.error(f"✗ Error saving checkpoint for {step_name}: {str(e)}")
+        logger.error(f"[X] Error saving checkpoint for {step_name}: {str(e)}")
         return False
 
 
@@ -1646,28 +1646,28 @@ def load_checkpoint_with_data(
 
         # Check if this checkpoint has data files
         if not checkpoint_data.get("checkpoint_metadata", {}).get("has_data_files", False):
-            logger.info(f"→ Checkpoint {step_name} does not have data files (legacy checkpoint)")
+            logger.info(f"--> Checkpoint {step_name} does not have data files (legacy checkpoint)")
             return checkpoint_data
 
         # Load data files and recreate views
         data_files = checkpoint_data.get("data_files", {})
-        logger.info(f"→ Loading {len(data_files)} data files for checkpoint {step_name}")
+        logger.info(f"--> Loading {len(data_files)} data files for checkpoint {step_name}")
 
         # Ensure AWS credentials are loaded for S3 reads
         try:
             conn.sql("CALL load_aws_credentials('');")
-            logger.info("→ AWS credentials loaded for S3 reads")
+            logger.info("--> AWS credentials loaded for S3 reads")
         except Exception as cred_e:
-            logger.warning(f"→ Could not load AWS credentials: {str(cred_e)}")
-            logger.warning("→ S3 reads may fail if credentials are not available")
+            logger.warning(f"--> Could not load AWS credentials: {str(cred_e)}")
+            logger.warning("--> S3 reads may fail if credentials are not available")
 
         for view_name, data_path in data_files.items():
             try:
                 if isinstance(data_path, str) and data_path.startswith("ERROR:"):
-                    logger.warning(f"→ Skipping {view_name} - had error during save: {data_path}")
+                    logger.warning(f"--> Skipping {view_name} - had error during save: {data_path}")
                     continue
 
-                logger.info(f"→ Loading checkpoint data: {view_name} from {data_path}")
+                logger.info(f"--> Loading checkpoint data: {view_name} from {data_path}")
 
                 # Create view from parquet file - handle S3 reads without Glue partitions
                 # Use explicit S3 configuration for reliable reads
@@ -1680,23 +1680,23 @@ def load_checkpoint_with_data(
                 )
                 """
 
-                logger.info(f"→ Executing SQL: {create_view_sql}")
+                logger.info(f"--> Executing SQL: {create_view_sql}")
                 conn.sql(create_view_sql)
 
                 # Verify view was created and has data
                 try:
                     row_count = conn.sql(f"SELECT COUNT(*) as count FROM {view_name}").df()
-                    logger.info(f"→ ✓ Loaded {view_name} with {row_count.iloc[0]['count']} rows")
+                    logger.info(f"--> [1] Loaded {view_name} with {row_count.iloc[0]['count']} rows")
 
                     # Additional verification - check if view has expected columns
                     try:
                         sample_data = conn.sql(f"SELECT * FROM {view_name} LIMIT 1").df()
-                        logger.info(f"→ ✓ {view_name} has {len(sample_data.columns)} columns")
+                        logger.info(f"--> [1] {view_name} has {len(sample_data.columns)} columns")
                     except Exception as sample_e:
-                        logger.warning(f"→ Could not verify columns for {view_name}: {str(sample_e)}")
+                        logger.warning(f"--> Could not verify columns for {view_name}: {str(sample_e)}")
 
                 except Exception as verify_e:
-                    logger.error(f"→ ✗ Failed to verify {view_name} after creation: {str(verify_e)}")
+                    logger.error(f"--> [X] Failed to verify {view_name} after creation: {str(verify_e)}")
                     # Try to get more information about the failure
                     try:
                         # Check if the file exists in S3
@@ -1707,39 +1707,39 @@ def load_checkpoint_with_data(
                                 bucket, key = parts
                                 response = s3_client.head_object(Bucket=bucket, Key=key)
                                 file_size = response.get('ContentLength', 0)
-                                logger.info(f"→ S3 file exists: {data_path} ({file_size} bytes)")
+                                logger.info(f"--> S3 file exists: {data_path} ({file_size} bytes)")
                             else:
-                                logger.error(f"→ Invalid S3 path format: {data_path}")
+                                logger.error(f"--> Invalid S3 path format: {data_path}")
                     except Exception as s3_check_e:
-                        logger.error(f"→ S3 file check failed: {str(s3_check_e)}")
+                        logger.error(f"--> S3 file check failed: {str(s3_check_e)}")
 
                     # Continue with other files but mark this as problematic
                     continue
 
             except Exception as data_e:
-                logger.error(f"→ ✗ Error loading checkpoint data file {view_name}: {str(data_e)}")
-                logger.error(f"→ Error type: {type(data_e).__name__}")
+                logger.error(f"--> [X] Error loading checkpoint data file {view_name}: {str(data_e)}")
+                logger.error(f"--> Error type: {type(data_e).__name__}")
 
                 # Provide specific guidance for common S3 read issues
                 if "Access Denied" in str(data_e) or "403" in str(data_e):
-                    logger.error("→ This appears to be an S3 permissions issue")
-                    logger.error("→ Check that the process has read access to {data_path}")
+                    logger.error("--> This appears to be an S3 permissions issue")
+                    logger.error("--> Check that the process has read access to {data_path}")
                 elif "No such file" in str(data_e) or "404" in str(data_e):
-                    logger.error("→ This appears to be a missing file issue")
-                    logger.error("→ The checkpoint data file may have been deleted or moved")
+                    logger.error("--> This appears to be a missing file issue")
+                    logger.error("--> The checkpoint data file may have been deleted or moved")
                 elif "Invalid parquet" in str(data_e):
-                    logger.error("→ This appears to be a corrupted parquet file")
-                    logger.error("→ The checkpoint data file may be incomplete")
+                    logger.error("--> This appears to be a corrupted parquet file")
+                    logger.error("--> The checkpoint data file may be incomplete")
 
                 # Continue with other files
                 continue
 
-        logger.info(f"✓ Checkpoint loaded for {step_name} with data files")
+        logger.info(f"[1] Checkpoint loaded for {step_name} with data files")
         return checkpoint_data
 
     except Exception as e:
-        logger.error(f"✗ Error loading checkpoint for {step_name}: {str(e)}")
-        logger.error(f"✗ Error type: {type(e).__name__}")
+        logger.error(f"[X] Error loading checkpoint for {step_name}: {str(e)}")
+        logger.error(f"[X] Error type: {type(e).__name__}")
         return None
 
 
@@ -1776,24 +1776,24 @@ def cleanup_checkpoints_with_data(
                         try:
                             bucket, key = data_path.replace("s3://", "").split("/", 1)
                             s3_client.delete_object(Bucket=bucket, Key=key)
-                            logger.info(f"→ Deleted checkpoint data file: {data_path}")
+                            logger.info(f"--> Deleted checkpoint data file: {data_path}")
                         except Exception as data_e:
-                            logger.warning(f"→ Could not delete checkpoint data file {data_path}: {str(data_e)}")
+                            logger.warning(f"--> Could not delete checkpoint data file {data_path}: {str(data_e)}")
 
             # Delete metadata checkpoint
             delete_checkpoint(step_name, age_band, event_year, logger, bucket_name)
 
-        logger.info(f"✓ Cleaned up {len(checkpoints)} checkpoints with data files for {age_band}/{event_year}")
+        logger.info(f"[1] Cleaned up {len(checkpoints)} checkpoints with data files for {age_band}/{event_year}")
         return True
 
     except Exception as e:
-        logger.error(f"✗ Error cleaning up checkpoints: {str(e)}")
+        logger.error(f"[X] Error cleaning up checkpoints: {str(e)}")
         return False
 
 
 def verify_s3_data_availability(s3_path, logger, max_retries=3, retry_delay=5):
     """Verify that S3 data is available after saving, with retry logic for eventual consistency."""
-    logger.info(f"→ Verifying S3 data availability: {s3_path}")
+    logger.info(f"--> Verifying S3 data availability: {s3_path}")
 
     for attempt in range(max_retries):
         try:
@@ -1809,34 +1809,34 @@ def verify_s3_data_availability(s3_path, logger, max_retries=3, retry_delay=5):
                     content_length = response.get('ContentLength', 0)
 
                     if content_length > 0:
-                        logger.info(f"→ ✓ S3 data verified: {s3_path} ({content_length} bytes)")
+                        logger.info(f"--> [1] S3 data verified: {s3_path} ({content_length} bytes)")
                         return True
                     else:
-                        logger.warning(f"→ S3 data exists but is empty: {s3_path}")
+                        logger.warning(f"--> S3 data exists but is empty: {s3_path}")
                         return False
                 else:
-                    logger.error(f"→ Invalid S3 path format: {s3_path}")
+                    logger.error(f"--> Invalid S3 path format: {s3_path}")
                     return False
             else:
-                logger.error(f"→ S3 path does not start with s3://: {s3_path}")
+                logger.error(f"--> S3 path does not start with s3://: {s3_path}")
                 return False
 
         except s3_client.exceptions.ClientError as e:
             if e.response['Error']['Code'] == '404':
                 if attempt < max_retries - 1:
-                    logger.warning(f"→ S3 data not yet available (attempt {attempt + 1}/{max_retries}): {s3_path}")
-                    logger.info(f"→ Waiting {retry_delay} seconds for eventual consistency...")
+                    logger.warning(f"--> S3 data not yet available (attempt {attempt + 1}/{max_retries}): {s3_path}")
+                    logger.info(f"--> Waiting {retry_delay} seconds for eventual consistency...")
                     time.sleep(retry_delay)
                     retry_delay *= 2  # Exponential backoff
                 else:
-                    logger.error(f"→ S3 data not available after {max_retries} attempts: {s3_path}")
-                    logger.error("→ This may indicate a save failure or eventual consistency issue")
+                    logger.error(f"--> S3 data not available after {max_retries} attempts: {s3_path}")
+                    logger.error("--> This may indicate a save failure or eventual consistency issue")
                     return False
             else:
-                logger.error(f"→ S3 error checking data availability: {str(e)}")
+                logger.error(f"--> S3 error checking data availability: {str(e)}")
                 return False
         except Exception as e:
-            logger.error(f"→ Unexpected error verifying S3 data: {str(e)}")
+            logger.error(f"--> Unexpected error verifying S3 data: {str(e)}")
             return False
 
     return False
@@ -1844,7 +1844,7 @@ def verify_s3_data_availability(s3_path, logger, max_retries=3, retry_delay=5):
 
 def save_checkpoint_with_verification(step_name, age_band, event_year, checkpoint_data, data_files, conn, logger):
     """Save checkpoint data with verification that files are actually available."""
-    logger.info(f"→ Saving checkpoint with verification: {step_name}")
+    logger.info(f"--> Saving checkpoint with verification: {step_name}")
 
     try:
         # Save checkpoint data using the existing function
@@ -1853,11 +1853,11 @@ def save_checkpoint_with_verification(step_name, age_band, event_year, checkpoin
         )
 
         if not success:
-            logger.error(f"→ Failed to save checkpoint: {step_name}")
+            logger.error(f"--> Failed to save checkpoint: {step_name}")
             return False
 
         # Verify that all data files are actually available
-        logger.info(f"→ Verifying checkpoint data files for {step_name}...")
+        logger.info(f"--> Verifying checkpoint data files for {step_name}...")
         data_files_metadata = checkpoint_data.get("data_files", {})
 
         verification_failures = []
@@ -1865,36 +1865,36 @@ def save_checkpoint_with_verification(step_name, age_band, event_year, checkpoin
             if isinstance(data_path, str) and not data_path.startswith("ERROR:"):
                 if not verify_s3_data_availability(data_path, logger):
                     verification_failures.append(view_name)
-                    logger.error(f"→ Verification failed for {view_name}: {data_path}")
+                    logger.error(f"--> Verification failed for {view_name}: {data_path}")
 
         if verification_failures:
-            logger.error(f"→ Checkpoint verification failed for {len(verification_failures)} files: {verification_failures}")
-            logger.error("→ This may cause issues during checkpoint restoration")
-            logger.error("→ Consider re-running the step or checking S3 permissions")
+            logger.error(f"--> Checkpoint verification failed for {len(verification_failures)} files: {verification_failures}")
+            logger.error("--> This may cause issues during checkpoint restoration")
+            logger.error("--> Consider re-running the step or checking S3 permissions")
             return False
         else:
-            logger.info(f"→ ✓ All checkpoint data files verified for {step_name}")
+            logger.info(f"--> [1] All checkpoint data files verified for {step_name}")
             return True
 
     except Exception as e:
-        logger.error(f"→ Error in save_checkpoint_with_verification: {str(e)}")
+        logger.error(f"--> Error in save_checkpoint_with_verification: {str(e)}")
         return False
 
 
 def load_checkpoint_with_verification(step_name, age_band, event_year, conn, logger):
     """Load checkpoint data with verification that files are accessible."""
-    logger.info(f"→ Loading checkpoint with verification: {step_name}")
+    logger.info(f"--> Loading checkpoint with verification: {step_name}")
 
     try:
         # Load checkpoint metadata
         checkpoint_data = load_checkpoint_with_data(step_name, age_band, event_year, conn, logger)
 
         if not checkpoint_data:
-            logger.info(f"→ No checkpoint found for {step_name}")
+            logger.info(f"--> No checkpoint found for {step_name}")
             return None
 
         # Verify that all data files are accessible before proceeding
-        logger.info(f"→ Verifying checkpoint data file accessibility for {step_name}...")
+        logger.info(f"--> Verifying checkpoint data file accessibility for {step_name}...")
         data_files = checkpoint_data.get("data_files", {})
 
         verification_failures = []
@@ -1902,34 +1902,34 @@ def load_checkpoint_with_verification(step_name, age_band, event_year, conn, log
             if isinstance(data_path, str) and not data_path.startswith("ERROR:"):
                 if not verify_s3_data_availability(data_path, logger):
                     verification_failures.append(view_name)
-                    logger.error(f"→ Data file not accessible: {view_name}: {data_path}")
+                    logger.error(f"--> Data file not accessible: {view_name}: {data_path}")
 
         if verification_failures:
-            logger.error(f"→ Checkpoint data files not accessible: {verification_failures}")
-            logger.error(f"→ Cannot restore checkpoint {step_name} - data files missing")
-            logger.error("→ This may be due to S3 eventual consistency or file deletion")
+            logger.error(f"--> Checkpoint data files not accessible: {verification_failures}")
+            logger.error(f"--> Cannot restore checkpoint {step_name} - data files missing")
+            logger.error("--> This may be due to S3 eventual consistency or file deletion")
             return None
         else:
-            logger.info(f"→ ✓ All checkpoint data files accessible for {step_name}")
+            logger.info(f"--> [1] All checkpoint data files accessible for {step_name}")
             return checkpoint_data
 
     except Exception as e:
-        logger.error(f"→ Error in load_checkpoint_with_verification: {str(e)}")
+        logger.error(f"--> Error in load_checkpoint_with_verification: {str(e)}")
         return None
 
 
 def load_s3_data_without_glue(conn, s3_path, view_name, logger, description="data"):
     """Load S3 data without relying on Glue partitions."""
-    logger.info(f"→ Loading {description} from S3 without Glue partitions: {s3_path}")
+    logger.info(f"--> Loading {description} from S3 without Glue partitions: {s3_path}")
 
     try:
         # Ensure AWS credentials are loaded
         try:
             conn.sql("CALL load_aws_credentials('');")
-            logger.info("→ AWS credentials loaded for S3 reads")
+            logger.info("--> AWS credentials loaded for S3 reads")
         except Exception as cred_e:
-            logger.warning(f"→ Could not load AWS credentials: {str(cred_e)}")
-            logger.warning("→ S3 reads may fail if credentials are not available")
+            logger.warning(f"--> Could not load AWS credentials: {str(cred_e)}")
+            logger.warning("--> S3 reads may fail if credentials are not available")
 
         # Create view with explicit S3 configuration
         create_view_sql = f"""
@@ -1941,23 +1941,23 @@ def load_s3_data_without_glue(conn, s3_path, view_name, logger, description="dat
         )
         """
 
-        logger.info(f"→ Creating view {view_name} from S3 data...")
+        logger.info(f"--> Creating view {view_name} from S3 data...")
         conn.sql(create_view_sql)
 
         # Verify the view was created successfully
         try:
             row_count = conn.sql(f"SELECT COUNT(*) as count FROM {view_name}").df()
-            logger.info(f"→ ✓ Successfully loaded {description}: {row_count.iloc[0]['count']} rows")
+            logger.info(f"--> [1] Successfully loaded {description}: {row_count.iloc[0]['count']} rows")
 
             # Check for any obvious data quality issues
             if row_count.iloc[0]['count'] == 0:
-                logger.warning(f"→ WARNING: {description} view is empty!")
-                logger.warning("→ This may indicate the S3 path is incorrect or the data is missing")
+                logger.warning(f"--> WARNING: {description} view is empty!")
+                logger.warning("--> This may indicate the S3 path is incorrect or the data is missing")
 
             return True
 
         except Exception as verify_e:
-            logger.error(f"→ ✗ Failed to verify {view_name} after creation: {str(verify_e)}")
+            logger.error(f"--> [X] Failed to verify {view_name} after creation: {str(verify_e)}")
 
             # Try to get more information about the S3 path
             try:
@@ -1968,31 +1968,31 @@ def load_s3_data_without_glue(conn, s3_path, view_name, logger, description="dat
                         bucket, key = parts
                         response = s3_client.head_object(Bucket=bucket, Key=key)
                         file_size = response.get('ContentLength', 0)
-                        logger.info(f"→ S3 file exists: {s3_path} ({file_size} bytes)")
+                        logger.info(f"--> S3 file exists: {s3_path} ({file_size} bytes)")
                     else:
-                        logger.error(f"→ Invalid S3 path format: {s3_path}")
+                        logger.error(f"--> Invalid S3 path format: {s3_path}")
             except Exception as s3_check_e:
-                logger.error(f"→ S3 file check failed: {str(s3_check_e)}")
+                logger.error(f"--> S3 file check failed: {str(s3_check_e)}")
 
             return False
 
     except Exception as e:
-        logger.error(f"→ ✗ Error loading {description} from S3: {str(e)}")
-        logger.error(f"→ Error type: {type(e).__name__}")
+        logger.error(f"--> [X] Error loading {description} from S3: {str(e)}")
+        logger.error(f"--> Error type: {type(e).__name__}")
 
         # Provide specific guidance for common S3 read issues
         if "Access Denied" in str(e) or "403" in str(e):
-            logger.error("→ This appears to be an S3 permissions issue")
-            logger.error("→ Check that the process has read access to {s3_path}")
+            logger.error("--> This appears to be an S3 permissions issue")
+            logger.error("--> Check that the process has read access to {s3_path}")
         elif "No such file" in str(e) or "404" in str(e):
-            logger.error("→ This appears to be a missing file issue")
-            logger.error("→ The S3 path may be incorrect or the data may not exist")
+            logger.error("--> This appears to be a missing file issue")
+            logger.error("--> The S3 path may be incorrect or the data may not exist")
         elif "Invalid parquet" in str(e):
-            logger.error("→ This appears to be a corrupted parquet file")
-            logger.error("→ The S3 data may be incomplete or corrupted")
+            logger.error("--> This appears to be a corrupted parquet file")
+            logger.error("--> The S3 data may be incomplete or corrupted")
         elif "hive_partitioning" in str(e):
-            logger.error("→ This appears to be a DuckDB version compatibility issue")
-            logger.error("→ Try removing the hive_partitioning parameter")
+            logger.error("--> This appears to be a DuckDB version compatibility issue")
+            logger.error("--> Try removing the hive_partitioning parameter")
 
         return False
 
@@ -2028,18 +2028,18 @@ def list_checkpoints_with_data(age_band, event_year, logger):
         # Remove duplicates (same step can have multiple data files)
         data_checkpoints = list(set(data_checkpoints))
         
-        logger.info(f"→ Found {len(data_checkpoints)} data checkpoints")
+        logger.info(f"--> Found {len(data_checkpoints)} data checkpoints")
         return data_checkpoints
         
     except Exception as e:
-        logger.warning(f"→ Error listing data checkpoints: {str(e)}")
+        logger.warning(f"--> Error listing data checkpoints: {str(e)}")
         return []
 
 
 def cleanup_incorrect_checkpoints(age_band, event_year, logger):
     """Clean up checkpoints that were created with incorrect age bands or years."""
     try:
-        logger.info(f"→ Cleaning up incorrect checkpoints for {age_band}/{event_year}")
+        logger.info(f"--> Cleaning up incorrect checkpoints for {age_band}/{event_year}")
 
         # List all checkpoints (both metadata and data checkpoints)
         metadata_checkpoints = list_checkpoints(age_band, event_year, logger)
@@ -2053,22 +2053,22 @@ def cleanup_incorrect_checkpoints(age_band, event_year, logger):
             # Check if checkpoint name contains incorrect age band patterns
             if '18-64_2022' in checkpoint and age_band != '18-64':
                 incorrect_checkpoints.append(checkpoint)
-                logger.warning(f"→ Found incorrect checkpoint: {checkpoint}")
+                logger.warning(f"--> Found incorrect checkpoint: {checkpoint}")
             elif '2022' in checkpoint and event_year != 2022:
                 incorrect_checkpoints.append(checkpoint)
-                logger.warning(f"→ Found incorrect checkpoint: {checkpoint}")
+                logger.warning(f"--> Found incorrect checkpoint: {checkpoint}")
 
         # Clean up incorrect checkpoints
         for checkpoint in incorrect_checkpoints:
             try:
                 delete_checkpoint(checkpoint, age_band, event_year, logger)
-                logger.info(f"→ Deleted incorrect checkpoint: {checkpoint}")
+                logger.info(f"--> Deleted incorrect checkpoint: {checkpoint}")
             except Exception as e:
-                logger.warning(f"→ Could not delete checkpoint {checkpoint}: {str(e)}")
+                logger.warning(f"--> Could not delete checkpoint {checkpoint}: {str(e)}")
 
         return len(incorrect_checkpoints)
     except Exception as e:
-        logger.warning(f"→ Error during checkpoint cleanup: {str(e)}")
+        logger.warning(f"--> Error during checkpoint cleanup: {str(e)}")
         return 0
 
 
@@ -2270,12 +2270,12 @@ def delete_s3_parquet_files(s3_partition_path: str, logger=None) -> int:
                 deleted_count += 1
         
         if deleted_count > 0 and logger:
-            logger.info(f"→ Pre-deleted {deleted_count} Parquet files under {s3_partition_path}")
+            logger.info(f"--> Pre-deleted {deleted_count} Parquet files under {s3_partition_path}")
         
         return deleted_count
     except Exception as e:
         if logger:
-            logger.warning(f"⚠️ Pre-delete encountered an issue (will still attempt write): {e}")
+            logger.warning(f"[WARN] Pre-delete encountered an issue (will still attempt write): {e}")
         return 0
 
 

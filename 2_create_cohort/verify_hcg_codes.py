@@ -40,9 +40,9 @@ conn = create_duckdb_conn()
 try:
     conn.sql("INSTALL httpfs; LOAD httpfs;")
     conn.sql("CALL load_aws_credentials('pgx');")
-    print("\n✓ AWS credentials loaded")
+    print("\n[1] AWS credentials loaded")
 except Exception as e:
-    print(f"\n⚠ Warning: Could not load AWS credentials: {e}")
+    print(f"\n[WARN] Warning: Could not load AWS credentials: {e}")
     print("  Will try to use local paths if available")
 
 # Try to resolve path (prefer local, fall back to S3)
@@ -56,13 +56,13 @@ if os.path.exists(local_dir):
     parquet_files = glob.glob(f"{local_dir}/*.parquet")
     if parquet_files:
         medical_path = parquet_files[0]  # Use first file for quick check
-        print(f"\n✓ Using local path: {medical_path}")
+        print(f"\n[1] Using local path: {medical_path}")
     else:
         medical_path = f"{local_dir}/*.parquet"
 else:
     # Fall back to S3
     medical_path = f"s3://{S3_BUCKET}/gold/medical/age_band={age_band}/event_year={event_year}/*.parquet"
-    print(f"\n→ Using S3 path: {medical_path}")
+    print(f"\n--> Using S3 path: {medical_path}")
 
 try:
     # Query 1: Check if current codes exist
@@ -86,10 +86,10 @@ try:
     result1 = conn.sql(query1).fetchdf()
     
     if result1.empty:
-        print("\n⚠ No records found with current HCG target codes!")
+        print("\n[WARN] No records found with current HCG target codes!")
         print("  This suggests the codes may be incorrect.")
     else:
-        print(f"\n✓ Found {len(result1)} of {len(current_hcg_codes)} current codes:\n")
+        print(f"\n[1] Found {len(result1)} of {len(current_hcg_codes)} current codes:\n")
         print(result1.to_string(index=False))
     
     # Query 2: Get sample of all HCG codes to see what actually exists
@@ -110,14 +110,14 @@ try:
     result2 = conn.sql(query2).fetchdf()
     
     if result2.empty:
-        print("\n⚠ No HCG line codes found in medical data")
+        print("\n[WARN] No HCG line codes found in medical data")
     else:
         print(f"\nFound {len(result2)} distinct HCG line codes (showing first 100):\n")
         for idx, row in result2.iterrows():
             code = row['hcg_line']
             # Highlight if it matches current codes
             if code in current_hcg_codes:
-                print(f"  ✓ {code}")
+                print(f"  [1] {code}")
             else:
                 print(f"    {code}")
         
@@ -136,7 +136,7 @@ try:
             for idx, row in ed_related.iterrows():
                 code = row['hcg_line']
                 if code in current_hcg_codes:
-                    print(f"  ✓ {code} (CURRENT)")
+                    print(f"  [1] {code} (CURRENT)")
                 else:
                     print(f"    {code} (NOT IN CURRENT LIST)")
         else:
@@ -162,13 +162,13 @@ try:
     result3 = conn.sql(query3).fetchdf()
     
     if result3.empty:
-        print("\n⚠ No sample records found with current HCG target codes")
+        print("\n[WARN] No sample records found with current HCG target codes")
     else:
         print(f"\nSample of {len(result3)} records:\n")
         print(result3.to_string(index=False))
     
 except Exception as e:
-    print(f"\n✗ Error querying data: {e}")
+    print(f"\n[X] Error querying data: {e}")
     import traceback
     traceback.print_exc()
 

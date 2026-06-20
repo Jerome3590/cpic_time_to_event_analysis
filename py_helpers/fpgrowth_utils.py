@@ -121,7 +121,7 @@ def convert_frozensets(obj: Any, logger: Optional[logging.Logger] = None) -> Any
         return obj
 
     except Exception as e:
-        msg = f"✗ Error converting frozensets: {str(e)}"
+        msg = f"[X] Error converting frozensets: {str(e)}"
         if logger:
             logger.error(msg)
         else:
@@ -183,11 +183,11 @@ def save_drug_encoding_map(
         save_to_s3_json(drug_encodings, json_path, logger=logger)
 
         if logger:
-            logger.info(f"✓ Successfully saved drug encoding map to {parquet_path}")
+            logger.info(f"[1] Successfully saved drug encoding map to {parquet_path}")
         return True
 
     except Exception as e:
-        msg = f"✗ Error saving drug encoding map: {str(e)}"
+        msg = f"[X] Error saving drug encoding map: {str(e)}"
         if logger:
             logger.error(msg)
         return False
@@ -489,7 +489,7 @@ def expand_pattern_metrics(df, itemsets_df, rules_df, cohort_name, band, year, s
                     rule_metrics.setdefault(f"{slot}_{metric}", []).append(0.0)
     else:
         if logger:
-            logger.warning("Rules contain only fallback — rule-based metrics will be skipped")
+            logger.warning("Rules contain only fallback - rule-based metrics will be skipped")
 
     # === Enforce column order ===
     ordered_encoding_cols = [

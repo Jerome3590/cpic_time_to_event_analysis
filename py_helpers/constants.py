@@ -22,7 +22,7 @@ RICHMOND_ZIP_CODES = {
 
 # Drug-name column: values to exclude from model training (not drugs or not useful as features).
 # 1036F: CPT Category II tobacco non-user tracking code (not a drug).
-# CPT 1100F: Falls risk screening process measure — feature, not outcome.
+# CPT 1100F: Falls risk screening process measure - feature, not outcome.
 DRUG_NAMES_EXCLUDED_MODEL_TRAINING = frozenset({
     "Unknown",
     "1036F",
@@ -37,14 +37,14 @@ FEATURE_SUBSTRINGS_EXCLUDED = frozenset()
 EXCLUDED_CODES = {
     'Z91.81', 'Z9181',  # History of falling (feature flag, not outcome; see fall_injury_any)
     'R29.6',  'R296',   # Tendency to fall (feature flag, not outcome)
-    'W00', 'W01', 'W02', 'W03', 'W04', 'W05', 'W06', 'W07', 'W08', 'W09',  # Fall causes — outcome definition components
+    'W00', 'W01', 'W02', 'W03', 'W04', 'W05', 'W06', 'W07', 'W08', 'W09',  # Fall causes - outcome definition components
     'HCG',    # VHI grouping code
     'hcg',
     'medical_supplies',
     'freestyle_lancets',
 }
 
-# Fall injury ICD-10-CM outcome codes — used in event filter (Step 1b).
+# Fall injury ICD-10-CM outcome codes - used in event filter (Step 1b).
 # fall_injury_any = 1 when BOTH an injury code (FALL_INJURY_ICD_PREFIXES) AND an
 # external cause code (FALL_EXTERNAL_CAUSE_PREFIXES) appear on the same encounter.
 FALL_INJURY_ICD_PREFIXES = (
@@ -62,7 +62,7 @@ FALL_TARGET_WINDOW_DAYS = int(os.environ.get("CPIC_FALL_TARGET_WINDOW_DAYS", "7"
 FALL_FRACTURE_CODES = ('T02', 'S12', 'S22', 'S32', 'S42', 'S52', 'S62', 'S72', 'S82', 'S92')
 FALL_HEAD_INJURY_PREFIXES = tuple(f'S{i:02d}' for i in range(10))  # S00-S09
 
-# Fall-risk FEATURE flags (NOT outcomes — do not use as labels)
+# Fall-risk FEATURE flags (NOT outcomes - do not use as labels)
 FALL_FEATURE_CODES = {
     'R29.6', 'R296',   # Tendency to fall / repeated falls
     'Z91.81', 'Z9181', # History of falling
@@ -193,21 +193,21 @@ MAX_PATTERN_COLUMNS = 15
 # AWS configuration
 S3_BUCKET = os.environ.get("CPIC_S3_BUCKET", "pgxdatalake")
 
-# Project slug — used to namespace S3 artifacts so multiple projects can share
+# Project slug - used to namespace S3 artifacts so multiple projects can share
 # the same bucket without path collisions.
 PROJECT_SLUG = os.environ.get("CPIC_PROJECT_SLUG", "cpic_time_to_event")
 
-# All pipeline artifact paths — project-scoped under PROJECT_SLUG
+# All pipeline artifact paths - project-scoped under PROJECT_SLUG
 BASE_PATH_COHORT      = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/cohorts"
 BASE_PATH_FEATURES    = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/feature_importance"
 BASE_PATH_FINAL_MODEL = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/final_model"
 
-# New analysis artifact paths — project-scoped from the start
+# New analysis artifact paths - project-scoped from the start
 BASE_PATH_ANALYSIS_VISUALS = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/analysis_visuals"
 BASE_PATH_SHAP_ANALYSIS    = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/shap_analysis"
 BASE_PATH_FFA_ANALYSIS     = f"s3://{S3_BUCKET}/gold/{PROJECT_SLUG}/ffa_analysis"
 
-# Checkpoint and log storage — env-overridable; defaults to main data bucket
+# Checkpoint and log storage - env-overridable; defaults to main data bucket
 # Override with: export CPIC_CHECKPOINT_BUCKET=pgxdatalake
 CHECKPOINT_BUCKET      = os.environ.get("CPIC_CHECKPOINT_BUCKET", S3_BUCKET)
 LOG_BUCKET             = os.environ.get("CPIC_LOG_BUCKET", S3_BUCKET)

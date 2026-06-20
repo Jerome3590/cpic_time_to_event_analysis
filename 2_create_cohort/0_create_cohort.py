@@ -24,13 +24,13 @@ from datetime import datetime
 # Windows emoji compatibility
 IS_WINDOWS = platform.system() == 'Windows'
 SYMBOLS = {
-    'rocket': '[START]' if IS_WINDOWS else '🚀',
-    'info': '[INFO]' if IS_WINDOWS else '📊',
-    'config': '[CONFIG]' if IS_WINDOWS else '🔧',
-    'success': '[PASS]' if IS_WINDOWS else '✅',
-    'fail': '[FAIL]' if IS_WINDOWS else '❌',
-    'clean': '[CLEAN]' if IS_WINDOWS else '🧹',
-    'trophy': '[SUCCESS]' if IS_WINDOWS else '🎉'
+    'rocket': '[START]',
+    'info': '[INFO]',
+    'config': '[CONFIG]',
+    'success': '[1]',
+    'fail': '[X]',
+    'clean': '[CLEAN]',
+    'trophy': '[SUCCESS]'
 }
 
 # Set root of project (e.g., /home/pgx3874/cpic_time_to_event_analysis)
@@ -91,7 +91,7 @@ def cleanup_persistent_tables(context):
     logger = context["logger"]
     cohort_conn_duckdb = context["cohort_conn_duckdb"]
     
-    logger.info("→ [CLEANUP] Starting optimized cleanup of persistent temporary tables...")
+    logger.info("--> [CLEANUP] Starting optimized cleanup of persistent temporary tables...")
     
     try:
         # List of persistent tables that should be cleaned up after pipeline completion
@@ -112,14 +112,14 @@ def cleanup_persistent_tables(context):
                 if result and result[0] > 0:
                     cohort_conn_duckdb.execute(f"DROP TABLE IF EXISTS {table_name}")
                     cleanup_count += 1
-                    logger.debug(f"→ [CLEANUP] Dropped table: {table_name}")
+                    logger.debug(f"--> [CLEANUP] Dropped table: {table_name}")
             except Exception as e:
-                logger.warning(f"→ [CLEANUP] Could not drop table {table_name}: {e}")
+                logger.warning(f"--> [CLEANUP] Could not drop table {table_name}: {e}")
         
-        logger.info(f"→ [CLEANUP] Cleaned up {cleanup_count} persistent tables and temp files")
+        logger.info(f"--> [CLEANUP] Cleaned up {cleanup_count} persistent tables and temp files")
         
     except Exception as e:
-        logger.error(f"→ [CLEANUP] Error during cleanup: {e}")
+        logger.error(f"--> [CLEANUP] Error during cleanup: {e}")
 
 
 # Define the step execution order (optimized for new 4-phase workflow)
@@ -164,21 +164,21 @@ def step_execution_dispatcher(starting_step, context):
     try:
         start_index = STEP_EXECUTION_ORDER.index(starting_step)
     except ValueError:
-        logger.error(f"→ [DISPATCHER] Invalid starting step: {starting_step}")
-        logger.error(f"→ [DISPATCHER] Available steps: {STEP_EXECUTION_ORDER}")
+        logger.error(f"--> [DISPATCHER] Invalid starting step: {starting_step}")
+        logger.error(f"--> [DISPATCHER] Available steps: {STEP_EXECUTION_ORDER}")
         raise ValueError(f"Invalid starting step: {starting_step}")
     
     # Execute steps from starting point
     steps_to_execute = STEP_EXECUTION_ORDER[start_index:]
-    logger.info(f"→ [DISPATCHER] Executing steps: {steps_to_execute}")
+    logger.info(f"--> [DISPATCHER] Executing steps: {steps_to_execute}")
     
     for step_name in steps_to_execute:
         try:
-            logger.info(f"→ [DISPATCHER] Executing {step_name}...")
+            logger.info(f"--> [DISPATCHER] Executing {step_name}...")
             
             # Check if step has a corresponding function
             if step_name not in step_functions:
-                logger.warning(f"→ [DISPATCHER] No function found for step: {step_name}")
+                logger.warning(f"--> [DISPATCHER] No function found for step: {step_name}")
                 continue
             
             # Execute the step
@@ -187,11 +187,11 @@ def step_execution_dispatcher(starting_step, context):
             
             # Note: Profiling and explicit checkpoints are not used in simplified helpers
             
-            logger.info(f"→ [DISPATCHER] Completed {step_name}")
+            logger.info(f"--> [DISPATCHER] Completed {step_name}")
             
         except Exception as e:
-            logger.error(f"→ [DISPATCHER] Error in {step_name}: {str(e)}")
-            logger.error(f"→ [DISPATCHER] Traceback: {traceback.format_exc()}")
+            logger.error(f"--> [DISPATCHER] Error in {step_name}: {str(e)}")
+            logger.error(f"--> [DISPATCHER] Traceback: {traceback.format_exc()}")
             
             # Continue raising after logging; temp file cleanup not available in simplified helpers
             raise
@@ -206,43 +206,43 @@ def execute_pipeline(context):
     age_band = context["age_band"]
     event_year = context["event_year"]
     
-    logger.info("→ [PIPELINE] Starting optimized 4-phase pipeline execution...")
-    logger.info("→ [PIPELINE] Applied DUCKDB optimizations from APCD development")
-    logger.info("→ [PIPELINE] Using new consolidated 4-phase workflow (5 steps total)")
+    logger.info("--> [PIPELINE] Starting optimized 4-phase pipeline execution...")
+    logger.info("--> [PIPELINE] Applied DUCKDB optimizations from APCD development")
+    logger.info("--> [PIPELINE] Using new consolidated 4-phase workflow (5 steps total)")
     
     try:
         # Pre-phase: Sync gold data from S3 to local /mnt/nvme if needed
         from phases.common import sync_gold_data_to_local
-        logger.info("→ [PIPELINE] Pre-phase: Ensuring gold medical/pharmacy data is available locally...")
+        logger.info("--> [PIPELINE] Pre-phase: Ensuring gold medical/pharmacy data is available locally...")
         if True:
             sync_gold_data_to_local("medical", age_band, event_year, logger)
             sync_gold_data_to_local("pharmacy", age_band, event_year, logger)
         
         # Phase 1: Data Preparation (APCD Integration)
-        logger.info("→ [PIPELINE] Executing Phase 1: Data Preparation (APCD Integration)")
+        logger.info("--> [PIPELINE] Executing Phase 1: Data Preparation (APCD Integration)")
         run_phase1_data_preparation(context)
         
         # Phase 2 Step 1: Event Fact Table Creation
-        logger.info("→ [PIPELINE] Executing Phase 2 Step 1: Event Fact Table Creation")
+        logger.info("--> [PIPELINE] Executing Phase 2 Step 1: Event Fact Table Creation")
         run_phase2_step1_event_fact_table(context)
         
         # Phase 2 Step 2: Drug Exposure Events
-        logger.info("→ [PIPELINE] Executing Phase 2 Step 2: Drug Exposure Events")
+        logger.info("--> [PIPELINE] Executing Phase 2 Step 2: Drug Exposure Events")
         run_phase2_step2_drug_exposure(context)
         
         # Phase 3 Step 3: Final Cohort Creation (5:1 ratio)
-        logger.info("→ [PIPELINE] Executing Phase 3 Step 3: Final Cohort Creation (5:1 ratio)")
+        logger.info("--> [PIPELINE] Executing Phase 3 Step 3: Final Cohort Creation (5:1 ratio)")
         run_phase3_step3_final_cohort_fact(context)
         
         # Phase 4: Complete Pipeline
-        logger.info("→ [PIPELINE] Executing Phase 4: Complete Pipeline")
+        logger.info("--> [PIPELINE] Executing Phase 4: Complete Pipeline")
         run_phase4_complete_pipeline(context)
         
-        logger.info("→ [PIPELINE] Optimized 4-phase pipeline execution completed successfully!")
+        logger.info("--> [PIPELINE] Optimized 4-phase pipeline execution completed successfully!")
         
     except Exception as e:
-        logger.error(f"→ [PIPELINE] Pipeline execution failed: {str(e)}")
-        logger.error(f"→ [PIPELINE] Traceback: {traceback.format_exc()}")
+        logger.error(f"--> [PIPELINE] Pipeline execution failed: {str(e)}")
+        logger.error(f"--> [PIPELINE] Traceback: {traceback.format_exc()}")
         
         # No temp file cleanup in simplified helpers
         raise
@@ -418,7 +418,7 @@ def main():
 
         # Cleanup old DuckDB temp files at startup (from previous runs/crashes)
         from phases.common import cleanup_duckdb_temp_files
-        logger.info("→ [STARTUP] Cleaning up old DuckDB temp files...")
+        logger.info("--> [STARTUP] Cleaning up old DuckDB temp files...")
         cleanup_duckdb_temp_files(logger)
         
         # Setup optimized DuckDB connection with parallelization
@@ -426,7 +426,7 @@ def main():
         # Use worker-specific temp directory (with process PID) to avoid conflicts when running multiple cohorts in parallel
         from py_helpers.duckdb_utils import get_worker_temp_dir
         worker_temp_dir = get_worker_temp_dir()
-        logger.info(f"→ [CONFIG] Using worker-specific temp directory: {worker_temp_dir}")
+        logger.info(f"--> [CONFIG] Using worker-specific temp directory: {worker_temp_dir}")
         
         cohort_conn_duckdb = get_duckdb_connection(tmp_dir=worker_temp_dir, logger=logger)
 
@@ -448,23 +448,23 @@ def main():
         concurrent_workers = None
         if args.concurrent_workers is not None:
             concurrent_workers = args.concurrent_workers
-            logger.info(f"→ [CONFIG] Using --concurrent-workers={concurrent_workers} from CLI argument")
+            logger.info(f"--> [CONFIG] Using --concurrent-workers={concurrent_workers} from CLI argument")
         elif os.getenv('PGX_COHORT_WORKERS'):
             concurrent_workers = int(os.getenv('PGX_COHORT_WORKERS'))
-            logger.info(f"→ [CONFIG] Detected PGX_COHORT_WORKERS={concurrent_workers} from environment")
+            logger.info(f"--> [CONFIG] Detected PGX_COHORT_WORKERS={concurrent_workers} from environment")
         elif os.getenv('MAX_WORKERS'):
             concurrent_workers = int(os.getenv('MAX_WORKERS'))
-            logger.info(f"→ [CONFIG] Detected MAX_WORKERS={concurrent_workers} from environment")
+            logger.info(f"--> [CONFIG] Detected MAX_WORKERS={concurrent_workers} from environment")
         else:
             # Default: assume 3 workers (common for cohort creation)
             concurrent_workers = 3
-            logger.info(f"→ [CONFIG] Using default worker count: {concurrent_workers} (set --concurrent-workers or env var to override)")
+            logger.info(f"--> [CONFIG] Using default worker count: {concurrent_workers} (set --concurrent-workers or env var to override)")
         
         # Log current process information for debugging
-        logger.info(f"→ [CONFIG] Current Process ID: {os.getpid()}")
-        logger.info(f"→ [CONFIG] Parent Process ID: {os.getppid() if hasattr(os, 'getppid') else 'N/A'}")
-        logger.info(f"→ [CONFIG] Total Concurrent Workers (for memory calculation): {concurrent_workers}")
-        logger.info(f"→ [CONFIG] NOTE: This process is 1 of {concurrent_workers} concurrent workers")
+        logger.info(f"--> [CONFIG] Current Process ID: {os.getpid()}")
+        logger.info(f"--> [CONFIG] Parent Process ID: {os.getppid() if hasattr(os, 'getppid') else 'N/A'}")
+        logger.info(f"--> [CONFIG] Total Concurrent Workers (for memory calculation): {concurrent_workers}")
+        logger.info(f"--> [CONFIG] NOTE: This process is 1 of {concurrent_workers} concurrent workers")
         
         # Reserve 40% for OS, buffers, and other processes (600GB for 1TB system)
         # Divide remaining 60% among workers
@@ -479,7 +479,7 @@ def main():
         
         memory_limit = f"{int(per_worker_memory_gb)}GB"
         cohort_conn_duckdb.sql(f"SET memory_limit='{memory_limit}'")
-        logger.info(f"→ [CONFIG] DuckDB memory limit: {memory_limit} (for {concurrent_workers} workers, {total_memory_gb:.0f}GB total system memory, {available_for_duckdb:.0f}GB available for DuckDB)")
+        logger.info(f"--> [CONFIG] DuckDB memory limit: {memory_limit} (for {concurrent_workers} workers, {total_memory_gb:.0f}GB total system memory, {available_for_duckdb:.0f}GB available for DuckDB)")
         
         # Log active process count for debugging
         try:
@@ -494,10 +494,10 @@ def main():
                         python_processes.append(proc.info['pid'])
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     pass
-            logger.info(f"→ [CONFIG] Active cohort creation processes: {len(python_processes)} (PIDs: {python_processes[:10]}{'...' if len(python_processes) > 10 else ''})")
-            logger.info(f"→ [CONFIG] Current process memory: {current_process.memory_info().rss / (1024**3):.2f}GB RSS")
+            logger.info(f"--> [CONFIG] Active cohort creation processes: {len(python_processes)} (PIDs: {python_processes[:10]}{'...' if len(python_processes) > 10 else ''})")
+            logger.info(f"--> [CONFIG] Current process memory: {current_process.memory_info().rss / (1024**3):.2f}GB RSS")
         except (ImportError, Exception) as e:
-            logger.debug(f"→ [CONFIG] Could not query process information: {e}")
+            logger.debug(f"--> [CONFIG] Could not query process information: {e}")
 
         # Configure DuckDB for optimal parallelization based on operation type
         # For single partition processing, we can use more threads (up to CPU cores - 2)
@@ -508,36 +508,36 @@ def main():
         threads = int(os.getenv('PGX_THREADS_PER_WORKER', str(default_threads)))
         threads = min(threads, max_threads)  # Cap at available cores
         cohort_conn_duckdb.sql(f"PRAGMA threads={threads}")
-        logger.info(f"→ [CONFIG] DuckDB threads: {threads} (max available: {max_threads}, CPU cores: {multiprocessing.cpu_count()})")
+        logger.info(f"--> [CONFIG] DuckDB threads: {threads} (max available: {max_threads}, CPU cores: {multiprocessing.cpu_count()})")
 
         # Configure S3 uploader settings for optimal parallel uploads
         # These settings optimize multi-part uploads when saving large cohort files to S3
         s3_uploader_thread_limit = os.getenv('PGX_S3_UPLOADER_THREAD_LIMIT')
         if s3_uploader_thread_limit and s3_uploader_thread_limit.isdigit():
             cohort_conn_duckdb.sql(f"SET s3_uploader_thread_limit={int(s3_uploader_thread_limit)}")
-            logger.info(f"→ [CONFIG] S3 uploader thread limit: {s3_uploader_thread_limit}")
+            logger.info(f"--> [CONFIG] S3 uploader thread limit: {s3_uploader_thread_limit}")
         # Default values should suffice for most use cases, but can be overridden if needed
         s3_uploader_max_filesize = os.getenv('PGX_S3_UPLOADER_MAX_FILESIZE')
         if s3_uploader_max_filesize:
             cohort_conn_duckdb.sql(f"SET s3_uploader_max_filesize='{s3_uploader_max_filesize}'")
-            logger.info(f"→ [CONFIG] S3 uploader max filesize: {s3_uploader_max_filesize}")
+            logger.info(f"--> [CONFIG] S3 uploader max filesize: {s3_uploader_max_filesize}")
         s3_uploader_max_parts_per_file = os.getenv('PGX_S3_UPLOADER_MAX_PARTS_PER_FILE')
         if s3_uploader_max_parts_per_file and s3_uploader_max_parts_per_file.isdigit():
             cohort_conn_duckdb.sql(f"SET s3_uploader_max_parts_per_file={int(s3_uploader_max_parts_per_file)}")
-            logger.info(f"→ [CONFIG] S3 uploader max parts per file: {s3_uploader_max_parts_per_file}")
+            logger.info(f"--> [CONFIG] S3 uploader max parts per file: {s3_uploader_max_parts_per_file}")
 
         # Apply operation-type specific optimizations
         if args.operation_type == "s3_heavy":
             # Increase uploader threads for parallel uploads
             if not s3_uploader_thread_limit:
                 cohort_conn_duckdb.sql("SET s3_uploader_thread_limit=16")
-                logger.info("→ [CONFIG] S3-heavy mode: increased uploader threads to 16")
-            logger.info("→ [CONFIG] S3-heavy mode: optimized for S3 operations")
+                logger.info("--> [CONFIG] S3-heavy mode: increased uploader threads to 16")
+            logger.info("--> [CONFIG] S3-heavy mode: optimized for S3 operations")
         elif args.operation_type == "large_processing":
             # Use more threads for large processing
             large_threads = max(threads, 16)
             cohort_conn_duckdb.sql(f"PRAGMA threads={large_threads}")
-            logger.info(f"→ [CONFIG] Large processing mode: increased threads to {large_threads}")
+            logger.info(f"--> [CONFIG] Large processing mode: increased threads to {large_threads}")
 
         # Query profiling not supported in simplified helpers; skip
         
