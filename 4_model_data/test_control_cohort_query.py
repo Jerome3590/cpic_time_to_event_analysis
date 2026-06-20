@@ -16,7 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import duckdb
 from py_helpers.env_utils import get_data_root
-from py_helpers.constants import get_opioid_icd_sql_condition
+from py_helpers.constants import get_falls_target_icd_sql_condition
 
 
 def resolve_local_medical_root() -> Path:
@@ -171,8 +171,8 @@ def test_query(age_band: str = "65-74", sample_size: int = 100):
     
     con = duckdb.connect()
     
-    # Get opioid ICD condition
-    opioid_condition = get_opioid_icd_sql_condition("ue")
+    # Get falls target ICD condition
+    opioid_condition = get_falls_target_icd_sql_condition("ue")
     
     # Test query (same structure as create_control_cohort_model_data.py)
     query = f"""

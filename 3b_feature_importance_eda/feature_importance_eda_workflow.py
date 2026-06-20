@@ -187,7 +187,7 @@ if not AGE_BAND:
 
 # Third, use defaults or manual override
 if not COHORT:
-    COHORT = "falls"  # Change as needed: "falls" or "ed" (polypharmacy cohort)
+    COHORT = "falls"  # Change as needed: "falls" or "ed"
 if not AGE_BAND:
     AGE_BAND = "65-74"    # Change as needed
 
@@ -1026,7 +1026,7 @@ MANUAL_CODES_TO_FILTER = [
 
 # Remove codes from filtering if they should be kept
 CODES_TO_KEEP = [
-    # Example: "F11.20",  # Keep this code even if flagged
+    # Example: "R42",  # Keep dizziness if clinical review confirms it is a pre-target predictor
     # Add codes to keep here:
 ]
 

@@ -127,8 +127,8 @@ which python  # or: which python3
 # Find Rscript path
 which Rscript
 
-# Use full path
-/usr/local/bin/Rscript 3b_feature_importance_eda/1_bupaR/create_bupar_outputs_falls.R 65-74
+# Required leakage artifacts are generated with Python/DuckDB.
+python 3b_feature_importance_eda/1_bupaR/create_bupar_post_target_analysis.py --cohort falls --age-band 65-74
 ```
 
 **For Jupyter notebooks (EC2 Environment):**
@@ -166,10 +166,10 @@ jupyter notebook --no-browser --port=8888
 - `0_icd_cpt_check/analyze_code_groups.py` - Analyzes ICD/CPT codes by groups
 - `0_icd_cpt_check/validate_icd_cpt_codes.py` - Interactive validation workflow
 
-### R Scripts (BupaR Process Mining)
-- `1_bupaR/create_bupar_outputs_falls.R` - BupaR analysis for falls cohort
-- `1_bupaR/create_bupar_outputs_ed.R` - BupaR analysis for ed cohort (cohort_name="ed")
-- See `1_bupaR/README_bupaR.md` for complete BupaR documentation
+### Target-Leakage Analysis Scripts
+- `1_bupaR/run_bupar_post_target_analysis.py` - Compatibility wrapper for post-target leakage analysis
+- `1_bupaR/create_bupar_post_target_analysis.py` - Python/DuckDB pre/post target analysis for falls and ED
+- `2_filtering/create_safe_feature_filter_json.py` - Builds the safe feature filter from post-target analysis
 
 ## Usage
 
@@ -354,9 +354,9 @@ See `FEATURE_FILTERING_APPROACH.md` for detailed documentation.
 │   ├── validate_icd_cpt_codes.py
 │   ├── administrative_codes_lookup.json
 │   └── README_icd_cpt_check.md   # Code validation documentation
-├── 1_bupaR/                      # BupaR process mining analysis
-│   ├── create_bupar_outputs_falls.R
-│   ├── create_bupar_outputs_ed.R
+├── 1_bupaR/                      # Target-leakage analysis and optional BupaR visualizations
+│   ├── run_bupar_post_target_analysis.py
+│   ├── create_bupar_post_target_analysis.py
 │   ├── create_plots.R
 │   └── README_bupaR.md           # BupaR process mining documentation
 ├── outputs/                      # All outputs organized by cohort/age_band

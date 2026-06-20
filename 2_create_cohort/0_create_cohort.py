@@ -365,10 +365,10 @@ def main():
         if getattr(args, 'repair_state', False):
             logger.info(f"{SYMBOLS['info']} --repair-state: checking output and updating state only")
             if args.cohort == "both":
-                opioid_path = s3_utils.get_cohort_parquet_path("falls", args.age_band, args.event_year)
+                falls_path = s3_utils.get_cohort_parquet_path("falls", args.age_band, args.event_year)
                 ed_path = s3_utils.get_cohort_parquet_path("ed", args.age_band, args.event_year)
-                if PipelineState.check_output_exists(opioid_path) and PipelineState.check_output_exists(ed_path):
-                    pipeline_state.mark_pipeline_completed({'output': opioid_path, 'repair_state': True})
+                if PipelineState.check_output_exists(falls_path) and PipelineState.check_output_exists(ed_path):
+                    pipeline_state.mark_pipeline_completed({'output': falls_path, 'repair_state': True})
                     logger.info(f"{SYMBOLS['success']} State updated to completed (both outputs exist)")
                 else:
                     logger.warning("Output(s) missing; state not updated. Run full pipeline to create cohorts.")
@@ -384,10 +384,10 @@ def main():
 
         # Idempotent: if output already exists, mark state completed and exit (fixes stuck "running" state)
         if args.cohort == "both":
-            opioid_path = s3_utils.get_cohort_parquet_path("falls", args.age_band, args.event_year)
+            falls_path = s3_utils.get_cohort_parquet_path("falls", args.age_band, args.event_year)
             ed_path = s3_utils.get_cohort_parquet_path("ed", args.age_band, args.event_year)
             both_exist = (
-                PipelineState.check_output_exists(opioid_path) and
+                PipelineState.check_output_exists(falls_path) and
                 PipelineState.check_output_exists(ed_path)
             )
             if both_exist:
@@ -395,7 +395,7 @@ def main():
                     logger.info(f"{SYMBOLS['info']} Output exists but state was 'running'; updating state to completed (idempotent)")
                 logger.info(f"{SYMBOLS['success']} Both cohort parquets already exist: falls, ed")
                 logger.info(f"{SYMBOLS['success']} Skipping pipeline - cohort already created")
-                pipeline_state.mark_pipeline_completed({'output': opioid_path, 'skipped': True})
+                pipeline_state.mark_pipeline_completed({'output': falls_path, 'skipped': True})
                 try:
                     save_logs_to_s3(log_buffer, args.cohort, args.age_band, args.event_year, "create_cohort", logger=logger)
                 except Exception as e:

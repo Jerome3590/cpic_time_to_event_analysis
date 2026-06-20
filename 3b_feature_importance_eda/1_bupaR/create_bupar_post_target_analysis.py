@@ -46,6 +46,7 @@ from py_helpers.constants import (
     get_target_name_by_cohort,
     get_target_file_suffix,
 )
+from py_helpers.env_utils import get_refined_feature_importance_root
 from py_helpers.feature_utils import (
     extract_features_from_traces,
     extract_features_from_patient_features
@@ -394,7 +395,7 @@ def analyze_post_target_leakage(
     print(f"\n[INFO] Using BupaR outputs for post-target leakage analysis")
     age_band_fname = age_band_to_fname(age_band)
     output_dir = project_root / "3b_feature_importance_eda" / "outputs" / cohort / age_band_fname
-    suffix = get_target_file_suffix(cohort)  # f1120 for falls, target for ed (no F1120 ref)
+    suffix = get_target_file_suffix(cohort)  # falls=fall_injury_any, ed=ed_event
 
     # Paths to BupaR output files (cohort-aware: falls uses fall_injury_any, ed uses ed_event)
     post_traces_path = output_dir / "features" / f"{cohort}_{age_band_fname}_train_target_post_{suffix}_traces_bupar.csv"
@@ -517,7 +518,7 @@ def main():
     
     # Save results
     age_band_fname = age_band_to_fname(args.age_band)
-    output_dir = project_root / "3b_feature_importance_eda" / "outputs" / args.cohort / age_band_fname
+    output_dir = get_refined_feature_importance_root() / args.cohort / age_band_fname
     output_dir.mkdir(parents=True, exist_ok=True)
     
     output_path = output_dir / f"{args.cohort}_{age_band_fname}_bupar_post_target_analysis.csv"

@@ -25,7 +25,7 @@ from .common import (
 from py_helpers.constants import (
     PROJECT_SLUG,
     S3_BUCKET,
-    get_opioid_icd_sql_condition,
+    get_falls_target_icd_sql_condition,
     get_icd_codes_sql_condition,
     get_icd_prefixes_sql_condition,
     ALL_ICD_DIAGNOSIS_COLUMNS,
@@ -119,7 +119,7 @@ def run_phase3_step3_final_cohort_fact(context):
         
         # HIGH-IMPACT FIX #3: Materialize target_patients once and reuse
         # This avoids recomputing the expensive ICD condition check multiple times
-        opioid_icd_condition = get_opioid_icd_sql_condition()
+        opioid_icd_condition = get_falls_target_icd_sql_condition()
         try:
             total_rows_df = cohort_conn_duckdb.sql("""
             SELECT
@@ -1479,7 +1479,7 @@ def run_phase3_step3_final_cohort_fact(context):
             )
         
         # target ICD-specific checks in cohorts (all 10 ICD diagnosis columns - matches exclusion logic)
-        f1120_condition = get_opioid_icd_sql_condition()
+        f1120_condition = get_falls_target_icd_sql_condition()
         # Use fetchdf() to avoid INT32 overflow in COUNT queries
         f1120_opioid_check_df = cohort_conn_duckdb.sql(f"""
         SELECT 

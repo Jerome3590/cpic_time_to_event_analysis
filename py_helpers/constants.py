@@ -152,18 +152,20 @@ def get_icd_codes_sql_condition(icd_codes, table_alias=None):
     return "(" + " OR ".join(conditions) + ")"
 
 
+def get_falls_target_icd_sql_condition(table_alias=None):
+    """Return the normalized ICD condition for the falls target definition."""
+    return (
+        "("
+        + _icd_prefix_sql_condition(FALL_INJURY_ICD_PREFIXES, table_alias)
+        + " AND "
+        + _icd_prefix_sql_condition(FALL_EXTERNAL_CAUSE_PREFIXES, table_alias)
+        + ")"
+    )
+
+
 def get_opioid_icd_sql_condition(table_alias=None):
-    if _is_falls_target():
-        return (
-            "("
-            + _icd_prefix_sql_condition(FALL_INJURY_ICD_PREFIXES, table_alias)
-            + " AND "
-            + _icd_prefix_sql_condition(FALL_EXTERNAL_CAUSE_PREFIXES, table_alias)
-            + ")"
-        )
-    if OPIOID_ICD_PREFIXES:
-        return _icd_prefix_sql_condition(OPIOID_ICD_PREFIXES, table_alias)
-    return get_icd_codes_sql_condition(OPIOID_ICD_CODES, table_alias) if OPIOID_ICD_CODES else "FALSE"
+    """Backward-compatible alias for older scripts."""
+    return get_falls_target_icd_sql_condition(table_alias)
 
 
 # FpGrowth

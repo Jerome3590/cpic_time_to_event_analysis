@@ -3,7 +3,7 @@
 ## Overview
 
 Feature Importance EDA executes analyses in this order to properly filter **already-processed aggregated feature importances** from Step 3:
-1. **BupaR post-target analysis** (identify pre/post F1120 ICD/CPT events using process mining)
+1. **Post-target leakage analysis** (identify pre/post target events for falls and ED)
 2. **Code research and validation** (identify non-informative ICD/CPT codes - actual event-level filtering happens in Step 4b)
 3. **Filter and refine** (filter post-target leakage features from aggregated feature importance list)
 
@@ -19,12 +19,11 @@ Folders reflect execution order:
 
 The pipeline now executes in this order:
 
-1. **BupaR Post-Target Analysis** (`1_bupaR/`)
-   - Builds BupaR event logs from `model_events.parquet`
-   - Runs pre- and post-F1120 sequence analyses
-   - Calculates pre-F1120 and post-F1120 ratios for each feature
-   - Identifies ICD/CPT codes that appear primarily after F1120 (>=80% post-F1120 ratio = post-target leakage)
-   - Generates comprehensive BupaR features and visualizations
+1. **Post-Target Leakage Analysis** (`1_bupaR/create_bupar_post_target_analysis.py`)
+   - Builds/uses Step 3b `model_events.parquet`
+   - Calculates pre-target and post-target ratios for each feature
+   - Identifies features that appear primarily after the cohort target (>=80% post-target ratio = leakage)
+   - Uses `fall_injury_any` for falls and `ed_event` for ED
    - Outputs: `{cohort}_{age_band}_bupar_post_target_analysis.csv`
    - See `1_bupaR/README_bupaR.md` for complete BupaR process mining documentation
 
@@ -37,10 +36,9 @@ The pipeline now executes in this order:
    - See `0_icd_cpt_check/README_icd_cpt_check.md` for detailed validation process
 
 3. **Create Safe Feature Filter**
-   - Excludes features with >=80% post-F1120 ratio (pure post-target leakage)
+   - Excludes features with >=80% post-target ratio (pure post-target leakage)
    - Keeps all features with any pre-target presence
-   - Keeps ALL features with ANY pre-F1120 presence (maximize information)
-   - Explicitly includes F1120 for target creation
+   - Keeps ALL features with ANY pre-target presence (maximize information)
    - Outputs: `{cohort}_{age_band}_safe_feature_filter.json`
    - See `FEATURE_FILTERING_APPROACH.md` for detailed strategy
 
@@ -76,9 +74,9 @@ The pipeline now executes in this order:
 │   ├── administrative_codes_lookup.json
 │   └── README_icd_cpt_check.md
 ├── 1_bupaR/                         # BupaR analysis (Step 2, after admin filtering)
-│   ├── create_bupar_outputs_opioid_ed.R
-│   ├── create_bupar_outputs_non_opioid_ed.R  (POLYPHARMACY COHORT)
-│   ├── create_plots.R
+│   ├── create_bupar_post_target_analysis.py
+│   ├── run_bupar_post_target_analysis.py
+│   ├── create_plots.R  (optional visualizations)
 │   └── README_bupaR.md
 ├── run_bupar_post_target_analysis.py # Calls 1_bupaR/ scripts
 ├── create_bupar_post_target_analysis.py # Creates post-target analysis CSV
@@ -87,9 +85,9 @@ The pipeline now executes in this order:
 
 ## Rationale
 
-**BupaR analysis runs first** because:
-- Identifies pre vs post-F1120 events (critical for target leakage prevention)
-- Calculates pre-F1120 and post-F1120 ratios for each feature in aggregated importances
+**Post-target leakage analysis runs first** because:
+- Identifies pre vs post-target events (critical for target leakage prevention)
+- Calculates pre-target and post-target ratios for each feature in aggregated importances
 - Outputs are used to create safe feature filter (exclude leakage, keep pre-target)
 - Generates comprehensive process mining visualizations
 
@@ -109,17 +107,17 @@ All scripts require the **full path to the Python jupyter environment** to ensur
 /home/pgx3874/jupyter-env/bin/python3.11
 
 # Run for a single cohort/age band (using full path - EC2)
-/home/pgx3874/jupyter-env/bin/python3.11 3b_feature_importance_eda/run_feature_importance_eda.py --cohort opioid_ed --age-band 13-24
+/home/pgx3874/jupyter-env/bin/python3.11 3b_feature_importance_eda/run_feature_importance_eda.py --cohort falls --age-band 65-74
 
 # Or if python is already in PATH and points to jupyter-env:
-python 3b_feature_importance_eda/run_feature_importance_eda.py --cohort opioid_ed --age-band 13-24
+python 3b_feature_importance_eda/run_feature_importance_eda.py --cohort ed --age-band 65-74
 
 # To find your Python path (if different):
 which python  # or: which python3
 ```
 
 # The pipeline will:
-# 1. Run BupaR analysis (1_bupaR/) - identify pre/post F1120 events in aggregated importances
+# 1. Run post-target leakage analysis (1_bupaR/) - identify pre/post target events in aggregated importances
 # 2. Research and validate codes (0_icd_cpt_check/) - identify administrative codes (for Step 4b reference)
 # 3. Create safe feature filter - exclude leakage, keep pre-target features
 # 4. Filter and refine aggregated feature importances (filter post-target leakage from importance list)

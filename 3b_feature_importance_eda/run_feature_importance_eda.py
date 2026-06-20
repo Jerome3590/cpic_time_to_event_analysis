@@ -4,9 +4,9 @@ Feature Importance EDA and Refinement - Orchestration Script
 
 Runs all Feature Importance EDA analyses in order:
 1. Administrative/Non-informative code filtering (remove non-informative ICD/CPT codes)
-2. BupaR post-target analysis (identify pre/post target events; first_fall_date for falls, first_ed_date for ed)
+1.5. Ensure aggregated feature importance (Step 3a): if missing or empty, rerun Step 3a for this cohort/age_band
+2. Post-target leakage analysis (identify pre/post target events; first_fall_date for falls, first_ed_date for ed)
 3. Create safe feature filter JSON (idempotent: skip if already exists; exclude leakage, keep pre-target features)
-3.5. Ensure aggregated feature importance (Step 3a): if missing or empty, rerun Step 3a for this cohort/age_band
 4. Filter and refine feature importances (uses safe_feature_filter.json when present)
 5. Create BupaR visualizations
 
@@ -39,7 +39,7 @@ else:
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from py_helpers.constants import age_band_to_fname, REQUIRED_COHORTS, PROJECT_SLUG, S3_BUCKET
-from py_helpers.env_utils import get_workflow_python_bin
+from py_helpers.env_utils import get_refined_feature_importance_root, get_workflow_python_bin
 
 try:
     from py_helpers.feature_importance_eda_utils import (
@@ -61,13 +61,56 @@ except ImportError:
 COHORTS = REQUIRED_COHORTS
 
 
+def ensure_bupar_input(cohort: str, age_band: str, script_dir: Path) -> bool:
+    """Build Step 3b event-level input for post-target leakage analysis."""
+    target_parquet = (
+        PROJECT_ROOT
+        / "3b_feature_importance_eda"
+        / "outputs"
+        / f"cohort_name={cohort}"
+        / f"age_band={age_band}"
+        / "model_events.parquet"
+    )
+    if target_parquet.exists():
+        print(f"[INFO] BupaR input already exists: {target_parquet}")
+        return True
+
+    build_script = script_dir / "create_bupar_input_from_cohort.py"
+    if not build_script.exists():
+        print(f"[ERROR] BupaR input builder not found: {build_script}")
+        return False
+
+    print("[INFO] Building Step 3b input from cohort data + Step 3a aggregated FI + target...")
+    cmd = [
+        str(get_workflow_python_bin()),
+        str(build_script),
+        "--cohort",
+        cohort,
+        "--age-band",
+        age_band,
+    ]
+    try:
+        result = subprocess.run(cmd, check=True, cwd=str(PROJECT_ROOT))
+        return result.returncode == 0
+    except subprocess.CalledProcessError as e:
+        print(f"[ERROR] BupaR input build failed: {e}")
+        return False
+
+
 def run_bupar_analysis(cohort: str, age_band: str, script_dir: Path) -> bool:
-    """Run BupaR post-target analysis."""
+    """Run required post-target leakage analysis using the Python/DuckDB path."""
     print(f"\n{'='*80}")
-    print(f"Running BupaR Post-Target Analysis: {cohort} / {age_band}")
+    print(f"Running Post-Target Leakage Analysis: {cohort} / {age_band}")
     print(f"{'='*80}")
-    
-    script_path = script_dir / "1_bupaR" / "run_bupar_post_target_analysis.py"
+
+    if not ensure_bupar_input(cohort, age_band, script_dir):
+        return False
+
+    script_path = script_dir / "1_bupaR" / "create_bupar_post_target_analysis.py"
+    if not script_path.exists():
+        print(f"[ERROR] Post-target analysis script not found: {script_path}")
+        return False
+
     cmd = [
         str(get_workflow_python_bin()),
         str(script_path),
@@ -79,7 +122,7 @@ def run_bupar_analysis(cohort: str, age_band: str, script_dir: Path) -> bool:
         result = subprocess.run(cmd, check=True)
         return result.returncode == 0
     except subprocess.CalledProcessError as e:
-        print(f"[ERROR] BupaR analysis failed: {e}")
+        print(f"[ERROR] Post-target leakage analysis failed: {e}")
         return False
 
 
@@ -88,7 +131,7 @@ def run_bupar_analysis(cohort: str, age_band: str, script_dir: Path) -> bool:
 def run_create_safe_feature_filter(cohort: str, age_band: str, script_dir: Path) -> bool:
     """Create safe feature filter JSON (idempotent: skip if JSON already exists)."""
     age_band_fname = age_band_to_fname(age_band)
-    output_dir = script_dir / "outputs" / cohort / age_band_fname
+    output_dir = get_refined_feature_importance_root() / cohort / age_band_fname
     json_path = output_dir / f"{cohort}_{age_band_fname}_safe_feature_filter.json"
     if json_path.exists():
         print(f"\n[INFO] Safe feature filter already exists (idempotent skip): {json_path}")
@@ -203,17 +246,19 @@ def run_feature_importance_eda_for_cohort(cohort: str, age_band: str, script_dir
     print(f"\n[INFO] Step 1: Administrative/Non-informative code filtering")
     print(f"       (Handled in filter_and_refine step using administrative_codes_lookup.json)")
     
-    # Step 2: BupaR post-target analysis (identify pre/post target events)
+    # Step 1.5: Ensure aggregated feature importance (Step 3a) exists and is non-empty.
+    if not ensure_aggregated_fi(cohort, age_band, script_dir):
+        print("[ERROR] Could not obtain aggregated feature importance (Step 3a run failed or skipped)")
+        return False
+
+    # Step 2: Post-target leakage analysis (identify pre/post target events)
     if not run_bupar_analysis(cohort, age_band, script_dir):
-        print(f"[WARN] BupaR analysis failed, continuing...")
+        print("[ERROR] Post-target leakage analysis failed; refusing to continue without leakage evidence")
+        return False
     
     # Step 3: Create safe feature filter JSON (idempotent: skip if already exists)
     if not run_create_safe_feature_filter(cohort, age_band, script_dir):
-        print("[WARN] Safe feature filter not created; filter_and_refine will use BupaR CSV fallback")
-
-    # Step 3.5: Ensure aggregated feature importance (Step 3a) exists and is non-empty; rerun 3a if missing
-    if not ensure_aggregated_fi(cohort, age_band, script_dir):
-        print("[ERROR] Could not obtain aggregated feature importance (Step 3a run failed or skipped)")
+        print("[ERROR] Safe feature filter not created; refusing to continue with under-filtered features")
         return False
 
     # Step 4: Filter and refine (combines all filtering results; uses safe_feature_filter.json when present)

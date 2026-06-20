@@ -55,7 +55,7 @@ MANUAL_CODES_TO_FILTER = [
 
 # Remove codes from filtering if they should be kept
 CODES_TO_KEEP = [
-    # Example: "F11.20",  # Keep this code even if flagged
+    # Example: "R42",  # Keep dizziness if clinical review confirms it is a pre-target predictor
     # Add codes to keep here:
 ]
 

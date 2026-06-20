@@ -44,8 +44,8 @@ from py_helpers.feature_utils import (
     feature_to_code,
     feature_to_code_type,
     code_to_canonical_feature_name,
-    is_substance_use_disorder_code,
 )
+from py_helpers.feature_importance_filters import is_target_definition_feature
 from py_helpers.feature_importance_eda_utils import (
     load_aggregated_feature_importance,
     load_safe_feature_filter
@@ -77,7 +77,8 @@ def _leakage_feature_set_from_bupar(bupar_results: pd.DataFrame) -> Set[str]:
     """
     Get set of post-target leakage feature names from BupaR CSV.
     Accepts is_post_target_leakage in (1, True, "1", "True"). If column missing,
-    uses post_target_ratio or post_f1120_ratio >= 0.8.
+    uses post_target_ratio >= 0.8. Legacy post_f1120_ratio is accepted only
+    for older cached artifacts.
     """
     if bupar_results.empty or "feature" not in bupar_results.columns:
         return set()
@@ -139,7 +140,7 @@ def filter_and_refine_features(
         filter_post_target: Whether to filter post-target leakage features
         min_importance_threshold: Minimum importance threshold to keep
         safe_feature_filter: Tuple of (features_to_keep_for_cases, features_to_exclude_for_controls)
-        cohort: Cohort name (e.g. falls). When falls, excludes F11.x target-family codes from features.
+        cohort: Cohort name. When falls, excludes fall target-definition ICD features.
     
     Returns:
         Refined feature importance DataFrame
@@ -159,7 +160,7 @@ def filter_and_refine_features(
     filtering_summary = {
         'original_count': len(refined_fi),
         'filtered_by_post_target': 0,
-        'filtered_by_target_family': 0,
+        'filtered_by_target_definition': 0,
         'filtered_by_threshold': 0,
         'filtered_by_safe_filter': 0,
         'filtered_by_drug_name_exclusion': 0,
@@ -256,20 +257,25 @@ def filter_and_refine_features(
             if has_leakage_cols:
                 print(f"[INFO] No post-target leakage features in BupaR results (0 flagged).")
                 if cohort and str(cohort).strip().lower() == "ed":
-                    print(f"[INFO] Expected for polypharmacy: model_events are built with drug events only up to the first ED visit (HCG) within 21d of drug, so no post-target leakage by construction.")
+                    print("[INFO] ED cohort: no post-target leakage features were flagged by the current analysis.")
             else:
                 print(f"[WARN] BupaR CSV has no leakage columns (is_post_target_leakage or post_*_ratio). Check create_bupar_post_target_analysis was run for this cohort/age_band.")
     
-    # Exclude target-family codes (F10/F11/F19 substance use disorder) for falls - they are outcome, not predictors
+    # Exclude cohort target-definition features (outcomes, not predictors).
+    # falls target = injury ICD family (S*, T07/T14) + external fall cause W00-W19.
     if cohort and (str(cohort).strip().lower() == "falls"):
         before_count = len(refined_fi)
-        refined_fi["_code"] = refined_fi["feature"].apply(feature_to_code)
-        refined_fi = refined_fi[~refined_fi["_code"].apply(is_substance_use_disorder_code)].copy()
-        refined_fi = refined_fi.drop(columns=["_code"], errors="ignore")
-        n_target_family = before_count - len(refined_fi)
-        filtering_summary["filtered_by_target_family"] = n_target_family
-        if n_target_family > 0:
-            print(f"Excluded {n_target_family} target-family (F10/F11/F19 substance use disorder) features - outcome codes, not predictors")
+        target_definition_mask = refined_fi["feature"].apply(
+            lambda feature: is_target_definition_feature(feature, cohort=cohort)
+        )
+        refined_fi = refined_fi[~target_definition_mask].copy()
+        n_target_definition = before_count - len(refined_fi)
+        filtering_summary["filtered_by_target_definition"] = n_target_definition
+        if n_target_definition > 0:
+            print(
+                f"Excluded {n_target_definition} falls target-definition features "
+                "(injury S*/T07/T14 and fall external-cause W00-W19) - outcome codes, not predictors"
+            )
     
     # No features or missing importance column: return minimal schema and summary
     if refined_fi.empty or len(refined_fi.columns) < 2:
@@ -443,8 +449,8 @@ def main():
         print(f"  Filtered by safe feature filter (whitelist): {filtering_summary['filtered_by_safe_filter']}")
     else:
         print(f"  Filtered by post-target: {filtering_summary['filtered_by_post_target']}")
-    if filtering_summary.get('filtered_by_target_family', 0) > 0:
-        print(f"  Filtered by target-family (F10/F11/F19): {filtering_summary['filtered_by_target_family']}")
+    if filtering_summary.get('filtered_by_target_definition', 0) > 0:
+        print(f"  Filtered by target-definition: {filtering_summary['filtered_by_target_definition']}")
     print(f"  Filtered by threshold: {filtering_summary['filtered_by_threshold']}")
     print(f"  Final features: {filtering_summary['final_count']}")
     

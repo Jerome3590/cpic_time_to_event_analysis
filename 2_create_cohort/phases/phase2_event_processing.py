@@ -16,7 +16,7 @@ from .common import (
     execute_sql_with_dev_validation,
     ensure_gold_views,
 )
-from py_helpers.constants import get_opioid_icd_sql_condition, ALL_ICD_DIAGNOSIS_COLUMNS
+from py_helpers.constants import get_falls_target_icd_sql_condition, ALL_ICD_DIAGNOSIS_COLUMNS
 
 
 def run_phase2_step1_event_fact_table(context):
@@ -61,9 +61,9 @@ def run_phase2_step1_event_fact_table(context):
             icd_conditions.append(f"primary_icd_diagnosis_code IN {tuple(target_icd_codes)}")
         for pref in target_icd_prefixes:
             # Normalize prefix and use LIKE with ESCAPE for wildcard safe match
-            # CRITICAL: This normalization must match get_opioid_icd_sql_condition() logic
+            # CRITICAL: This normalization must match get_falls_target_icd_sql_condition() logic
             # Both use: UPPER, remove '.', remove ' ' (spaces)
-            # get_opioid_icd_sql_condition() checks codes already normalized in gold tier (F1120 format)
+            # get_falls_target_icd_sql_condition() checks codes already normalized in gold tier target format
             # This prefix matching also normalizes to match gold tier format
             # NOTE: This normalization is duplicated in common.py ensure_unified_views() - consider centralizing
             norm_pref = pref.upper().replace('.', '').replace(' ', '')
@@ -98,7 +98,7 @@ def run_phase2_step1_event_fact_table(context):
         # Default classification falls back to falls vs ed
         # Priority: 1) target ICD codes (ANY position) --> falls, 2) HCG ED visits --> ed, 3) Other --> ed
         # CRITICAL: Check ALL 10 ICD diagnosis columns for target codes
-        target_icd_condition = get_opioid_icd_sql_condition()
+        target_icd_condition = get_falls_target_icd_sql_condition()
         default_case = f"""
             CASE 
                 WHEN {target_icd_condition} THEN 'falls'

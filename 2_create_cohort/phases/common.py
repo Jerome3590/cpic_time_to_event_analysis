@@ -32,7 +32,7 @@ from py_helpers.constants import (
     FALL_INJURY_ICD_PREFIXES,
     OPIOID_ICD_CODES,
     S3_BUCKET,
-    get_opioid_icd_sql_condition,
+    get_falls_target_icd_sql_condition,
 )
 from py_helpers.env_utils import get_data_root, is_linux
 from pathlib import Path
@@ -556,9 +556,9 @@ def ensure_unified_views(conn, logger):
             icd_conditions.append(f"primary_icd_diagnosis_code IN {tuple(target_icd_codes)}")
         for pref in target_icd_prefixes:
             # Normalize prefix and use LIKE with ESCAPE for wildcard safe match
-            # CRITICAL: This normalization must match get_opioid_icd_sql_condition() logic
+            # CRITICAL: This normalization must match get_falls_target_icd_sql_condition() logic
             # Both use: UPPER, remove '.', remove ' ' (spaces)
-            # get_opioid_icd_sql_condition() checks codes already normalized in gold tier (target ICD format)
+            # get_falls_target_icd_sql_condition() checks codes already normalized in gold tier (target ICD format)
             # This prefix matching also normalizes to match gold tier format
             norm_pref = pref.upper().replace('.', '').replace(' ', '')
             like = norm_pref if ('%' in norm_pref or '_' in norm_pref) else (norm_pref + '%')
@@ -589,12 +589,12 @@ def ensure_unified_views(conn, logger):
         """
         
         # Default classification falls back to falls vs ed
-        # Priority: 1) Opioid ICD codes (ANY position) --> falls, 2) HCG ED visits --> ed, 3) Other --> ed
-        # CRITICAL: Check ALL 10 ICD diagnosis columns for opioid codes
-        opioid_icd_condition = get_opioid_icd_sql_condition()
+        # Priority: 1) falls target ICD condition --> falls, 2) ED visit target --> ed, 3) Other --> ed
+        # CRITICAL: Check ALL 10 ICD diagnosis columns for falls target codes
+        falls_target_icd_condition = get_falls_target_icd_sql_condition()
         default_case = f"""
             CASE 
-                WHEN {opioid_icd_condition} THEN 'falls'
+                WHEN {falls_target_icd_condition} THEN 'falls'
                 WHEN {ed_hcg_condition} THEN 'ed'
                 ELSE 'ed'
             END
@@ -606,7 +606,7 @@ def ensure_unified_views(conn, logger):
         if icd_conditions or cpt_conditions:
             target_conditions = []
             if target_icd_codes or target_icd_prefixes:
-                target_conditions.append(opioid_icd_condition)
+                target_conditions.append(falls_target_icd_condition)
             target_conditions.extend(cpt_conditions)
             where_clause = " OR ".join(filter(None, target_conditions)) or "1=0"
             classification_sql = f"""
@@ -849,16 +849,16 @@ def ensure_cohort_views(conn, logger):
     try:
         conn.sql("SELECT 1 FROM ed_cohort LIMIT 1").fetchone()
     except Exception:
-        # Exclude patients with opioid ICD codes from ED target cases
-        # CRITICAL: Check ALL 10 ICD diagnosis columns for opioid codes
-        opioid_icd_condition = get_opioid_icd_sql_condition()
+        # Exclude patients meeting the falls target ICD condition from ED target cases
+        # CRITICAL: Check ALL 10 ICD diagnosis columns for falls target codes
+        falls_target_icd_condition = get_falls_target_icd_sql_condition()
         ed_cohort_sql = f"""
         CREATE OR REPLACE VIEW ed_cohort AS
         WITH target_patients AS (
-            -- Patients with opioid ICD codes (target ICD, etc.) in ANY diagnosis position - exclude from ED targets
+            -- Patients meeting the falls target definition in ANY diagnosis position - exclude from ED targets
             SELECT DISTINCT mi_person_key
             FROM unified_event_fact_table
-            WHERE {opioid_icd_condition}
+            WHERE {falls_target_icd_condition}
         ),
         target_cases AS (
             SELECT DISTINCT mi_person_key

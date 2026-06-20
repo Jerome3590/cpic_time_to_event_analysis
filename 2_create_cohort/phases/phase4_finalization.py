@@ -17,7 +17,7 @@ from .common import (
     ensure_unified_views,
     ensure_cohort_views,
 )
-from py_helpers.constants import get_opioid_icd_sql_condition
+from py_helpers.constants import get_falls_target_icd_sql_condition
 import os
 import subprocess
 import shutil
@@ -234,9 +234,9 @@ def run_phase4_complete_pipeline(context):
             cohort_conn_duckdb.sql("CREATE OR REPLACE TEMP VIEW ed_cohort AS SELECT * FROM falls_cohort WHERE 1=0")
         
         # Cohort-specific QA checks
-        # FALLS cohort: Check target ICD (opioid ICD codes) - all 10 ICD columns
+        # FALLS cohort: Check falls target ICD condition - all 10 ICD columns
         # ED cohort: Check HCG target events (ed cohort target)
-        opioid_icd_condition = get_opioid_icd_sql_condition()
+        opioid_icd_condition = get_falls_target_icd_sql_condition()
         
         # FALLS: target ICD check (all 10 ICD diagnosis columns)
         # Use fetchdf() to avoid INT32 overflow in COUNT queries
