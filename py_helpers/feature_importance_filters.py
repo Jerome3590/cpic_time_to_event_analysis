@@ -9,6 +9,13 @@ from typing import Optional, Set
 
 import pandas as pd
 
+from py_helpers.constants import (
+    DRUG_NAMES_EXCLUDED_MODEL_TRAINING,
+    FALL_EXTERNAL_CAUSE_PREFIXES,
+    FEATURE_SUBSTRINGS_EXCLUDED,
+)
+from py_helpers.feature_utils import feature_to_code, feature_to_code_type
+
 # Lazy import to avoid circular deps
 def _load_administrative_codes_to_exclude(project_root: Path) -> Set[str]:
     """
@@ -63,6 +70,120 @@ def is_leakage_feature(feature_name: str) -> bool:
     return False
 
 
+def _looks_like_icd_code(code: str) -> bool:
+    """Conservative ICD-9/ICD-10 shape check for raw or normalized feature codes."""
+    c = str(code).strip().upper().replace(".", "")
+    if len(c) < 3:
+        return False
+    if c[0].isalpha() and c[1:3].isdigit():
+        return True
+    # ICD-9 diagnosis/procedure codes are often three to five numeric digits.
+    return c.isdigit() and 3 <= len(c) <= 5
+
+
+def _looks_like_cpt_code(code: str) -> bool:
+    """Conservative CPT/HCPCS shape check for raw or normalized feature codes."""
+    c = str(code).strip().upper().replace(".", "")
+    if c.isdigit() and len(c) == 5:
+        return True
+    return len(c) == 5 and c[0].isalpha() and c[1:].isdigit()
+
+
+def is_target_definition_feature(feature_name: str, cohort: Optional[str] = None) -> bool:
+    """Return True when a feature is part of the cohort target definition."""
+    if not cohort:
+        return False
+    cohort_name = str(cohort).strip().lower()
+    if cohort_name != "falls":
+        return False
+
+    code = str(feature_to_code(feature_name)).strip().upper().replace(".", "")
+    if not code:
+        return False
+    if not _looks_like_icd_code(code):
+        return False
+
+    # Avoid treating drug names that happen to start with "S" as injury ICDs.
+    # ICD-10 injury/external-cause target components have a letter + two digits.
+    if code.startswith("S") and len(code) >= 3 and code[1:3].isdigit():
+        return True
+    if code.startswith(("T07", "T14")):
+        return True
+
+    external_prefixes = tuple(
+        str(prefix).strip().upper().replace(".", "")
+        for prefix in FALL_EXTERNAL_CAUSE_PREFIXES
+    )
+    return code.startswith(external_prefixes)
+
+
+def identify_fi_filter_reasons(
+    df: pd.DataFrame,
+    project_root: Path,
+    cohort: Optional[str] = None,
+    feature_col: str = "feature",
+) -> pd.DataFrame:
+    """
+    Build an auditable feature-filter table for final feature-importance outputs.
+
+    Reasons intentionally mirror the robust Step 3b/Step 6 leakage workflow:
+    administrative/code-review exclusions, generic target-leakage naming patterns,
+    cohort target-definition ICDs, ED drug-only filtering, and known non-drug
+    feature-name exclusions.
+    """
+    if df is None or df.empty or feature_col not in df.columns:
+        return pd.DataFrame(columns=[feature_col, "raw_code", "code_type", "remove", "reasons"])
+
+    admin_exclude = _load_administrative_codes_to_exclude(project_root)
+    excluded_drugs_lower = {str(value).strip().lower() for value in DRUG_NAMES_EXCLUDED_MODEL_TRAINING}
+    excluded_substrings_lower = {
+        str(value).strip().lower()
+        for value in FEATURE_SUBSTRINGS_EXCLUDED
+        if str(value).strip()
+    }
+
+    records = []
+    cohort_name = str(cohort).strip().lower() if cohort else ""
+    for feature in df[feature_col].astype(str):
+        raw_code = feature_to_code(feature)
+        code_type = feature_to_code_type(feature)
+        reasons = []
+
+        normalized_admin_code = _normalize_feature_for_admin_check(feature)
+        if admin_exclude and normalized_admin_code in admin_exclude:
+            reasons.append("administrative_or_code_review_exclusion")
+
+        code_normalized = str(raw_code).strip().lower()
+        if code_normalized in excluded_drugs_lower:
+            reasons.append("known_nonpredictive_drug_name")
+        for substring in excluded_substrings_lower:
+            if substring in code_normalized:
+                reasons.append("known_excluded_feature_substring")
+                break
+
+        if is_leakage_feature(feature):
+            reasons.append("generic_target_leakage_pattern")
+
+        if is_target_definition_feature(feature, cohort=cohort):
+            reasons.append("cohort_target_definition_feature")
+
+        looks_like_non_drug_code = _looks_like_icd_code(raw_code) or _looks_like_cpt_code(raw_code)
+        if cohort_name == "ed" and (code_type != "drug" or looks_like_non_drug_code):
+            reasons.append("ed_drug_only_modeling_rule")
+
+        records.append(
+            {
+                feature_col: feature,
+                "raw_code": raw_code,
+                "code_type": code_type,
+                "remove": bool(reasons),
+                "reasons": ";".join(sorted(set(reasons))),
+            }
+        )
+
+    return pd.DataFrame(records)
+
+
 def filter_fi_df_final(
     df: pd.DataFrame,
     project_root: Path,
@@ -77,30 +198,22 @@ def filter_fi_df_final(
     if df is None or df.empty or feature_col not in df.columns:
         return df
     out = df.copy()
-
-    # Admin/Z codes
-    exclude = _load_administrative_codes_to_exclude(project_root)
-    if exclude:
-        normalized = out[feature_col].astype(str).map(_normalize_feature_for_admin_check)
-        mask = ~normalized.isin(exclude)
-        n_admin = (~mask).sum()
-        out = out.loc[mask].copy()
-        if verbose and n_admin:
-            print(f"[FI filter] Removed {n_admin} administrative/Z row(s)")
-
-    # Leakage
-    leakage_mask = out[feature_col].astype(str).map(is_leakage_feature)
-    n_leak = leakage_mask.sum()
-    out = out.loc[~leakage_mask].copy()
-    if verbose and n_leak:
-        print(f"[FI filter] Removed {n_leak} leakage feature row(s)")
-
-    # ed: drug-only (same as pipeline)
-    if cohort == "ed":
-        try:
-            from py_helpers.feature_utils import filter_fi_to_drug_only
-            out = filter_fi_to_drug_only(out, feature_col=feature_col)
-        except ImportError:
-            pass
+    reasons = identify_fi_filter_reasons(
+        out,
+        project_root=project_root,
+        cohort=cohort,
+        feature_col=feature_col,
+    )
+    remove_mask = reasons["remove"].to_numpy()
+    if verbose and remove_mask.any():
+        counts = (
+            reasons.loc[reasons["remove"], "reasons"]
+            .str.get_dummies(sep=";")
+            .sum()
+            .sort_values(ascending=False)
+        )
+        for reason, count in counts.items():
+            print(f"[FI filter] Removed {int(count)} row(s): {reason}")
+    out = out.loc[~remove_mask].copy()
 
     return out.reset_index(drop=True)
