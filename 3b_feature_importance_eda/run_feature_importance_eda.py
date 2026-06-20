@@ -5,7 +5,7 @@ Feature Importance EDA and Refinement - Orchestration Script
 Runs all Feature Importance EDA analyses in order:
 1. Administrative/Non-informative code filtering (remove non-informative ICD/CPT codes)
 1.5. Ensure aggregated feature importance (Step 3a): if missing or empty, rerun Step 3a for this cohort/age_band
-2. Post-target leakage analysis (identify pre/post target events; first_fall_date for falls, first_ed_date for ed)
+2. Post-target leakage analysis (identify pre/post target events; first_falls_date for falls, first_ed_date for ed)
 3. Create safe feature filter JSON (idempotent: skip if already exists; exclude leakage, keep pre-target features)
 4. Filter and refine feature importances (uses safe_feature_filter.json when present)
 

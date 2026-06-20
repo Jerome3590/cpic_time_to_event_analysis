@@ -16,7 +16,7 @@ gold/cohorts/cohort_name={cohort}/event_year={year}/age_band={age_band}/cohort.p
 
 It uses `is_target_case` plus the cohort target date column:
 
-- `falls`: `first_fall_date`
+- `falls`: `first_falls_date` in Step 2 cohort parquet
 - `ed`: `first_ed_date`
 
 The output is:

@@ -27,7 +27,7 @@ Based on this EDA, we filter and update the aggregated feature importances to pr
   - Path: `3a_feature_importance/outputs/{cohort}/{age_band}/{cohort}_{age_band}_aggregated_feature_importance.csv`
 - **Step 2 cohort parquet** (for post-target leakage analysis):
   - Path: `gold/cohorts/cohort_name={cohort}/event_year={year}/age_band={age_band}/cohort.parquet`
-  - Step 3b reads these cohort rows directly, using `is_target_case` plus `first_fall_date` or `first_ed_date` to calculate pre-target and post-target feature ratios.
+  - Step 3b reads these cohort rows directly, using `is_target_case` plus `first_falls_date` or `first_ed_date` to calculate pre-target and post-target feature ratios.
 
 ## Outputs
 

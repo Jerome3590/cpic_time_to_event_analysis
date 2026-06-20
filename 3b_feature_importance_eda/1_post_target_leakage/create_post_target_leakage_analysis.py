@@ -6,7 +6,7 @@ Analyzes Step 2 cohort event rows to identify which features (ICD/CPT codes, dru
 appear primarily after the target event, indicating post-target leakage.
 
 Target is determined by cohort:
-- falls cohort: fall_injury_any = 1 (injury + external cause W00-W19 on same encounter; first_fall_date)
+- falls cohort: fall_injury_any = 1 (injury + external cause W00-W19 on same encounter; first_falls_date in Step 2)
 - ed cohort:    ed_event = 1     (POS=23 or revenue code 045x/0981; first_ed_date)
 
 This script:
@@ -62,7 +62,7 @@ def analyze_post_target_leakage_from_events(
     
     For each feature, calculates:
     - Total occurrences in target cases
-    - Occurrences BEFORE target event (first_fall_date for falls, first_ed_date for ed)
+    - Occurrences BEFORE target event (first_falls_date for falls, first_ed_date for ed)
     - Occurrences AFTER target event
     - Post-target ratio (post / total)
     
@@ -129,11 +129,27 @@ def analyze_post_target_leakage_from_events(
         print("[INFO] Using Step 2 cohort parquet directly for post-target leakage analysis")
         for path in cohort_parquet_paths:
             print(f"  - {path}")
-        target_date_col = "first_fall_date" if cohort == "falls" else "first_ed_date"
         cohort_paths_literal = ", ".join(f"'{p.replace(chr(39), chr(39) + chr(39))}'" for p in cohort_parquet_paths)
         target_name = get_target_name_by_cohort(cohort)
 
         con = duckdb.connect()
+        schema = con.execute(
+            f"DESCRIBE SELECT * FROM read_parquet([{cohort_paths_literal}], union_by_name=True)"
+        ).fetchall()
+        available_cols = {row[0] for row in schema}
+        target_date_candidates = (
+            ["first_falls_date", "first_fall_date"] if cohort == "falls" else ["first_ed_date"]
+        )
+        target_date_col = next((col for col in target_date_candidates if col in available_cols), None)
+        if target_date_col is None:
+            print(
+                "[ERROR] Step 2 cohort parquet is missing a target-date column. "
+                f"Expected one of {target_date_candidates}; found columns: {sorted(available_cols)[:40]}"
+            )
+            con.close()
+            return pd.DataFrame()
+        print(f"[INFO] Using target-date column: {target_date_col}")
+
         if cohort == "ed":
             query = f"""
             WITH target_events AS (

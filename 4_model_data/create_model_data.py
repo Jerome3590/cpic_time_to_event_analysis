@@ -99,7 +99,7 @@ STEP3B_OUTPUTS_DIR = PROJECT_ROOT / "3b_feature_importance_eda" / "outputs"
 TARGET_DATE_FALLS = "first_fall_date"
 TARGET_DATE_ED = "first_ed_date"
 # Cohort (Step 2) column names we read from
-COHORT_SOURCE_FALLS = "first_fall_date"
+COHORT_SOURCE_FALLS = "first_falls_date"
 COHORT_SOURCE_ED = "first_ed_date"
 
 def _is_falls_cohort(cohort_name: str) -> bool:
@@ -749,7 +749,7 @@ def filter_cohort_events_for_items(
         return
 
     # Require target date column in cohort so downstream target timing is explicit.
-    # We read cohort source column and write explicit output column: first_fall_date / first_ed_date.
+    # Step 2 uses first_falls_date; Step 4 writes the canonical first_fall_date / first_ed_date.
     is_falls = _is_falls_cohort(cohort_name)
     output_col = TARGET_DATE_FALLS if is_falls else TARGET_DATE_ED
     source_col = COHORT_SOURCE_FALLS if is_falls else COHORT_SOURCE_ED
