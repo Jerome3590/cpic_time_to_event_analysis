@@ -1,7 +1,7 @@
 """
 Load baseline aggregated feature importance summary.
 
-Used by 3a_feature_importance/feature_importance_cohort_runner.ipynb to display a table of cohort/age_band with
+Used by 2_feature_importance.ipynb to display a table of cohort/age_band with
 row counts and sample features. Prefers local 3a outputs (and DATA_ROOT/S3 gold),
 then falls back to pgx-repository (legacy) S3.
 """

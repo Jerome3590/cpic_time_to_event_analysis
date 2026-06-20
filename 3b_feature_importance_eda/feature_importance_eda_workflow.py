@@ -341,7 +341,7 @@ if aggregated_fi is None:
     print(f"   Also tried S3: gold/feature_importance/{{cohort}}/{{age_band}}/...")
     raise SystemExit(
         "Aggregated feature importance is required for Step 3b. "
-        "Run Step 3a (3a_feature_importance/feature_importance_cohort_runner.ipynb) for this cohort/age_band first. "
+        "Run Step 3a (2_feature_importance.ipynb) for this cohort/age_band first. "
         "Do not continue—feature importances define the feature set and include potential target leakage."
     )
 else:

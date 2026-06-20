@@ -131,7 +131,7 @@ flowchart LR
 |---|----------|---------|-------|
 | 0 | `0_config_and_pipeline.ipynb` | Configure EC2/local setup, S3 paths, cohort parameters | Config |
 | 1 | `1_cohort_workflow.ipynb` | Cohort creation (APCD input, event filtering, QA) | 1a → 1b → 2 |
-| 2 | `3a_feature_importance/feature_importance_cohort_runner.ipynb` | Feature importance screening and refinement | 3a |
+| 2 | `2_feature_importance.ipynb` | Feature importance screening and refinement | 3a |
 | 3 | `3_model_train_shap_ffa.ipynb` | Model training, SHAP, FFA, BupaR | 4 → 5 → 6 → 7 → 8 |
 
 Post-pipeline:

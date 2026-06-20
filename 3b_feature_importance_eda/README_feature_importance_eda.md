@@ -25,7 +25,7 @@ Based on this EDA, we filter and update the aggregated feature importances to pr
 
 - **Aggregated feature importances from Step 3 (required, not optional):**
   - Path: `3a_feature_importance/outputs/{cohort}/{age_band}/{cohort}_{age_band}_aggregated_feature_importance.csv`
-  - These define the feature set and include features that may be target leakage. Any step that uses them will **fail early** if they are not ready (workflow, BupaR R scripts, create_bupar_input_from_cohort, control cohort creation, filter_and_refine). Run Step 3a (`3a_feature_importance/feature_importance_cohort_runner.ipynb`) first; do not continue without them.
+  - These define the feature set and include features that may be target leakage. Any step that uses them will **fail early** if they are not ready (workflow, BupaR R scripts, create_bupar_input_from_cohort, control cohort creation, filter_and_refine). Run Step 3a (`2_feature_importance.ipynb`) first; do not continue without them.
 - **Model events data** (for BupaR analysis): Step 3b uses **only Step 1, Step 2, and Step 3 artifacts**. We do not read or write 4_model_data (that is created after target leakage removal).
   - Target: `3b_feature_importance_eda/outputs/cohorts/input_model_data/cohort_name={slug}/age_band={age_band}/model_events.parquet` (built from Step 2 cohort + Step 3 3a FI + target via `create_bupar_input_from_cohort.py`)
   - Control (if used): same directory tree under 3b `outputs/`; created via `4_model_data/create_control_cohort_model_data.py --output-root 3b_feature_importance_eda/outputs --aggregated-fi-csv <path>`. **3a aggregated feature importance is required** (not optional); control events are filtered to the same feature set as target (admin codes removed) to reduce noise in BupaR.

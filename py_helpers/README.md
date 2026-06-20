@@ -111,7 +111,7 @@ Check `__init__.py` for the current export list; not all utilities are re-export
 |--------|---------|
 | `0_config_and_pipeline.py` | `0_config_and_pipeline.ipynb` |
 | `1_cohort_workflow.py` | `1_cohort_workflow.ipynb` |
-| `2_feature_importance.py` | archived legacy notebook; active Step 3a is `3a_feature_importance/feature_importance_cohort_runner.ipynb` |
+| `2_feature_importance.py` | `2_feature_importance.ipynb` |
 | `3_model_train_shap_ffa.py` | `3_model_train_shap_ffa.ipynb` |
 | `4_dashboard_visuals.py` | archived legacy dashboard notebook |
 | `5_build_and_deploy.py` | archived legacy deployment notebook |

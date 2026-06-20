@@ -56,7 +56,7 @@ def main():
     if agg_csv is None:
         print("[ERROR] Step 3a aggregated FI not found locally or in S3.")
         print("        Checked: 3a_feature_importance/outputs/{cohort}/, from_s3, PGX_FEATURE_IMPORTANCE_OUTPUTS, S3 gold/feature_importance/...")
-        print("        Run Step 3a for this cohort/age_band first (3a_feature_importance/feature_importance_cohort_runner.ipynb).")
+        print("        Run Step 3a for this cohort/age_band first (2_feature_importance.ipynb).")
         sys.exit(1)
 
     important_items = get_important_items(agg_csv, cohort=cohort_name)

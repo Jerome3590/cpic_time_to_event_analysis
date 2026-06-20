@@ -107,7 +107,7 @@ Avoid changing to a simple OR unless the cohort is explicitly redefined as a bro
 - `.gitignore`
   - No longer ignores all of `aws/`; only generated AWS caches/results are ignored.
 - Active workflow notebooks
-  - Only directly used notebooks remain outside `archive/` and `logs/`: `0_config_and_pipeline.ipynb`, `1_cohort_workflow.ipynb`, `3a_feature_importance/feature_importance_cohort_runner.ipynb`, and `3_model_train_shap_ffa.ipynb`.
+  - Only directly used notebooks remain outside `archive/` and `logs/`: `0_config_and_pipeline.ipynb`, `1_cohort_workflow.ipynb`, `2_feature_importance.ipynb`, and `3_model_train_shap_ffa.ipynb`.
   - Superseded standalone notebooks were moved under `archive/inactive_notebooks/` and active references were updated.
   - `0_config_and_pipeline.ipynb` remains the reset entry point through `utility_scripts/cleanup_cohort_data.sh`.
   - `1_cohort_workflow.ipynb` remains the cohort rerun entry point.
