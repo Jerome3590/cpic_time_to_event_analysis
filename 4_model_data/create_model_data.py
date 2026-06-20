@@ -123,6 +123,14 @@ def _get_logger(cohort_name: str, age_band: str) -> tuple[logging.Logger, Path]:
     return logger, log_path
 
 
+def _log_status(message: str, logger: logging.Logger | None = None, level: str = "info") -> None:
+    """Print a status line and mirror it into the step log for S3 debugging."""
+    print(message)
+    if logger:
+        log_fn = getattr(logger, level, logger.info)
+        log_fn(message)
+
+
 def get_step3b_fi_roots() -> list:
     """Roots for Step 3b cohort_feature_importance (project-scoped NVMe/project/S3 cache)."""
     return [
@@ -647,22 +655,30 @@ def filter_cohort_events_for_items(
             if n_rows > 0:
                 validation_result = _validate_model_events_has_controls(out_path)
                 if not validation_result["has_controls"]:
-                    print(
+                    _log_status(
                         f"[WARN] Existing model_events.parquet is missing controls! "
                         f"Cases: {validation_result['n_cases']}, Controls: {validation_result['n_controls']}. "
-                        "Rebuilding."
+                        "Rebuilding.",
+                        logger,
+                        "warning",
                     )
                     out_path.unlink()
                 elif validation_result["n_null_event_dates"] > 0:
-                    print(
+                    _log_status(
                         f"[WARN] Existing model_events.parquet has {validation_result['n_null_event_dates']} null event_date rows. "
-                        "Rebuilding."
+                        "Rebuilding.",
+                        logger,
+                        "warning",
                     )
                     out_path.unlink()
                 else:
                     td_ok, td_msg = _validate_model_events_target_date_column(out_path, cohort_name)
                     if not td_ok:
-                        print(f"[WARN] Existing model_events.parquet failed target-date validation: {td_msg} Rebuilding.")
+                        _log_status(
+                            f"[WARN] Existing model_events.parquet failed target-date validation: {td_msg} Rebuilding.",
+                            logger,
+                            "warning",
+                        )
                         out_path.unlink()
                     else:
                         msg = (
@@ -670,16 +686,22 @@ def filter_cohort_events_for_items(
                             f"validated {validation_result['n_cases']} cases and {validation_result['n_controls']} controls; "
                             f"skipping rebuild for {cohort_name}/{age_band}."
                         )
-                        print(msg)
-                        if logger:
-                            logger.info(msg)
+                        _log_status(msg, logger)
                         con.close()
                         return
             else:
-                print(f"[WARN] Existing model_events.parquet has 0 rows - treating as corrupt, rebuilding.")
+                _log_status(
+                    f"[WARN] Existing model_events.parquet has 0 rows - treating as corrupt, rebuilding.",
+                    logger,
+                    "warning",
+                )
                 out_path.unlink()
         except Exception as _e:
-            print(f"[WARN] Existing model_events.parquet failed integrity check ({_e}) - rebuilding.")
+            _log_status(
+                f"[WARN] Existing model_events.parquet failed integrity check ({_e}) - rebuilding.",
+                logger,
+                "warning",
+            )
             try:
                 out_path.unlink()
             except Exception:
@@ -1031,9 +1053,10 @@ def filter_cohort_events_for_items(
     n_sampled_control_patients = con.execute(
         "SELECT COUNT(*)::BIGINT FROM control_patients"
     ).fetchone()[0]
-    print(
+    _log_status(
         f"[INFO] Control sampling for {cohort_name}/{age_band}: "
-        f"eligible_patients={int(n_candidate_controls):,}, sampled_patients={int(n_sampled_control_patients or 0):,}"
+        f"eligible_patients={int(n_candidate_controls):,}, sampled_patients={int(n_sampled_control_patients or 0):,}",
+        logger,
     )
 
     # Build control exclusion filter (blacklist approach)
@@ -1050,7 +1073,10 @@ def filter_cohort_events_for_items(
             {exclusion_icd_conditions} OR
             COALESCE(procedure_code IN ({exclusion_list_literal}), FALSE)
         )"""
-        print(f"[INFO] Applying control exclusions: excluding {len(control_exclusions)} post-target leakage features")
+        _log_status(
+            f"[INFO] Applying control exclusions: excluding {len(control_exclusions)} post-target leakage features",
+            logger,
+        )
 
     # 4. Construct case and control events and write to Parquet
     # Target leakage removal (Step 4): keep only events strictly before target date for cases.
@@ -1061,7 +1087,10 @@ def filter_cohort_events_for_items(
             f"(event_date IS NULL OR \"{source_col}\" IS NULL OR "
             f"CAST(event_date AS DATE) < CAST(\"{source_col}\" AS DATE))"
         )
-        print(f"[INFO] Applying target leakage removal: keep only events before {source_col}")
+        _log_status(
+            f"[INFO] Applying target leakage removal: keep only events before {source_col}",
+            logger,
+        )
     if is_falls:
         case_events_query = f"""
             SELECT
@@ -1089,9 +1118,10 @@ def filter_cohort_events_for_items(
             WHERE {control_exclusion_condition}
             """
         ).fetchone()[0]
-        print(
+        _log_status(
             f"[INFO] Control event survival after exclusions for {cohort_name}/{age_band}: "
-            f"{int(control_survival or 0):,} rows"
+            f"{int(control_survival or 0):,} rows",
+            logger,
         )
     else:
         lookback_days = 365
@@ -1306,24 +1336,28 @@ def filter_cohort_events_for_items(
     # Validate that controls are present and ratio is approximately correct
     validation_result = _validate_model_events_has_controls(out_path)
     if not validation_result["has_controls"]:
-        print(
+        _log_status(
             f"[ERROR] Generated file {out_path} is missing controls! "
-            f"Cases: {validation_result['n_cases']}, Controls: {validation_result['n_controls']}"
+            f"Cases: {validation_result['n_cases']}, Controls: {validation_result['n_controls']}",
+            logger,
+            "error",
         )
         sys.exit(1)
     if validation_result["n_null_event_dates"] > 0:
-        print(
+        _log_status(
             f"[ERROR] Generated file {out_path} has null event_date rows: "
-            f"{validation_result['n_null_event_dates']}"
+            f"{validation_result['n_null_event_dates']}",
+            logger,
+            "error",
         )
         sys.exit(1)
 
     # Validate target date column present and set for cases.
     td_ok, td_msg = _validate_model_events_target_date_column(out_path, cohort_name)
     if not td_ok:
-        print(f"[ERROR] {td_msg} File: {out_path}")
+        _log_status(f"[ERROR] {td_msg} File: {out_path}", logger, "error")
         sys.exit(1)
-    print(f"[INFO] {td_msg}")
+    _log_status(f"[INFO] {td_msg}", logger)
     
     # Validate control:case ratio (should be approximately sample_ratio:1)
     n_cases = validation_result['n_cases']
