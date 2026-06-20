@@ -3,8 +3,8 @@
 ## Overview
 
 We use a **safe feature filter** approach that:
-1. **Excludes** post-target leakage features (>=80% post-F1120 ratio)
-2. **Keeps** ALL features with ANY pre-F1120 presence
+1. **Excludes** post-target leakage features (>=80% post-target ratio)
+2. **Keeps** ALL features with ANY pre-target presence
 3. **Applies** the same feature set to both cases and controls
 
 ## Strategy
@@ -14,24 +14,23 @@ We use a **safe feature filter** approach that:
 **File**: `{cohort}_{age_band}_safe_feature_filter.json`
 
 **Approach**: Whitelist (positive list)
-- **Excludes**: 348 features with >=80% post-F1120 ratio (pure post-target leakage)
-- **Keeps**: 682 features with <80% post-F1120 ratio
-  - 114 pure predictive (>=80% pre-F1120)
-  - 567 mixed timing (any pre-F1120, <80% post-F1120)
+- **Excludes**: features with >=80% post-target ratio (pure post-target leakage)
+- **Keeps**: features with <80% post-target ratio
+  - pure predictive (>=80% pre-target)
+  - mixed timing (any pre-target, <80% post-target)
   - 1 low pre but not leakage
 
 **Benefits**:
 - Maximizes information available to the algorithm
 - Prevents target leakage
 - Ensures same feature set for cases and controls
-- Includes F1120 for target creation
 
 ### Implementation
 
 The `filter_and_refine_features.py` script:
 1. Loads `safe_feature_filter.json` if available
 2. Uses `all_features_to_keep` as a whitelist
-3. Falls back to BupaR CSV-based filtering if JSON not found
+3. Falls back to post-target leakage CSV-based filtering if JSON not found
 
 ### Usage
 

@@ -2,7 +2,7 @@
 
 End-to-end machine learning pipeline predicting **fall-related** and **ED visit** events from APCD claims data — from cohort creation through ensemble model training, causal feature attribution, temporal trajectory analysis, and process mining.
 
-**Combines XGBoost/CatBoost ensemble modeling, SHAP analysis, Formal Feature Attribution (FFA), Dynamic Time Warping (DTW) trajectory clustering, FP-Growth pattern mining, and BupaR process mining on large-scale healthcare claims data (Virginia APCD). CPIC pharmacogenomic features are incorporated as causal inputs to explain drug and gene-drug interaction contributions to fall and ED event risk.**
+**Combines XGBoost/CatBoost ensemble modeling, SHAP analysis, Formal Feature Attribution (FFA), Dynamic Time Warping (DTW) trajectory clustering, FP-Growth pattern mining, and post-target leakage screening on large-scale healthcare claims data (Virginia APCD). CPIC pharmacogenomic features are incorporated as causal inputs to explain drug and gene-drug interaction contributions to fall and ED event risk.**
 
 ---
 
@@ -57,7 +57,7 @@ cpic_time_to_event_analysis/
 ├── 2_create_cohort/           # Step 2:  Cohort creation, QA, final schema
 │
 ├── 3a_feature_importance/     # Step 3a: Monte Carlo CV feature importance screening
-├── 3b_feature_importance_eda/ # Step 3b: Post-target BupaR + EDA
+├── 3b_feature_importance_eda/ # Step 3b: Post-target leakage + EDA
 │
 ├── 4_model_data/              # Step 4:  Feature-engineered model datasets
 ├── 5_pgx_analysis/            # Step 5:  CPIC/PGx feature enrichment
@@ -68,7 +68,7 @@ cpic_time_to_event_analysis/
 ├── 9_dtw_analysis/            # Step 9:  DTW trajectory clustering → S3
 │
 ├── py_helpers/                # Shared Python utilities
-├── r_helpers/                 # Shared R utilities (BupaR, MC-CV)
+├── r_helpers/                 # Shared R utilities
 │
 ├── docs/                      # Analysis documentation and methodology notes
 ├── data/                      # Local data (gitignored)
@@ -102,7 +102,7 @@ flowchart TD
         G["Step 5: PGx enrichment<br/>CPIC drug and gene-drug features"]
         H["Step 6: Final models<br/>Per-bin XGBoost/CatBoost"]
         I["Step 7: SHAP analysis<br/>Local/global attribution"]
-        J["Step 8: FFA / FP-Growth / BupaR<br/>Pattern and process analysis"]
+        J["Step 8: FFA / FP-Growth<br/>Pattern analysis"]
     end
 
     K["Post-pipeline: Step 9 DTW trajectories<br/>9_dtw_analysis/run_dtw_analysis.py"]
@@ -133,7 +133,7 @@ flowchart TD
 | 0 | `0_config_and_pipeline.ipynb` | Setup, environment checks, cleanup/reset, and run instructions | Config |
 | 1 | `1_cohort_workflow.ipynb` | Cohort creation (APCD input, event filtering, QA) | 1a → 1b → 2 |
 | 2 | `2_feature_importance.ipynb` | Feature importance screening and refinement | 3a |
-| 3 | `3_model_train_shap_ffa.ipynb` | Model training, SHAP, FFA, BupaR | 4 → 5 → 6 → 7 → 8 |
+| 3 | `3_model_train_shap_ffa.ipynb` | Model training, SHAP, FFA | 4 → 5 → 6 → 7 → 8 |
 
 Post-pipeline:
 ```bash
@@ -152,7 +152,7 @@ python 9_dtw_analysis/run_dtw_analysis.py   # DTW trajectories → S3 (after Ste
 | **1b** Event Filter | `1b_apcd_event_filter/filter_protocol_events.py` | `gold/cpic_time_to_event/dtw_filter/` | ✅ |
 | **2** Cohort Creation | `2_create_cohort/` | `gold/cpic_time_to_event/cohorts/` | ✅ |
 | **3a** Feature Importance | `3a_feature_importance/` | `gold/cpic_time_to_event/feature_importance/` | ✅ |
-| **3b** BupaR EDA | `3b_feature_importance_eda/1_bupaR/create_bupar_visualizations.py` | `gold/cpic_time_to_event/feature_importance/{cohort}/{age_band}/plots/` | ✅ |
+| **3b** Target Leakage EDA | `3b_feature_importance_eda/run_feature_importance_eda.py` | `gold/cpic_time_to_event/feature_importance/{cohort}/{age_band}/` | ✅ |
 | **4** Model Data | `4_model_data/create_model_data.py` | `gold/cpic_time_to_event/cohorts_model_data/` | ✅ |
 | **5** PGx Analysis | `5_pgx_analysis/` | `gold/cpic_time_to_event/pgx_features/` | ✅ |
 | **6** Final Model | `6_final_model/` | `gold/cpic_time_to_event/final_model/` | ✅ per-bin for falls + ED |
@@ -181,11 +181,11 @@ python 9_dtw_analysis/run_dtw_analysis.py   # DTW trajectories → S3 (after Ste
 
 ---
 
-## Research Questions (DTW / BupaR)
+## Research Questions (DTW / FP-Growth)
 
 1. **What temporal medication sequences (DTW clusters) are most predictive of fall events?**
 2. **Which drug-drug interaction patterns (FP-Growth rules) co-occur in high-fall-risk patients?**
-3. **What clinical care pathways (BupaR process maps) precede a fall ED visit vs. non-fall ED visit?**
+3. **What medication and event patterns precede a fall ED visit vs. non-fall ED visit?**
 4. **Do CPIC pharmacogenomic actionability levels modulate fall risk independent of polypharmacy burden?**
 5. **Does the temporal gap between a high-risk medication prescription and a fall follow a predictable pattern (DTW alignment)?**
 
@@ -209,7 +209,6 @@ Final model:      s3://pgxdatalake/gold/cpic_time_to_event/final_model/
 SHAP analysis:    s3://pgxdatalake/gold/cpic_time_to_event/shap_analysis/
 FFA analysis:     s3://pgxdatalake/gold/cpic_time_to_event/ffa_analysis/
 DTW analysis:     s3://pgxdatalake/gold/cpic_time_to_event/dtw_analysis/
-BupaR visuals:    s3://pgxdatalake/gold/cpic_time_to_event/feature_importance/{cohort}/{age_band}/plots/
 ```
 
 ---

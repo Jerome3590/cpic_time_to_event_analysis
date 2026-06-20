@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Create model_events.parquet for control cohort (BupaR analysis).
+Create model_events.parquet for a sampled control cohort.
 
-This script creates model_events.parquet for the control cohort used in BupaR analysis.
+This script creates model_events.parquet for sampled controls.
 For each cohort (falls or ed), the control cohort consists of patients who:
 - Are in the same age band as the target cohort
 - Do NOT appear in the target cohort parquet (not a case patient)
@@ -130,12 +130,12 @@ def create_control_cohort_model_data(
     aggregated_fi_csv: Optional[Path] = None,
 ) -> None:
     """
-    Create model_events.parquet for control cohort (BupaR analysis).
+    Create model_events.parquet for control cohort.
 
     Controls are patients in the same age band who are NOT in the target cohort case set.
 
     Optionally filter control events to the same feature set as target (3a aggregated FI
-    minus admin codes) to reduce noise in BupaR analysis.
+    minus admin codes).
 
     Args:
         age_band: Age band (e.g., "65-74")

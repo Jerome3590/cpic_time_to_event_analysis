@@ -7,25 +7,25 @@ Feature Importance EDA executes analyses in this order to properly filter **alre
 2. **Code research and validation** (identify non-informative ICD/CPT codes - actual event-level filtering happens in Step 4b)
 3. **Filter and refine** (filter post-target leakage features from aggregated feature importance list)
 
-**Note**: This is NOT a DTW filter. Feature Importance EDA uses BupaR process mining and code research to filter aggregated feature importances, not raw event data. DTW is used separately in Step 4b (protocol filtering of event data) and Step 9 (dashboard trajectory visualizations).
+**Note**: This is NOT a DTW filter. Feature Importance EDA uses Python/DuckDB post-target timing analysis and code research to filter aggregated feature importances, not raw event data. DTW is used separately in Step 4b (protocol filtering of event data) and Step 9 (dashboard trajectory visualizations).
 
 ## Folder Naming Convention
 
 Folders reflect execution order:
 - `0_icd_cpt_check/` - ICD/CPT code validation (runs first)
-- `1_bupaR/` - BupaR analysis (runs second, after administrative filtering)
+- `1_post_target_leakage/` - post-target leakage analysis
 
 ## Execution Order
 
 The pipeline now executes in this order:
 
-1. **Post-Target Leakage Analysis** (`1_bupaR/create_bupar_post_target_analysis.py`)
-   - Builds/uses Step 3b `model_events.parquet`
+1. **Post-Target Leakage Analysis** (`1_post_target_leakage/create_post_target_leakage_analysis.py`)
+   - Reads Step 2 cohort parquet directly
    - Calculates pre-target and post-target ratios for each feature
    - Identifies features that appear primarily after the cohort target (>=80% post-target ratio = leakage)
    - Uses `fall_injury_any` for falls and `ed_event` for ED
-   - Outputs: `{cohort}_{age_band}_bupar_post_target_analysis.csv`
-   - See `1_bupaR/README_bupaR.md` for complete BupaR process mining documentation
+   - Outputs: `{cohort}_{age_band}_post_target_leakage_analysis.csv`
+   - See `1_post_target_leakage/README_post_target_leakage.md`
 
 2. **Code Research and Validation** (`0_icd_cpt_check/`)
    - Researches and validates ICD/CPT codes by groups (ICD by chapter, CPT by range)
@@ -43,26 +43,21 @@ The pipeline now executes in this order:
    - See `FEATURE_FILTERING_APPROACH.md` for detailed strategy
 
 4. **Filter and Refine Features**
-   - Combines outputs from BupaR analysis and code research
+   - Combines outputs from post-target leakage analysis and code research
    - Applies safe feature filter to aggregated feature importances:
      - **Cases (target=1)**: Whitelist approach (only features from `all_features_to_keep`)
      - **Controls (target=0)**: Blacklist approach (exclude only post-target leakage features)
    - Filters features from aggregated importance list based on:
-     - Post-target leakage (from BupaR safe feature filter)
+     - Post-target leakage (from safe feature filter)
      - **Note**: Administrative codes are identified through code research but filtered at event level in Step 4b
    - Outputs: `cohort_feature_importance.csv` (refined aggregated feature importances)
-
-5. **Create BupaR Visualizations**
-   - Generates visualization plots from BupaR analysis
-   - Saves plots to `outputs/{cohort}/{age_band_fname}/plots/`
-   - See `OUTPUTS_AND_VISUALIZATIONS.md` for complete visualization documentation
 
 ## Updated Files
 
 ### Scripts Updated
-- `run_feature_importance_eda.py`: Orchestrates Feature Importance EDA workflow (BupaR analysis and feature filtering)
-- `run_bupar_post_target_analysis.py`: Calls `1_bupaR/` scripts
-- `create_bupar_post_target_analysis.py`: Creates post-target analysis CSV from BupaR outputs
+- `run_feature_importance_eda.py`: Orchestrates Feature Importance EDA workflow
+- `run_post_target_leakage_analysis.py`: Calls post-target leakage analysis script
+- `create_post_target_leakage_analysis.py`: Creates post-target analysis CSV from Step 2 cohort parquet
 
 ### Folder Structure
 
@@ -73,13 +68,10 @@ The pipeline now executes in this order:
 │   ├── validate_icd_cpt_codes.py
 │   ├── administrative_codes_lookup.json
 │   └── README_icd_cpt_check.md
-├── 1_bupaR/                         # BupaR analysis (Step 2, after admin filtering)
-│   ├── create_bupar_post_target_analysis.py
-│   ├── run_bupar_post_target_analysis.py
-│   ├── create_plots.R  (optional visualizations)
-│   └── README_bupaR.md
-├── run_bupar_post_target_analysis.py # Calls 1_bupaR/ scripts
-├── create_bupar_post_target_analysis.py # Creates post-target analysis CSV
+├── 1_post_target_leakage/           # Post-target leakage analysis
+│   ├── create_post_target_leakage_analysis.py
+│   ├── run_post_target_leakage_analysis.py
+│   └── README_post_target_leakage.md
 └── run_feature_importance_eda.py                   # Orchestrates execution order
 ```
 
@@ -89,7 +81,6 @@ The pipeline now executes in this order:
 - Identifies pre vs post-target events (critical for target leakage prevention)
 - Calculates pre-target and post-target ratios for each feature in aggregated importances
 - Outputs are used to create safe feature filter (exclude leakage, keep pre-target)
-- Generates comprehensive process mining visualizations
 
 **Code research runs second** because:
 - Validates and identifies administrative codes for reference
@@ -117,9 +108,8 @@ which python  # or: which python3
 ```
 
 # The pipeline will:
-# 1. Run post-target leakage analysis (1_bupaR/) - identify pre/post target events in aggregated importances
+# 1. Run post-target leakage analysis (1_post_target_leakage/) - identify pre/post target timing evidence
 # 2. Research and validate codes (0_icd_cpt_check/) - identify administrative codes (for Step 4b reference)
 # 3. Create safe feature filter - exclude leakage, keep pre-target features
 # 4. Filter and refine aggregated feature importances (filter post-target leakage from importance list)
-# 5. Create visualizations
 ```

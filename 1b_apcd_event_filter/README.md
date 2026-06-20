@@ -77,7 +77,7 @@ Requires **baseline** aggregated feature importance (precomputed from Step 3a wi
 
 ### Step 3b: Feature Importance EDA
 - **0_icd_cpt_check**: Identifies administrative codes → `administrative_codes_lookup.json`
-- **1_bupaR**: Identifies post-target leakage → **Step 4** removes those events when building model data
+- **1_post_target_leakage**: Identifies post-target leakage → **Step 4** removes those events when building model data
 
 ### Step 1b: Event Filtering (This Step)
 - Reads **cohort parquets** from Step 2 (create cohort); multiple event years are unioned.

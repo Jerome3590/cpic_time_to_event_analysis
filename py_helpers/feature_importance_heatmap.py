@@ -1,7 +1,7 @@
 """
 Aggregated feature importance heatmap for the dashboard (features x age bands).
 
-Uses only final feature importance after BupaR edits (Step 3b):
+Uses only final feature importance after Step 3b leakage filtering:
 3b_feature_importance_eda/outputs/{cohort}/{age_band}/{cohort}_{age_band}_cohort_feature_importance.csv.
 No fallback to 3a; pipeline breaks (FileNotFoundError) until 3b artifacts exist.
 """
@@ -60,14 +60,14 @@ def _resolve_project_root(outputs_base: Path) -> Optional[Path]:
 
 def _resolve_aggregated_fi_csv_3b(project_root: Path, cohort: str, age_band: str) -> Path:
     """
-    Resolve path to final FI CSV from Step 3b (cohort_feature_importance after BupaR edits).
+    Resolve path to final FI CSV from Step 3b (cohort_feature_importance after leakage filtering).
     No fallback to 3a. Raises FileNotFoundError if 3b artifact is missing (pipeline breaks until 3b is run).
     """
     if not project_root or not project_root.exists():
         checked = str(project_root) if project_root else "(project_root not set)"
         raise FileNotFoundError(
             f"project_root is required and must exist to load Step 3b cohort_feature_importance. Checked: {checked}. "
-            "Run 3b_feature_importance_eda (BupaR + filter_and_refine_features) first."
+            "Run 3b_feature_importance_eda (post-target leakage + filter_and_refine_features) first."
         )
     age_band_fname = age_band.replace("-", "_")
     path_3b = (
@@ -81,7 +81,7 @@ def _resolve_aggregated_fi_csv_3b(project_root: Path, cohort: str, age_band: str
     if not path_3b.exists():
         raise FileNotFoundError(
             f"Step 3b artifact required but not found. Checked: {path_3b}. "
-            "Run 3b_feature_importance_eda for this cohort/age_band (BupaR + filter_and_refine_features). No fallback to 3a."
+            "Run 3b_feature_importance_eda for this cohort/age_band (post-target leakage + filter_and_refine_features). No fallback to 3a."
         )
     return path_3b
 

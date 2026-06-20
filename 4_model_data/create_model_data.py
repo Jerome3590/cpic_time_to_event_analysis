@@ -40,7 +40,6 @@ to avoid pandas memory pressure on large cohorts:
 
 This output is then used as input for:
  - FP-Growth (pattern mining on important features plus within-cohort controls)
- - BupaR (process mining / event-log analysis)
  - DTW (trajectory analysis on filtered event sequences)
  - Final models (Step 6)
 """
@@ -358,7 +357,7 @@ def _validate_model_events_target_date_column(
         if target_date_col is None:
             return (
                 False,
-                f"Output schema missing required column '{canonical_col}'. BupaR needs it for pre-target events.",
+                f"Output schema missing required column '{canonical_col}'. Model-data validation needs it for target timing.",
             )
         # For case rows (target=1), at least one must have non-null target date
         result = con.execute(
@@ -369,7 +368,7 @@ def _validate_model_events_target_date_column(
         if n_with_date == 0:
             return (
                 False,
-                f"Case rows (target=1) have no non-null '{target_date_col}'; BupaR will get 0 pre-target events.",
+                f"Case rows (target=1) have no non-null '{target_date_col}'; target timing cannot be validated.",
             )
         return True, f"Target date column '{target_date_col}' present; {n_with_date} case rows have it set."
     finally:
@@ -423,7 +422,7 @@ def filter_cohort_events_for_items(
     sample_ratio: float = DEFAULT_SAMPLE_RATIO,
     control_exclusions: Optional[List[str]] = None,
     time_window_days: Optional[int] = None,  # Deprecated - time window now handled in Step 2
-    skip_s3_download: bool = False,  # When True (e.g. 3b BupaR input), build locally only, no S3
+    skip_s3_download: bool = False,
     force_rebuild: bool = False,
     logger: Optional[logging.Logger] = None,
 ) -> None:
@@ -662,7 +661,7 @@ def filter_cohort_events_for_items(
             except Exception:
                 pass
 
-    # Check S3 and download if exists there but not locally (skip when building 3b BupaR input)
+    # Check S3 and download if exists there but not locally.
     if force_rebuild:
         print(f"[INFO] Force rebuild requested; skipping local/S3 reuse for {cohort_name}/{age_band}.")
     if not skip_s3_download and not force_rebuild:
@@ -749,7 +748,7 @@ def filter_cohort_events_for_items(
         con.close()
         return
 
-    # Require target date column in cohort (BupaR/dashboard need it for pre-target split).
+    # Require target date column in cohort so downstream target timing is explicit.
     # We read cohort source column and write explicit output column: first_fall_date / first_ed_date.
     is_falls = _is_falls_cohort(cohort_name)
     output_col = TARGET_DATE_FALLS if is_falls else TARGET_DATE_ED
@@ -765,7 +764,7 @@ def filter_cohort_events_for_items(
         msg = (
             f"[ERROR] Cohort schema missing required target date column '{source_col}' for {cohort_name}/{age_band}. "
             f"Cohort parquets must include this column (Step 2). Found columns: {cohort_cols[:20]}{'...' if len(cohort_cols) > 20 else ''}. "
-            f"Refusing to write model_events without it (BupaR would get 0 pre-target events)."
+            f"Refusing to write model_events without it (target timing could not be validated)."
         )
         print(msg)
         if logger:
@@ -1269,7 +1268,7 @@ def filter_cohort_events_for_items(
         )
         sys.exit(1)
 
-    # Validate target date column present and set for cases (required for BupaR pre-target split)
+    # Validate target date column present and set for cases.
     td_ok, td_msg = _validate_model_events_target_date_column(out_path, cohort_name)
     if not td_ok:
         print(f"[ERROR] {td_msg} File: {out_path}")

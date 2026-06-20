@@ -107,8 +107,8 @@ class FileResolver:
             "cache_dir": "3a_feature_importance/{cohort}",
             "project_cache_dir": "gold/feature_importance/{cohort}/{age_band}",
         },
-        "bupar_post_target_analysis": {
-            "filename_pattern": "{cohort}_{age_band_fname}_bupar_post_target_analysis.csv",
+        "post_target_leakage_analysis": {
+            "filename_pattern": "{cohort}_{age_band_fname}_post_target_leakage_analysis.csv",
             "local_paths": [
                 "3b_feature_importance_eda/outputs/{cohort}/{age_band_fname}",
                 "3b_feature_importance_eda/outputs/{cohort}/{age_band}",

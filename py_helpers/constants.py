@@ -285,7 +285,7 @@ def get_cohort_slug_by_cohort(cohort: str) -> str:
 
 
 def get_target_file_suffix(cohort: str) -> str:
-    """File suffix for BupaR pre/post target outputs."""
+    """File suffix for pre/post target outputs."""
     mapping = {"falls": "fall_injury_any", "ed": "ed_event"}
     return mapping.get((cohort or "").strip().lower(), "target")
 

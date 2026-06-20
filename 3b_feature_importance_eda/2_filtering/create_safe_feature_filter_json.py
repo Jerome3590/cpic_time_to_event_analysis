@@ -5,7 +5,7 @@ Create safe feature filter JSON: Exclude post-target leakage, keep all pre-targe
 Works for any target: fall_injury_any (falls cohort) or ed_event (ed cohort).
 
 This script:
-1. Loads bupar_post_target_analysis.csv
+1. Loads post_target_leakage_analysis.csv
 2. Excludes features with >=threshold post-target ratio (pure leakage)
 3. Keeps ALL features with ANY pre-target presence (maximize information)
 4. Creates a JSON file with features to KEEP for both cases and controls
@@ -58,11 +58,11 @@ def create_safe_feature_filter_json(
     # Target by cohort: falls=fall_injury_any, ed=ed_event
     target_name = get_target_name_by_cohort(cohort)
 
-    # Load BupaR analysis results
-    analysis_path = refined_root / cohort / age_band_fname / f"{cohort}_{age_band_fname}_bupar_post_target_analysis.csv"
+    # Load post-target leakage analysis results
+    analysis_path = refined_root / cohort / age_band_fname / f"{cohort}_{age_band_fname}_post_target_leakage_analysis.csv"
     
-    # Check if file exists in wrong location (features/ subdirectory) and move it
-    wrong_location = refined_root / cohort / age_band_fname / "features" / f"{cohort}_{age_band_fname}_bupar_post_target_analysis.csv"
+    # Move from the temporary features/ subdirectory if present.
+    wrong_location = refined_root / cohort / age_band_fname / "features" / f"{cohort}_{age_band_fname}_post_target_leakage_analysis.csv"
     if wrong_location.exists() and not analysis_path.exists():
         print(f"[INFO] Found file in wrong location: {wrong_location}")
         print(f"       Moving to correct location: {analysis_path}")
@@ -74,7 +74,7 @@ def create_safe_feature_filter_json(
     
     if not analysis_path.exists():
         print(f"[ERROR] Analysis file not found: {analysis_path}")
-        print(f"       Run create_bupar_post_target_analysis.py first")
+        print(f"       Run create_post_target_leakage_analysis.py first")
         return None
     
     print(f"\n{'='*80}")

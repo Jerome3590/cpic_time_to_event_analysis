@@ -16,7 +16,7 @@ except NameError:
     # Doesn't exist, create it
     filtering_recommendations = {
         'administrative_codes': set(),
-        'bupar_post_target': set(),
+        'post_target_leakage': set(),
         'manual_additional': set()
     }
     print("[INFO]  Initialized filtering_recommendations with empty sets")
@@ -37,9 +37,9 @@ if filtering_config_path.exists():
             manual_count = existing_config['manual_additional_count']
             all_codes = existing_config.get('codes_to_filter', [])
             admin_count = existing_config.get('administrative_codes_count', 0)
-            bupar_count = existing_config.get('bupar_post_target_count', 0)
-            if len(all_codes) > (admin_count + bupar_count):
-                start_idx = admin_count + bupar_count
+            post_target_count = existing_config.get('post_target_leakage_count', 0)
+            if len(all_codes) > (admin_count + post_target_count):
+                start_idx = admin_count + post_target_count
                 existing_manual_codes = all_codes[start_idx:]
         print(f"[1] Loaded existing config: {len(existing_manual_codes)} manual codes, {len(existing_codes_to_keep)} codes to keep")
     except Exception as e:
@@ -69,8 +69,8 @@ if 'manual_additional' not in filtering_recommendations:
     filtering_recommendations['manual_additional'] = set()
 if 'administrative_codes' not in filtering_recommendations:
     filtering_recommendations['administrative_codes'] = set()
-if 'bupar_post_target' not in filtering_recommendations:
-    filtering_recommendations['bupar_post_target'] = set()
+if 'post_target_leakage' not in filtering_recommendations:
+    filtering_recommendations['post_target_leakage'] = set()
 
 # Update filtering recommendations (merge, don't replace)
 filtering_recommendations['manual_additional'].update(all_manual_codes)
@@ -78,20 +78,20 @@ filtering_recommendations['manual_additional'].update(all_manual_codes)
 # Remove codes that should be kept from all categories
 for code in all_codes_to_keep:
     filtering_recommendations['administrative_codes'].discard(code)
-    filtering_recommendations['bupar_post_target'].discard(code)
+    filtering_recommendations['post_target_leakage'].discard(code)
     filtering_recommendations['manual_additional'].discard(code)
 
 # Final list of codes to filter (union of all categories)
 final_codes_to_filter = (
     filtering_recommendations['administrative_codes'] |
-    filtering_recommendations['bupar_post_target'] |
+    filtering_recommendations['post_target_leakage'] |
     filtering_recommendations['manual_additional']
 )
 
 print(f"[1] Updated filtering list")
 print(f"   Total codes to filter: {len(final_codes_to_filter)}")
 print(f"     - Administrative codes: {len(filtering_recommendations['administrative_codes'])}")
-print(f"     - BupaR post-target codes: {len(filtering_recommendations['bupar_post_target'])}")
+print(f"     - Post-target leakage codes: {len(filtering_recommendations['post_target_leakage'])}")
 print(f"     - Manual additional codes: {len(filtering_recommendations['manual_additional'])}")
 print(f"     - Codes to keep: {len(all_codes_to_keep)}")
 
@@ -112,7 +112,7 @@ filtering_config = {
     'codes_to_filter': sorted(list(final_codes_to_filter)),
     'codes_to_keep': sorted(list(all_codes_to_keep)),
     'administrative_codes_count': len(filtering_recommendations['administrative_codes']),
-    'bupar_post_target_count': len(filtering_recommendations['bupar_post_target']),
+    'post_target_leakage_count': len(filtering_recommendations['post_target_leakage']),
     'manual_additional_count': len(filtering_recommendations['manual_additional'])
 }
 

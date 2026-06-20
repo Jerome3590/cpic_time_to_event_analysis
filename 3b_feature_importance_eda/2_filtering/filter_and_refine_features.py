@@ -2,7 +2,7 @@
 """
 Filter and Refine Feature Importances
 
-Combines BupaR post-target analysis to filter
+Combines post-target leakage analysis to filter
 and refine aggregated feature importances from Step 3.
 
 Outputs refined cohort_feature_importance files for Step 4a.
@@ -73,19 +73,19 @@ from py_helpers.checkpoint_utils import upload_file_to_s3
 # load_safe_feature_filter moved to py_helpers.feature_importance_eda_utils
 
 
-def _leakage_feature_set_from_bupar(bupar_results: pd.DataFrame) -> Set[str]:
+def _leakage_feature_set_from_post_target_results(post_target_results: pd.DataFrame) -> Set[str]:
     """
-    Get set of post-target leakage feature names from BupaR CSV.
+    Get set of post-target leakage feature names from the timing analysis CSV.
     Accepts is_post_target_leakage in (1, True, "1", "True"). If column missing,
     uses post_target_ratio >= 0.8. Legacy post_f1120_ratio is accepted only
     for older cached artifacts.
     """
-    if bupar_results.empty or "feature" not in bupar_results.columns:
+    if post_target_results.empty or "feature" not in post_target_results.columns:
         return set()
     # Normalize column names for lookup
-    cols_lower = {c.lower(): c for c in bupar_results.columns}
+    cols_lower = {c.lower(): c for c in post_target_results.columns}
     feature_col = cols_lower.get("feature", "feature")
-    df = bupar_results.copy()
+    df = post_target_results.copy()
 
     # Leakage flag: accept 1, True, "1", "True"
     leak_col = None
@@ -125,7 +125,7 @@ def _leakage_feature_set_from_bupar(bupar_results: pd.DataFrame) -> Set[str]:
 
 def filter_and_refine_features(
     aggregated_fi: pd.DataFrame,
-    bupar_results: pd.DataFrame,
+    post_target_results: pd.DataFrame,
     filter_post_target: bool = True,
     min_importance_threshold: float = 0.0,
     safe_feature_filter: Optional[tuple[Set[str], Optional[Set[str]]]] = None,
@@ -136,7 +136,7 @@ def filter_and_refine_features(
     
     Args:
         aggregated_fi: Aggregated feature importance DataFrame from Step 3
-        bupar_results: BupaR post-target analysis results
+        post_target_results: post-target leakage analysis results
         filter_post_target: Whether to filter post-target leakage features
         min_importance_threshold: Minimum importance threshold to keep
         safe_feature_filter: Tuple of (features_to_keep_for_cases, features_to_exclude_for_controls)
@@ -219,16 +219,16 @@ def filter_and_refine_features(
                 print(f"  [DIAG] Filtered=0: aggregated 'feature' sample (raw): {agg_sample}")
                 print(f"  [DIAG] Filtered=0: safe filter 'features_to_keep' sample: {keep_sample}")
     
-    # Fallback: exclude leakage from BupaR CSV (robust to column names and flag values)
-    elif filter_post_target and not bupar_results.empty:
+    # Fallback: exclude leakage from post-target CSV (robust to column names and flag values)
+    elif filter_post_target and not post_target_results.empty:
         # No safe filter found; log column name samples for both sources
-        bupar_feature_col = next((c for c in bupar_results.columns if c.lower() == "feature"), bupar_results.columns[0] if len(bupar_results.columns) else None)
+        post_target_feature_col = next((c for c in post_target_results.columns if c.lower() == "feature"), post_target_results.columns[0] if len(post_target_results.columns) else None)
         agg_raw_sample = refined_fi['feature'].dropna().head(15).tolist()
-        bupar_raw_sample = bupar_results[bupar_feature_col].dropna().head(15).tolist() if bupar_feature_col else []
-        print(f"  [DIAG] No safe filter; using BupaR fallback. Aggregated 'feature' sample (raw): {agg_raw_sample}")
-        print(f"  [DIAG] No safe filter; BupaR CSV '{bupar_feature_col}' sample (raw): {bupar_raw_sample}")
+        post_target_raw_sample = post_target_results[post_target_feature_col].dropna().head(15).tolist() if post_target_feature_col else []
+        print(f"  [DIAG] No safe filter; using post-target analysis fallback. Aggregated 'feature' sample (raw): {agg_raw_sample}")
+        print(f"  [DIAG] No safe filter; post-target CSV '{post_target_feature_col}' sample (raw): {post_target_raw_sample}")
 
-        post_target_features_raw = _leakage_feature_set_from_bupar(bupar_results)
+        post_target_features_raw = _leakage_feature_set_from_post_target_results(post_target_results)
         post_target_features = normalize_feature_set(post_target_features_raw)
 
         before_count = len(refined_fi)
@@ -241,25 +241,25 @@ def filter_and_refine_features(
 
         filtering_summary['filtered_by_post_target'] = before_count - len(refined_fi)
         if post_target_features:
-            print(f"Filtered {filtering_summary['filtered_by_post_target']} post-target leakage features (fallback: {len(post_target_features)} leakage features from BupaR CSV)")
+            print(f"Filtered {filtering_summary['filtered_by_post_target']} post-target leakage features (fallback: {len(post_target_features)} leakage features from post-target CSV)")
             print(f"  [DIAG] Aggregated FI normalized set size: {len(agg_norm_all)}; overlap with leakage set: {overlap_count}")
             print(f"  [DIAG] Aggregated normalized sample: {sorted(agg_norm_all)[:15]}")
             print(f"  [DIAG] Leakage normalized sample: {sorted(post_target_features)[:15]}")
             if filtering_summary['filtered_by_post_target'] == 0:
                 print(f"  [DIAG] Filtered=0: aggregated 'feature' sample (raw): {agg_raw_sample}")
-                print(f"  [DIAG] Filtered=0: BupaR leakage feature sample (raw): {sorted(post_target_features_raw)[:15]}")
+                print(f"  [DIAG] Filtered=0: post-target leakage feature sample (raw): {sorted(post_target_features_raw)[:15]}")
         else:
             has_leakage_cols = any(
                 c.lower() == "is_post_target_leakage"
                 or c.lower() in ("post_target_ratio", "post_f1120_ratio")
-                for c in bupar_results.columns
+                for c in post_target_results.columns
             )
             if has_leakage_cols:
-                print(f"[INFO] No post-target leakage features in BupaR results (0 flagged).")
+                print(f"[INFO] No post-target leakage features in post-target analysis results (0 flagged).")
                 if cohort and str(cohort).strip().lower() == "ed":
                     print("[INFO] ED cohort: no post-target leakage features were flagged by the current analysis.")
             else:
-                print(f"[WARN] BupaR CSV has no leakage columns (is_post_target_leakage or post_*_ratio). Check create_bupar_post_target_analysis was run for this cohort/age_band.")
+                print(f"[WARN] Post-target CSV has no leakage columns (is_post_target_leakage or post_*_ratio). Check create_post_target_leakage_analysis was run for this cohort/age_band.")
     
     # Exclude cohort target-definition features (outcomes, not predictors).
     # falls target = injury ICD family (S*, T07/T14) + external fall cause W00-W19.
@@ -310,10 +310,10 @@ def main():
     parser.add_argument("--cohort", required=True, help="Cohort name")
     parser.add_argument("--age-band", required=True, help="Age band")
     parser.add_argument(
-        "--bupar-results",
+        "--post-target-results",
         type=str,
         default=None,
-        help="Path to BupaR results CSV (default: auto-detect)"
+        help="Path to post-target leakage analysis CSV (default: auto-detect)"
     )
     parser.add_argument(
         "--output-dir",
@@ -353,18 +353,18 @@ def main():
     aggregated_fi = load_aggregated_feature_importance(args.cohort, args.age_band, PROJECT_ROOT)
     print(f"Loaded {len(aggregated_fi)} features from aggregated importance")
     
-    # Load BupaR results
-    if args.bupar_results:
-        bupar_path = Path(args.bupar_results)
+    # Load post-target leakage analysis results
+    if args.post_target_results:
+        post_target_path = Path(args.post_target_results)
     else:
-        bupar_path = output_dir / f"{args.cohort}_{age_band_fname}_bupar_post_target_analysis.csv"
+        post_target_path = output_dir / f"{args.cohort}_{age_band_fname}_post_target_leakage_analysis.csv"
     
-    bupar_results = pd.DataFrame()
-    if bupar_path.exists():
-        print(f"Loading BupaR results from: {bupar_path}")
-        bupar_results = pd.read_csv(bupar_path)
+    post_target_results = pd.DataFrame()
+    if post_target_path.exists():
+        print(f"Loading post-target leakage analysis from: {post_target_path}")
+        post_target_results = pd.read_csv(post_target_path)
     else:
-        print(f"[WARN] BupaR results not found: {bupar_path}")
+        print(f"[WARN] Post-target leakage analysis not found: {post_target_path}")
     
     # Load safe feature filter (preferred approach)
     # Returns tuple: (features_to_keep_for_cases, features_to_exclude_for_controls)
@@ -392,7 +392,7 @@ def main():
     # Filter and refine
     refined_fi, filtering_summary = filter_and_refine_features(
         aggregated_fi=aggregated_fi,
-        bupar_results=bupar_results,
+        post_target_results=post_target_results,
         filter_post_target=not args.no_filter_post_target,
         min_importance_threshold=args.min_importance,
         safe_feature_filter=safe_feature_filter,

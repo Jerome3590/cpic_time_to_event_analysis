@@ -3,8 +3,6 @@
 import sys
 import os
 import platform
-import glob
-import shutil
 from pathlib import Path
 
 # Set UTF-8 encoding for Windows console to handle emojis
@@ -42,68 +40,6 @@ if str(PROJECT_ROOT) not in sys.path:
 from py_helpers.env_utils import get_workflow_python_bin
 PYTHON_BIN = get_workflow_python_bin()
 print(f"   Using workflow Python: {PYTHON_BIN}")
-
-# Set Rscript path based on OS
-if IS_WINDOWS:
-    # Windows: Check R_HOME first, then PATH, then common locations
-    RSCRIPT_BIN = None
-    rscript_from_r_home = None
-    
-    # First, try R_HOME environment variable (most reliable on Windows)
-    r_home = os.environ.get('R_HOME')
-    if r_home:
-        rscript_from_r_home = Path(r_home) / 'bin' / 'Rscript.exe'
-        if rscript_from_r_home.exists():
-            RSCRIPT_BIN = rscript_from_r_home
-            print(f"   Found Rscript via R_HOME: {RSCRIPT_BIN}")
-    
-    # If not found via R_HOME, try PATH
-    if not RSCRIPT_BIN:
-        rscript_path = shutil.which("Rscript")
-        if rscript_path:
-            RSCRIPT_BIN = Path(rscript_path)
-            print(f"   Found Rscript in PATH: {RSCRIPT_BIN}")
-    
-    # If still not found, try common Windows installation locations
-    if not RSCRIPT_BIN:
-        common_windows_patterns = [
-            'C:/Program Files/R/R-*/bin/Rscript.exe',
-            'C:/Program Files (x86)/R/R-*/bin/Rscript.exe',
-        ]
-        for pattern in common_windows_patterns:
-            matches = glob.glob(pattern)
-            if matches:
-                RSCRIPT_BIN = Path(matches[0])
-                print(f"   Found Rscript at: {RSCRIPT_BIN}")
-                break
-    
-    if not RSCRIPT_BIN:
-        print(f"[WARN]  Rscript not found on Windows, will use auto-detection")
-        if r_home and rscript_from_r_home:
-            print(f"   Note: R_HOME is set to {r_home} but Rscript.exe not found at {rscript_from_r_home}")
-elif IS_LINUX:
-    # Linux/EC2: Use EC2 default location
-    RSCRIPT_BIN = Path('/usr/local/bin/Rscript')
-    if not RSCRIPT_BIN.exists():
-        # Try to find in PATH
-        rscript_path = shutil.which("Rscript")
-        if rscript_path:
-            RSCRIPT_BIN = Path(rscript_path)
-            print(f"[WARN]  EC2 Rscript not found, using PATH: {RSCRIPT_BIN}")
-        else:
-            RSCRIPT_BIN = None
-            print(f"[WARN]  Rscript not found, will use auto-detection")
-    else:
-        print(f"   Using Linux/EC2 Rscript: {RSCRIPT_BIN}")
-else:
-    # Fallback: Try to find in PATH
-    rscript_path = shutil.which("Rscript")
-    if rscript_path:
-        RSCRIPT_BIN = Path(rscript_path)
-        print(f"   Found Rscript: {RSCRIPT_BIN}")
-    else:
-        RSCRIPT_BIN = None
-        print(f"[WARN]  Rscript not found, will use auto-detection")
 
 print(f"[1] OS detection and path setup complete\n")
 
@@ -212,7 +148,7 @@ print(f"   - Manual: Edit COHORT and AGE_BAND variables above\n")
 # 
 # 1. **Load aggregated feature importances** from Step 3 for the specified cohort
 # 2. **Administrative/Non-informative code filtering** --> Remove non-informative ICD/CPT codes (from lookup table)
-# 3. **BupaR post-target analysis** --> Identifies pre/post target events (target leakage detection; fall_injury_any for falls, ed_event for ed) with automated ratio-based detection
+# 3. **Post-target leakage analysis** --> Identifies pre/post target events (target leakage detection; fall_injury_any for falls, ed_event for ed) with automated ratio-based detection
 # 4. **Interactive review** --> Validate and manually add/remove codes to filter
 # 5. **Filter & refine** --> Generate final `cohort_feature_importance.csv` with filtered features for Step 4a
 
@@ -226,7 +162,7 @@ print(f"   - Manual: Edit COHORT and AGE_BAND variables above\n")
 #          v
 #     [Admin Code Filtering] --> Remove non-informative ICD/CPT codes (from lookup table)
 #          v
-#     [BupaR Analysis] --> Identify pre/post target events (target leakage) with automated detection
+#     [Post-Target Leakage Analysis] --> Identify pre/post target events with automated detection
 #          v
 #     [Interactive Review] --> Manually validate and update filtering codes <-- YOU ARE HERE
 #          v
@@ -240,7 +176,7 @@ print(f"   - Manual: Edit COHORT and AGE_BAND variables above\n")
 # 
 # - **Section A**: Configuration and Setup
 # - **Section B**: Administrative/Non-Informative Code Filtering
-# - **Section C**: BupaR Post-Target Analysis (Pre/Post Target Events with Automated Leakage Detection)
+# - **Section C**: Post-Target Leakage Analysis (Pre/Post Target Events with Automated Leakage Detection)
 # - **Section D**: Interactive Code Review and Filtering
 # - **Section E**: Generate Final Refined Feature Importances
 
@@ -275,10 +211,6 @@ print(f"   Project Root: {PROJECT_ROOT}")
 print(f"   Cohort: {COHORT}")
 print(f"   Age Band: {AGE_BAND} ({AGE_BAND_FNAME})")
 print(f"   Python Binary: {PYTHON_BIN}")
-if RSCRIPT_BIN:
-    print(f"   Rscript Binary: {RSCRIPT_BIN}")
-else:
-    print(f"   Rscript Binary: Auto-detect (will be found by script)")
 print(f"   Output Directory: {OUTPUT_DIR}")
 
 # %% [markdown]
@@ -436,64 +368,16 @@ print(f"\n[1] Administrative code filtering ready")
 print(f"   These codes will be filtered in the 'Filter and Refine' step")
 
 # %% [markdown]
-# ## C. BupaR Post-Target Analysis (Pre/Post Target Events)
+# ## C. Post-Target Analysis (Pre/Post Target Events)
 # 
-# BupaR analysis identifies pre vs post-target events. Codes that appear primarily after the target event are post-target leakage and should be filtered.
+# Python/DuckDB analysis identifies pre vs post-target events from Step 2 cohort parquet. Codes that appear primarily after the target event are post-target leakage and should be filtered.
 # 
-# **ed cohort:** Model events are built before the first qualifying ED visit, so post-target leakage is expected to be minimal by construction.
+# **ed cohort:** Post-target leakage should be minimal when Step 2 target timing is correctly constrained.
 
 # %% [markdown]
-# ### 1. Verify Rscript is Available
-# 
-# **Note:** BupaR analysis uses R scripts, so Rscript must be installed and available in PATH. The Python script will automatically find Rscript, but you can verify it's available here.
-
-# %%
-# Verify Rscript is available
-# Note: shutil already imported in Section A
-
-# Check configured path first
-if RSCRIPT_BIN and RSCRIPT_BIN.exists():
-    print(f"[1] Rscript found at configured path: {RSCRIPT_BIN}")
-    rscript_path = str(RSCRIPT_BIN)
-else:
-    # Try to find in PATH
-    rscript_path = shutil.which("Rscript")
-    if rscript_path:
-        print(f"[1] Rscript found in PATH: {rscript_path}")
-    else:
-        # Try common EC2 locations
-        common_paths = [
-            Path('/usr/local/bin/Rscript'),  # EC2 default
-            Path('/usr/bin/Rscript'),
-        ]
-        found = False
-        for path in common_paths:
-            if path.exists():
-                print(f"[1] Rscript found at: {path}")
-                rscript_path = str(path)
-                found = True
-                break
-        if not found:
-            print(f"[WARN]  Rscript not found")
-            print(f"   The Python script will try to find it automatically")
-            rscript_path = None
-
-# Check version if found
-if rscript_path:
-    try:
-        result = subprocess.run([rscript_path, "--version"], capture_output=True, text=True, timeout=5)
-        if result.returncode == 0:
-            version_line = result.stdout.strip().split('\n')[0] if result.stdout else "Unknown"
-            print(f"   Version: {version_line}")
-    except Exception as e:
-        print(f"   Could not check version: {e}")
-
-print("\n" + "="*80)
-
-# %% [markdown]
-# ### 2. Update cohort data, then build BupaR input (cohort + 3a FI + target), then run BupaR
+# ### 2. Update cohort data, then run post-target leakage analysis
 #
-# Sync gold/cohorts, gold/medical, gold/pharmacy from S3 so we use the latest data between 3a and 3b. Then build model data (gold cohort filtered by 3a FI + admin removed). R only consumes the parquet.
+# Sync gold/cohorts from S3 so Step 3b uses the latest Step 2 target-case rows.
 
 # %%
 # Note: subprocess and datetime already imported in Section A
@@ -506,49 +390,28 @@ if 'AGE_BAND' not in globals():
 
 # Update cohort data from S3 so 3b uses latest data (seamless between 3a and 3b)
 try:
-    from py_helpers.env_utils import get_data_root, get_project_data_root
+    from py_helpers.env_utils import get_project_data_root
     from py_helpers.workflow_sync_checkpoint import sync_s3_to_local
     _s3_bucket = os.environ.get("PGX_S3_BUCKET", "pgxdatalake")
-    _data_root = get_data_root()
     try:
         from py_helpers.constants import PROJECT_SLUG as _SYNC_PS
     except ImportError:
         _SYNC_PS = "cpic_time_to_event"
     for _name, _prefix, _local in [
         ("cohorts", f"s3://{_s3_bucket}/gold/{_SYNC_PS}/cohorts/", get_project_data_root() / "gold" / "cohorts"),
-        ("medical", f"s3://{_s3_bucket}/gold/medical/", _data_root / "gold" / "medical"),
-        ("pharmacy", f"s3://{_s3_bucket}/gold/pharmacy/", _data_root / "gold" / "pharmacy"),
     ]:
         sync_s3_to_local(_prefix, _local)
     print("Cohort data synced from S3.")
 except Exception as _e:
     print(f"Note: Could not sync cohort data from S3: {_e}")
 
-# Build model data (gold cohort filtered by 3a aggregated FI with admin codes removed) before R runs.
-print("Building BupaR input from cohort data + 3a aggregated feature importance + target (admin codes removed)...")
-build_result = subprocess.run(
-    [str(PYTHON_BIN), str(PROJECT_ROOT / "3b_feature_importance_eda" / "create_bupar_input_from_cohort.py"), "--cohort", COHORT, "--age-band", AGE_BAND],
-    cwd=str(PROJECT_ROOT),
-    capture_output=True,
-    text=True,
-)
-if build_result.stdout:
-    print(build_result.stdout)
-if build_result.stderr:
-    print("STDERR:", build_result.stderr)
-if build_result.returncode != 0:
-    print(f"BupaR input build failed (exit {build_result.returncode}). Check gold cohort and 3a aggregated FI paths.")
-else:
-    print("BupaR input built successfully.")
-
-# Run BupaR Post-Target Analysis (uses 3b-built parquet or Step 4 if present)
-print("\nRunning BupaR Post-Target Analysis...")
+# Run Post-Target Analysis from Step 2 cohort parquet
+print("\nRunning Post-Target Leakage Analysis...")
 print(f"Started at: {datetime.now()}")
-print("Note: This will call R scripts using Rscript")
 
 cmd = [
     str(PYTHON_BIN),
-    str(PROJECT_ROOT / "3b_feature_importance_eda" / "1_bupaR" / "run_bupar_post_target_analysis.py"),
+    str(PROJECT_ROOT / "3b_feature_importance_eda" / "1_post_target_leakage" / "run_post_target_leakage_analysis.py"),
     "--cohort", COHORT,
     "--age-band", AGE_BAND
 ]
@@ -561,56 +424,51 @@ if result.stderr:
     print("STDERR:", result.stderr)
 
 if result.returncode == 0:
-    print(f"\nBupaR analysis completed successfully")
+    print(f"\nPost-target leakage analysis completed successfully")
 else:
-    print(f"\nBupaR analysis failed with return code {result.returncode}")
+    print(f"\nPost-target leakage analysis failed with return code {result.returncode}")
 stderr_text = result.stderr or ""
 stdout_text = result.stdout or ""
-if "Rscript not found" in stderr_text or "Rscript not found" in stdout_text:
-    print("\nTip: Make sure R is installed and Rscript is in your PATH")
-    print(f"   Current RSCRIPT_BIN: {RSCRIPT_BIN if RSCRIPT_BIN else 'Not found (will use auto-detection)'}")
-    print("   Rscript detection is configured in the OS detection section at the top of this file")
 
 # %% [markdown]
-# ### 3. Load and Review BupaR Results
+# ### 3. Load and Review Post-Target Leakage Results
 
 # %%
-# Load BupaR results
-bupar_results_path = OUTPUT_DIR / f"{COHORT}_{AGE_BAND_FNAME}_bupar_post_target_analysis.csv"
+# Load post-target leakage results
+post_target_results_path = OUTPUT_DIR / f"{COHORT}_{AGE_BAND_FNAME}_post_target_leakage_analysis.csv"
 
 # Check if file exists in wrong location (features/ subdirectory) and move it
-wrong_location = OUTPUT_DIR / "features" / f"{COHORT}_{AGE_BAND_FNAME}_bupar_post_target_analysis.csv"
-if wrong_location.exists() and not bupar_results_path.exists():
-    print(f"[WARN]  Found BupaR results in wrong location: {wrong_location}")
-    print(f"   Moving to correct location: {bupar_results_path}")
-    wrong_location.rename(bupar_results_path)
-elif wrong_location.exists() and bupar_results_path.exists():
+wrong_location = OUTPUT_DIR / "features" / f"{COHORT}_{AGE_BAND_FNAME}_post_target_leakage_analysis.csv"
+if wrong_location.exists() and not post_target_results_path.exists():
+    print(f"[WARN]  Found post-target leakage results in wrong location: {wrong_location}")
+    print(f"   Moving to correct location: {post_target_results_path}")
+    wrong_location.rename(post_target_results_path)
+elif wrong_location.exists() and post_target_results_path.exists():
     # Both exist - remove the one in wrong location
-    print(f"[WARN]  BupaR results exist in both locations. Removing wrong location: {wrong_location}")
+    print(f"[WARN]  Post-target leakage results exist in both locations. Removing wrong location: {wrong_location}")
     wrong_location.unlink()
 
-if bupar_results_path.exists():
-    bupar_results = pd.read_csv(bupar_results_path)
-    print(f"[1] Loaded BupaR results: {len(bupar_results)} features analyzed")
+if post_target_results_path.exists():
+    post_target_results = pd.read_csv(post_target_results_path)
+    print(f"[1] Loaded post-target leakage results: {len(post_target_results)} features analyzed")
     
     # Show post-target leakage features
-    post_target_leakage = bupar_results[bupar_results.get('is_post_target_leakage', pd.Series([0]*len(bupar_results))) == 1]
+    post_target_leakage = post_target_results[post_target_results.get('is_post_target_leakage', pd.Series([0]*len(post_target_results))) == 1]
     
-    print(f"\n[INFO] BupaR Analysis Summary:")
-    print(f"   Total features analyzed: {len(bupar_results)}")
+    print(f"\n[INFO] Post-Target Leakage Analysis Summary:")
+    print(f"   Total features analyzed: {len(post_target_results)}")
     print(f"   Post-target leakage features: {len(post_target_leakage)}")
     
     # Check for critical finding: no pre-target events
-    if 'pre_count' in bupar_results.columns and 'post_count' in bupar_results.columns:
-        total_pre = bupar_results['pre_count'].sum()
-        total_post = bupar_results['post_count'].sum()
+    if 'pre_count' in post_target_results.columns and 'post_count' in post_target_results.columns:
+        total_pre = post_target_results['pre_count'].sum()
+        total_post = post_target_results['post_count'].sum()
         
         if total_pre == 0 and total_post > 0:
             print(f"\n   [WARN]  CRITICAL FINDING: No pre-{TARGET_LABEL} events found!")
             print(f"   All {total_post:,} events occur AFTER the target event.")
             print(f"   This means ALL features are post-target leakage and should be filtered.")
             print(f"   Consider checking:")
-            print(f"     - Data filtering in Step 4a (model_events.parquet)")
             print(f"     - Whether events before the target were filtered out")
             print(f"     - Cohort definition and target event identification")
     
@@ -620,14 +478,14 @@ if bupar_results_path.exists():
     else:
         print(f"\n   [1] No post-target leakage features identified")
         if COHORT == "ed":
-            print(f"   [INFO]  (Expected for ed: model_events are built before first qualifying ED visit, so post-target leakage should be minimal.)")
+            print(f"   [INFO]  (Expected for ed when Step 2 target timing is correctly constrained.)")
     
     # Display full results
-    print(f"\n   Full BupaR results:")
-    display(bupar_results.head(20))
+    print(f"\n   Full post-target leakage results:")
+    display(post_target_results.head(20))
 else:
-    print(f"[X] BupaR results not found: {bupar_results_path}")
-    bupar_results = pd.DataFrame()
+    print(f"[X] Post-target leakage results not found: {post_target_results_path}")
+    post_target_results = pd.DataFrame()
 
 # %% [markdown]
 # ### 4. Visualize Post-Target Leakage Candidates
@@ -636,24 +494,23 @@ else:
 
 # %%
 # Create visualizations for post-target leakage candidates
-post_ratio_col = 'post_target_ratio' if 'post_target_ratio' in bupar_results.columns else None
-pre_ratio_col = 'pre_target_ratio' if 'pre_target_ratio' in bupar_results.columns else None
-if not bupar_results.empty and post_ratio_col:
+post_ratio_col = 'post_target_ratio' if 'post_target_ratio' in post_target_results.columns else None
+pre_ratio_col = 'pre_target_ratio' if 'pre_target_ratio' in post_target_results.columns else None
+if not post_target_results.empty and post_ratio_col:
     # Set up the plotting style
     plt.style.use('default')
     sns.set_palette("husl")
     
-    # Filter out features with no ratio data (from BupaR fallback)
-    bupar_results_viz = bupar_results[bupar_results[post_ratio_col] > 0].copy()
+    post_target_results_viz = post_target_results[post_target_results[post_ratio_col] > 0].copy()
     
-    if len(bupar_results_viz) > 0:
+    if len(post_target_results_viz) > 0:
         # Figure 1: Distribution of Post-Target Ratios
         fig, axes = plt.subplots(2, 2, figsize=(16, 12))
         fig.suptitle(f'Post-{TARGET_LABEL.capitalize()} Leakage Analysis: {COHORT} / {AGE_BAND}', fontsize=16, fontweight='bold')
         
         # 1. Histogram of post-target ratios
         ax1 = axes[0, 0]
-        ax1.hist(bupar_results_viz[post_ratio_col], bins=50, edgecolor='black', alpha=0.7)
+        ax1.hist(post_target_results_viz[post_ratio_col], bins=50, edgecolor='black', alpha=0.7)
         ax1.axvline(x=0.8, color='r', linestyle='--', linewidth=2, label='Threshold (80%)')
         ax1.set_xlabel(f'Post-{TARGET_LABEL.capitalize()} Ratio', fontsize=12)
         ax1.set_ylabel('Number of Features', fontsize=12)
@@ -663,17 +520,17 @@ if not bupar_results.empty and post_ratio_col:
         
         # 2. Pre vs Post ratio comparison (scatter plot)
         ax2 = axes[0, 1]
-        if pre_ratio_col and pre_ratio_col in bupar_results_viz.columns:
+        if pre_ratio_col and pre_ratio_col in post_target_results_viz.columns:
             # Scatter plot: Pre-target ratio vs Post-target ratio
             ax2.scatter(
-                bupar_results_viz[pre_ratio_col],
-                bupar_results_viz[post_ratio_col],
+                post_target_results_viz[pre_ratio_col],
+                post_target_results_viz[post_ratio_col],
                 alpha=0.6,
                 s=50,
                 c=['red' if row.get('is_post_target_leakage', 0) == 1 else 
                    'green' if row.get('is_pre_target_predictive', 0) == 1 else 
                    'gray' 
-                   for _, row in bupar_results_viz.iterrows()]
+                   for _, row in post_target_results_viz.iterrows()]
             )
             ax2.axhline(y=0.8, color='r', linestyle='--', linewidth=2, label='Post Leakage Threshold (80%)')
             ax2.axvline(x=0.8, color='g', linestyle='--', linewidth=2, label='Pre Predictive Threshold (80%)')
@@ -686,7 +543,7 @@ if not bupar_results.empty and post_ratio_col:
             ax2.set_ylim(-0.05, 1.05)
         else:
             # Fallback: Top leakage candidates if pre ratio not available
-            leakage_candidates = bupar_results_viz.nlargest(20, post_ratio_col)
+            leakage_candidates = post_target_results_viz.nlargest(20, post_ratio_col)
             if len(leakage_candidates) > 0:
                 y_pos = range(len(leakage_candidates))
                 colors = ['red' if ratio >= 0.8 else 'orange' if ratio >= 0.5 else 'yellow' 
@@ -703,7 +560,7 @@ if not bupar_results.empty and post_ratio_col:
         
         # 3. Pre vs Post event counts for leakage features
         ax3 = axes[1, 0]
-        leakage_features = bupar_results_viz[bupar_results_viz['is_post_target_leakage'] == 1]
+        leakage_features = post_target_results_viz[post_target_results_viz['is_post_target_leakage'] == 1]
         if len(leakage_features) > 0 and 'pre_count' in leakage_features.columns and 'post_count' in leakage_features.columns:
             # Sample up to 20 features for clarity
             sample_size = min(20, len(leakage_features))
@@ -735,30 +592,30 @@ if not bupar_results.empty and post_ratio_col:
         ax4 = axes[1, 1]
         ax4.axis('off')
         
-        pre_col = bupar_results_viz.get(pre_ratio_col, pd.Series([0]*len(bupar_results_viz)))
+        pre_col = post_target_results_viz.get(pre_ratio_col, pd.Series([0]*len(post_target_results_viz)))
         summary_text = f"""
         Summary Statistics
         
-        Total Features Analyzed: {len(bupar_results_viz):,}
+        Total Features Analyzed: {len(post_target_results_viz):,}
         
-        Post-Target Leakage (>=80%): {len(bupar_results_viz[bupar_results_viz[post_ratio_col] >= 0.8]):,}
-        Pre-Target Predictive (>=80%): {len(bupar_results_viz[pre_col >= 0.8]):,}
-        High Risk Post (50-80%): {len(bupar_results_viz[(bupar_results_viz[post_ratio_col] >= 0.5) & 
-                                                      (bupar_results_viz[post_ratio_col] < 0.8)]):,}
-        Low Risk (<50% post): {len(bupar_results_viz[bupar_results_viz[post_ratio_col] < 0.5]):,}
+        Post-Target Leakage (>=80%): {len(post_target_results_viz[post_target_results_viz[post_ratio_col] >= 0.8]):,}
+        Pre-Target Predictive (>=80%): {len(post_target_results_viz[pre_col >= 0.8]):,}
+        High Risk Post (50-80%): {len(post_target_results_viz[(post_target_results_viz[post_ratio_col] >= 0.5) &
+                                                      (post_target_results_viz[post_ratio_col] < 0.8)]):,}
+        Low Risk (<50% post): {len(post_target_results_viz[post_target_results_viz[post_ratio_col] < 0.5]):,}
         
         Mean Pre-{TARGET_LABEL.capitalize()} Ratio: {pre_col.mean():.2%}
-        Mean Post-{TARGET_LABEL.capitalize()} Ratio: {bupar_results_viz[post_ratio_col].mean():.2%}
-        Median Post-{TARGET_LABEL.capitalize()} Ratio: {bupar_results_viz[post_ratio_col].median():.2%}
+        Mean Post-{TARGET_LABEL.capitalize()} Ratio: {post_target_results_viz[post_ratio_col].mean():.2%}
+        Median Post-{TARGET_LABEL.capitalize()} Ratio: {post_target_results_viz[post_ratio_col].median():.2%}
         
         Total Events (All Features):
         """
         
-        if 'total_count' in bupar_results_viz.columns:
+        if 'total_count' in post_target_results_viz.columns:
             summary_text += f"""
-        Pre-{TARGET_LABEL.capitalize()}: {bupar_results_viz.get('pre_count', pd.Series([0]*len(bupar_results_viz))).sum():,}
-        Post-{TARGET_LABEL.capitalize()}: {bupar_results_viz.get('post_count', pd.Series([0]*len(bupar_results_viz))).sum():,}
-        Total: {bupar_results_viz['total_count'].sum():,}
+        Pre-{TARGET_LABEL.capitalize()}: {post_target_results_viz.get('pre_count', pd.Series([0]*len(post_target_results_viz))).sum():,}
+        Post-{TARGET_LABEL.capitalize()}: {post_target_results_viz.get('post_count', pd.Series([0]*len(post_target_results_viz))).sum():,}
+        Total: {post_target_results_viz['total_count'].sum():,}
         """
         
         ax4.text(0.1, 0.9, summary_text, transform=ax4.transAxes, 
@@ -807,8 +664,8 @@ if not bupar_results.empty and post_ratio_col:
             print(f"\n[SAVE] Saved detailed leakage candidates to: {leakage_csv}")
         
         # Also show pre-target predictive features
-        if 'is_pre_target_predictive' in bupar_results_viz.columns and pre_ratio_col and pre_ratio_col in bupar_results_viz.columns:
-            predictive_features = bupar_results_viz[bupar_results_viz['is_pre_target_predictive'] == 1]
+        if 'is_pre_target_predictive' in post_target_results_viz.columns and pre_ratio_col and pre_ratio_col in post_target_results_viz.columns:
+            predictive_features = post_target_results_viz[post_target_results_viz['is_pre_target_predictive'] == 1]
             if len(predictive_features) > 0:
                 print(f"\n[1] Top 20 Pre-{TARGET_LABEL.capitalize()} Predictive Features (safe to use):")
                 print(f"{'='*100}")
@@ -823,60 +680,11 @@ if not bupar_results.empty and post_ratio_col:
                 display(display_df)
     else:
         print(f"[WARN]  No features with post-{TARGET_LABEL} ratio data available for visualization")
-elif not bupar_results.empty:
-    print("[INFO]  Post-target ratio data not available (using BupaR fallback mode)")
+elif not post_target_results.empty:
+    print("[INFO]  Post-target ratio data not available")
     print("   Run with event-level data to get detailed ratio visualizations")
 else:
-    print("[WARN]  No BupaR results available for visualization")
-
-# %% [markdown]
-# ### 5. View BupaR Visualizations
-
-# %%
-# Display BupaR visualizations (pre/post target split for falls and ed)
-bupar_plots = [
-    f"{COHORT}_{AGE_BAND_FNAME}_overall_activity_frequency.png",
-    f"{COHORT}_{AGE_BAND_FNAME}_activity_milestones_gantt.png",
-    f"{COHORT}_{AGE_BAND_FNAME}_activity_sequence_top.png",
-]
-if COHORT == "falls":
-    bupar_plots.extend([
-        f"{COHORT}_{AGE_BAND_FNAME}_pre_target_activity_frequency.png",
-        f"{COHORT}_{AGE_BAND_FNAME}_post_target_activity_frequency.png",
-    ])
-
-# Check if plots directory exists and list available plots
-if PLOTS_DIR.exists():
-    available_plots = list(PLOTS_DIR.glob("*.png"))
-    print(f"[PATH] Plots directory: {PLOTS_DIR}")
-    print(f"   Found {len(available_plots)} PNG files")
-    if available_plots:
-        print(f"   Available plots:")
-        for p in sorted(available_plots):
-            print(f"     - {p.name}")
-else:
-    print(f"[WARN]  Plots directory does not exist: {PLOTS_DIR}")
-
-print(f"\n[CHECK] Looking for BupaR plots...")
-for plot_name in bupar_plots:
-    plot_path = PLOTS_DIR / plot_name
-    if plot_path.exists():
-        print(f"[1] Displaying: {plot_name}")
-        display(Image(str(plot_path)))
-    else:
-        print(f"[WARN]  Plot not found: {plot_path}")
-        # Try alternative path (in case plots are in features/ subdirectory)
-        alt_path = OUTPUT_DIR / "features" / plot_name
-        if alt_path.exists():
-            print(f"   Found in alternative location: {alt_path}")
-            display(Image(str(alt_path)))
-        else:
-            # Try without cohort prefix (in case R script saved without it)
-            simple_name = plot_name.replace(f"{COHORT}_{AGE_BAND_FNAME}_", "")
-            simple_path = PLOTS_DIR / simple_name
-            if simple_path.exists():
-                print(f"   Found with simple name: {simple_path}")
-                display(Image(str(simple_path)))
+    print("[WARN]  No post-target leakage results available for visualization")
 
 # %% [markdown]
 # ## D. Interactive Code Review and Filtering
@@ -886,13 +694,13 @@ for plot_name in bupar_plots:
 # %% [markdown]
 # ### 1. Review Codes to Filter
 # 
-# Based on the BupaR post-target analysis and administrative code filtering, review codes that should be filtered:
+# Based on the post-target leakage analysis and administrative code filtering, review codes that should be filtered:
 
 # %%
 # Combine filtering recommendations
 filtering_recommendations = {
     'administrative_codes': set(),  # Administrative/non-informative codes from lookup table
-    'bupar_post_target': set(),     # Post-target leakage features
+    'post_target_leakage': set(),   # Post-target leakage features
     'manual_additional': set()       # Add codes manually here
 }
 
@@ -941,39 +749,41 @@ if existing_filtering_config_path.exists():
             # Load codes into appropriate categories based on stored counts
             codes_list = sorted(list(existing_codes))
             admin_count = existing_config.get('administrative_codes_count', 0)
-            bupar_count = existing_config.get('bupar_post_target_count', 0)
+            post_target_count = existing_config.get('post_target_leakage_count', 0)
             
             if admin_count > 0:
                 filtering_recommendations['administrative_codes'] = set(codes_list[:admin_count])
-            if bupar_count > 0:
+            if post_target_count > 0:
                 start_idx = admin_count
-                end_idx = admin_count + bupar_count
-                filtering_recommendations['bupar_post_target'] = set(codes_list[start_idx:end_idx])
-            if len(codes_list) > (admin_count + bupar_count):
-                start_idx = admin_count + bupar_count
+                end_idx = admin_count + post_target_count
+                filtering_recommendations['post_target_leakage'] = set(codes_list[start_idx:end_idx])
+            if len(codes_list) > (admin_count + post_target_count):
+                start_idx = admin_count + post_target_count
                 filtering_recommendations['manual_additional'] = set(codes_list[start_idx:])
             
             print(f"[1] Loaded pre-existing filtering config from: {existing_filtering_config_path}")
             print(f"   Pre-existing codes to filter: {len(existing_codes)}")
             print(f"     - Administrative codes: {admin_count}")
-            print(f"     - BupaR post-target codes: {bupar_count}")
-            print(f"     - Manual codes: {len(existing_codes) - admin_count - bupar_count}")
+            print(f"     - Post-target leakage codes: {post_target_count}")
+            print(f"     - Manual codes: {len(existing_codes) - admin_count - post_target_count}")
             if 'codes_to_keep' in existing_config and len(existing_config['codes_to_keep']) > 0:
                 print(f"   Codes to keep: {len(existing_config['codes_to_keep'])}")
     except Exception as e:
         print(f"[WARN]  Could not load pre-existing filtering config: {e}")
         print(f"   Will proceed with fresh analysis")
 
-# Add BupaR recommendations
+# Add post-target leakage recommendations
 # Merge with new analysis results (don't replace existing codes)
-if 'bupar_results' in locals() and not bupar_results.empty:
-    bupar_filtered = bupar_results[bupar_results.get('is_post_target_leakage', pd.Series([0]*len(bupar_results))) == 1]
-    filtering_recommendations['bupar_post_target'].update(set(bupar_filtered['feature'].tolist()))
+if 'post_target_results' in locals() and not post_target_results.empty:
+    post_target_filtered = post_target_results[
+        post_target_results.get('is_post_target_leakage', pd.Series([0]*len(post_target_results))) == 1
+    ]
+    filtering_recommendations['post_target_leakage'].update(set(post_target_filtered['feature'].tolist()))
 
 # Display summary
 print("[CHECK] Filtering Recommendations Summary:")
 print(f"   Administrative/non-informative codes: {len(filtering_recommendations['administrative_codes'])}")
-print(f"   BupaR post-target leakage codes: {len(filtering_recommendations['bupar_post_target'])}")
+print(f"   Post-target leakage codes: {len(filtering_recommendations['post_target_leakage'])}")
 print(f"   Manual additional codes: {len(filtering_recommendations['manual_additional'])}")
 
 # Show administrative codes separately
@@ -988,14 +798,14 @@ if len(filtering_recommendations['administrative_codes']) > 0:
 # Show codes to filter
 all_codes_to_filter = (
     filtering_recommendations['administrative_codes'] |
-    filtering_recommendations['bupar_post_target'] |
+    filtering_recommendations['post_target_leakage'] |
     filtering_recommendations['manual_additional']
 )
 
 print(f"\n   Total unique codes to filter: {len(all_codes_to_filter)}")
 
 if len(all_codes_to_filter) > 0:
-    print(f"\n   All codes recommended for filtering (Administrative + BupaR + Manual):")
+    print(f"\n   All codes recommended for filtering (Administrative + Post-target + Manual):")
     codes_list = sorted(list(all_codes_to_filter))
     for i, code in enumerate(codes_list[:50], 1):  # Show first 50
         print(f"     {i}. {code}")
@@ -1036,13 +846,13 @@ filtering_recommendations['manual_additional'] = set(MANUAL_CODES_TO_FILTER)
 # Remove codes that should be kept
 for code in CODES_TO_KEEP:
     filtering_recommendations['administrative_codes'].discard(code)
-    filtering_recommendations['bupar_post_target'].discard(code)
+    filtering_recommendations['post_target_leakage'].discard(code)
     filtering_recommendations['manual_additional'].discard(code)
 
 # Final list of codes to filter
 final_codes_to_filter = (
     filtering_recommendations['administrative_codes'] |
-    filtering_recommendations['bupar_post_target'] |
+    filtering_recommendations['post_target_leakage'] |
     filtering_recommendations['manual_additional']
 )
 
@@ -1057,7 +867,7 @@ filtering_config = {
     'codes_to_filter': sorted(list(final_codes_to_filter)),
     'codes_to_keep': CODES_TO_KEEP,
     'administrative_codes_count': len(filtering_recommendations['administrative_codes']),
-    'bupar_post_target_count': len(filtering_recommendations['bupar_post_target']),
+    'post_target_leakage_count': len(filtering_recommendations['post_target_leakage']),
     'manual_additional_count': len(filtering_recommendations['manual_additional'])
 }
 
@@ -1178,7 +988,7 @@ except s3_client.exceptions.ClientError as e:
 # 
 # **Outputs Generated:**
 # - [1] Administrative code filtering (from lookup table)
-# - [1] BupaR post-target analysis results with automated leakage detection
+# - [1] Post-target leakage analysis results with automated leakage detection
 # - [1] Post-target leakage visualizations
 # - [1] Refined `cohort_feature_importance.csv` for Step 4a
 # - [1] Filtering summary JSON

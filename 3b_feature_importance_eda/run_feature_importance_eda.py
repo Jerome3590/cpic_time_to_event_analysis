@@ -8,7 +8,6 @@ Runs all Feature Importance EDA analyses in order:
 2. Post-target leakage analysis (identify pre/post target events; first_fall_date for falls, first_ed_date for ed)
 3. Create safe feature filter JSON (idempotent: skip if already exists; exclude leakage, keep pre-target features)
 4. Filter and refine feature importances (uses safe_feature_filter.json when present)
-5. Create BupaR visualizations
 
 Outputs refined cohort_feature_importance files for Step 4.
 """
@@ -61,52 +60,13 @@ except ImportError:
 COHORTS = REQUIRED_COHORTS
 
 
-def ensure_bupar_input(cohort: str, age_band: str, script_dir: Path) -> bool:
-    """Build Step 3b event-level input for post-target leakage analysis."""
-    target_parquet = (
-        PROJECT_ROOT
-        / "3b_feature_importance_eda"
-        / "outputs"
-        / f"cohort_name={cohort}"
-        / f"age_band={age_band}"
-        / "model_events.parquet"
-    )
-    if target_parquet.exists():
-        print(f"[INFO] BupaR input already exists: {target_parquet}")
-        return True
-
-    build_script = script_dir / "create_bupar_input_from_cohort.py"
-    if not build_script.exists():
-        print(f"[ERROR] BupaR input builder not found: {build_script}")
-        return False
-
-    print("[INFO] Building Step 3b input from cohort data + Step 3a aggregated FI + target...")
-    cmd = [
-        str(get_workflow_python_bin()),
-        str(build_script),
-        "--cohort",
-        cohort,
-        "--age-band",
-        age_band,
-    ]
-    try:
-        result = subprocess.run(cmd, check=True, cwd=str(PROJECT_ROOT))
-        return result.returncode == 0
-    except subprocess.CalledProcessError as e:
-        print(f"[ERROR] BupaR input build failed: {e}")
-        return False
-
-
-def run_bupar_analysis(cohort: str, age_band: str, script_dir: Path) -> bool:
+def run_post_target_leakage_analysis(cohort: str, age_band: str, script_dir: Path) -> bool:
     """Run required post-target leakage analysis using the Python/DuckDB path."""
     print(f"\n{'='*80}")
     print(f"Running Post-Target Leakage Analysis: {cohort} / {age_band}")
     print(f"{'='*80}")
 
-    if not ensure_bupar_input(cohort, age_band, script_dir):
-        return False
-
-    script_path = script_dir / "1_bupaR" / "create_bupar_post_target_analysis.py"
+    script_path = script_dir / "1_post_target_leakage" / "create_post_target_leakage_analysis.py"
     if not script_path.exists():
         print(f"[ERROR] Post-target analysis script not found: {script_path}")
         return False
@@ -211,28 +171,6 @@ def run_filter_and_refine(cohort: str, age_band: str, script_dir: Path) -> bool:
         return False
 
 
-def create_bupar_visualizations(cohort: str, age_band: str, script_dir: Path) -> bool:
-    """Create BupaR visualizations."""
-    print(f"\n{'='*80}")
-    print(f"Creating BupaR Visualizations: {cohort} / {age_band}")
-    print(f"{'='*80}")
-    
-    script_path = script_dir / "1_bupaR" / "create_bupar_visualizations.py"
-    cmd = [
-        str(get_workflow_python_bin()),
-        str(script_path),
-        "--cohort", cohort,
-        "--age-band", age_band
-    ]
-    
-    try:
-        result = subprocess.run(cmd, check=True)
-        return result.returncode == 0
-    except subprocess.CalledProcessError as e:
-        print(f"[ERROR] BupaR visualization creation failed: {e}")
-        return False
-
-
 def run_feature_importance_eda_for_cohort(cohort: str, age_band: str, script_dir: Path) -> bool:
     """Run all Feature Importance EDA analyses for a single cohort/age_band."""
     print(f"\n{'='*80}")
@@ -252,7 +190,7 @@ def run_feature_importance_eda_for_cohort(cohort: str, age_band: str, script_dir
         return False
 
     # Step 2: Post-target leakage analysis (identify pre/post target events)
-    if not run_bupar_analysis(cohort, age_band, script_dir):
+    if not run_post_target_leakage_analysis(cohort, age_band, script_dir):
         print("[ERROR] Post-target leakage analysis failed; refusing to continue without leakage evidence")
         return False
     
@@ -265,10 +203,6 @@ def run_feature_importance_eda_for_cohort(cohort: str, age_band: str, script_dir
     if not run_filter_and_refine(cohort, age_band, script_dir):
         print(f"[ERROR] Filter and refine failed")
         return False
-    
-    # Step 5: Create BupaR visualizations
-    if not create_bupar_visualizations(cohort, age_band, script_dir):
-        print(f"[WARN] BupaR visualization creation failed, continuing...")
     
     # Save checkpoint to S3
     age_band_fname = age_band_to_fname(age_band)
@@ -303,8 +237,8 @@ def clear_age_band_memory():
     """
     Run garbage collection to free memory after processing an age band.
     Call this in notebooks/workflows after each age band when running multiple
-    in the same session (e.g. after loading aggregated_fi, bupar_results,
-    model_events, or refined_fi) to avoid memory growth across bands.
+    in the same session (e.g. after loading aggregated_fi, post_target_results,
+    or refined_fi) to avoid memory growth across bands.
     """
     gc.collect()
 
@@ -329,12 +263,6 @@ def main():
         action="store_true",
         help="Run for all cohorts and age bands"
     )
-    parser.add_argument(
-        "--skip-bupar",
-        action="store_true",
-        help="Skip BupaR analysis"
-    )
-    
     args = parser.parse_args()
     
     script_dir = Path(__file__).parent

@@ -3,32 +3,31 @@
 ## Overview
 
 Feature Importance EDA performs additional exploratory data analysis on **already processed aggregated feature importances** from Step 3, using:
-1. **BupaR post-target analysis** to identify pre/post target ICD/CPT events (target leakage detection; target = `fall_injury_any` for falls, `ed_event` for ed)
+1. **Post-target leakage analysis** to identify pre/post target ICD/CPT/drug events (target leakage detection; target = `fall_injury_any` for falls, `ed_event` for ed)
 2. **Code research and validation** (identify and validate non-informative ICD/CPT codes from lookup table - actual event-level filtering happens in Step 4b)
 3. **Interactive code review and filtering** to refine feature selection (filters post-target leakage features from feature importance list)
 
-**Note**: This is NOT a DTW filter. Feature Importance EDA uses BupaR process mining and code research to filter already-processed aggregated feature importances, not raw event data. DTW is used separately in Step 4b (protocol filtering) and Step 9 (dashboard visualizations).
+**Note**: This is NOT a DTW filter. Feature Importance EDA uses Python/DuckDB post-target timing analysis and code research to filter already-processed aggregated feature importances, not raw event data. DTW is used separately in Step 4b (protocol filtering) and Step 9 (dashboard visualizations).
 
 Based on this EDA, we filter and update the aggregated feature importances to produce refined `cohort_feature_importance` files. Step 4 uses the refined output to create model data.
 
 ## Purpose
 
-- **Identify post-target leakage**: Use BupaR process mining to analyze sequences before and after the target event (`fall_injury_any` for falls, `ed_event` for ed) to identify features that may leak future information
+- **Identify post-target leakage**: Use Python/DuckDB timing analysis to analyze feature occurrence before and after the target event (`fall_injury_any` for falls, `ed_event` for ed)
 - **Research and validate codes**: Identify and validate administrative, scheduling, and non-medical codes through code research (actual event-level filtering happens in Step 4b)
 - **Apply safe feature filtering**: Exclude post-target leakage features from aggregated feature importance list while keeping all pre-target features to maximize information available to the algorithm
-- **Refine feature importances**: Update already-processed aggregated feature importances based on BupaR and code research findings
+- **Refine feature importances**: Update already-processed aggregated feature importances based on post-target leakage and code research findings
 - **Output refined features**: Generate `cohort_feature_importance` files before Step 4
 
-**Key Point**: Feature Importance EDA filters **aggregated feature importances** (already processed from Step 3), not raw event data. It uses BupaR process mining and code research, not DTW.
+**Key Point**: Feature Importance EDA filters **aggregated feature importances** (already processed from Step 3), not raw event data. It uses post-target timing analysis and code research, not DTW.
 
 ## Inputs
 
 - **Aggregated feature importances from Step 3 (required, not optional):**
   - Path: `3a_feature_importance/outputs/{cohort}/{age_band}/{cohort}_{age_band}_aggregated_feature_importance.csv`
-  - These define the feature set and include features that may be target leakage. Any step that uses them will **fail early** if they are not ready (workflow, BupaR R scripts, create_bupar_input_from_cohort, control cohort creation, filter_and_refine). Run Step 3a (`2_feature_importance.ipynb`) first; do not continue without them.
-- **Model events data** (for BupaR analysis): Step 3b uses **only Step 1, Step 2, and Step 3 artifacts**. We do not read or write 4_model_data (that is created after target leakage removal).
-  - Target: `3b_feature_importance_eda/outputs/cohorts/input_model_data/cohort_name={slug}/age_band={age_band}/model_events.parquet` (built from Step 2 cohort + Step 3 3a FI + target via `create_bupar_input_from_cohort.py`)
-  - Control (if used): same directory tree under 3b `outputs/`; created via `4_model_data/create_control_cohort_model_data.py --output-root 3b_feature_importance_eda/outputs --aggregated-fi-csv <path>`. **3a aggregated feature importance is required** (not optional); control events are filtered to the same feature set as target (admin codes removed) to reduce noise in BupaR.
+- **Step 2 cohort parquet** (for post-target leakage analysis):
+  - Path: `gold/cohorts/cohort_name={cohort}/event_year={year}/age_band={age_band}/cohort.parquet`
+  - Step 3b reads these cohort rows directly, using `is_target_case` plus `first_fall_date` or `first_ed_date` to calculate pre-target and post-target feature ratios.
 
 ## Outputs
 
@@ -38,7 +37,7 @@ Based on this EDA, we filter and update the aggregated feature importances to pr
 - `outputs/{cohort}/{age_band_fname}/{cohort}_{age_band_fname}_cohort_feature_importance.csv` - Refined feature importances for Step 4a
 
 **Analysis Reports:**
-- `outputs/{cohort}/{age_band_fname}/{cohort}_{age_band_fname}_bupar_post_target_analysis.csv` - BupaR post-target leakage analysis
+- `outputs/{cohort}/{age_band_fname}/{cohort}_{age_band_fname}_post_target_leakage_analysis.csv` - Post-target leakage analysis
 - `outputs/{cohort}/{age_band_fname}/{cohort}_{age_band_fname}_feature_filtering_summary.json` - Filtering summary statistics
 
 **Feature Filter Files:**
@@ -46,35 +45,24 @@ Based on this EDA, we filter and update the aggregated feature importances to pr
 - `outputs/{cohort}/{age_band_fname}/{cohort}_{age_band_fname}_post_target_filter.json` - Post-target leakage filter
 - `outputs/{cohort}/{age_band_fname}/{cohort}_{age_band_fname}_pre_target_predictive_features.json` - Pre-target predictive features
 
-**BupaR Feature Files:**
-- `outputs/{cohort}/{age_band_fname}/features/*_bupar.csv` - BupaR process mining outputs (traces, patient features, time-to-target)
-- See `1_bupaR/README_bupaR.md` for complete file manifest
-
-**Visualizations:**
-- `outputs/{cohort}/{age_band_fname}/plots/*.png` - BupaR process mining visualizations
-- See `OUTPUTS_AND_VISUALIZATIONS.md` for complete visualization documentation
-
 ### S3 Checkpoints
 
 All outputs are automatically uploaded to S3 for checkpointing and downstream consumption:
 - `s3://pgxdatalake/gold/cpic_time_to_event/feature_importance/{cohort}/{age_band}/{cohort}_{age_band}_cohort_feature_importance.csv`
-- `s3://pgxdatalake/gold/cpic_time_to_event/feature_importance/{cohort}/{age_band}/{cohort}_{age_band}_bupar_post_target_analysis.csv`
-- `s3://pgxdatalake/gold/cpic_time_to_event/bupar/{cohort}/{age_band}/*_bupar.csv` - BupaR feature files
-- `s3://pgxdatalake/gold/cpic_time_to_event/feature_importance/{cohort}/{age_band}/plots/*.png` - Visualizations
+- `s3://pgxdatalake/gold/cpic_time_to_event/feature_importance/{cohort}/{age_band}/{cohort}_{age_band}_post_target_leakage_analysis.csv`
 
 **Note**: Uploads are idempotent - files are only uploaded if they don't already exist in S3.
 
 ## Workflow
 
 1. **Load aggregated feature importances** from Step 3 (already processed feature importance scores)
-2. **BupaR Post-Target Analysis** (`1_bupaR/`):
-   - Build BupaR event logs from `model_events.parquet`
-   - Analyze sequences before and after target event (`fall_injury_any` for falls, `ed_event` for ed)
+2. **Post-Target Leakage Analysis** (`1_post_target_leakage/`):
+   - Read Step 2 cohort parquet directly
+   - Analyze feature timing before and after target event (`fall_injury_any` for falls, `ed_event` for ed)
    - Calculate pre-target and post-target ratios for each feature
    - Identify features that appear primarily post-target (>=80% post-target ratio = potential leakage)
-   - Generate comprehensive BupaR features and visualizations
-   - Output: `{cohort}_{age_band}_bupar_post_target_analysis.csv`
-   - See `1_bupaR/README_bupaR.md` for detailed BupaR process mining documentation
+   - Output: `{cohort}_{age_band}_post_target_leakage_analysis.csv`
+   - See `1_post_target_leakage/README_post_target_leakage.md`
 3. **Code Research and Validation** (`0_icd_cpt_check/`):
    - Load administrative codes from `4b_event_filter/administrative_codes_lookup.json` (codes identified in 0_icd_cpt_check)
    - Research and validate ICD/CPT codes by groups (ICD by chapter, CPT by range)
@@ -88,9 +76,9 @@ All outputs are automatically uploaded to S3 for checkpointing and downstream co
    - Output: `{cohort}_{age_band}_safe_feature_filter.json`
 5. **Filter and Update Feature Importances**:
    - Apply safe feature filter (whitelist for cases, blacklist for controls)
-   - Filter post-target leakage features from aggregated feature importance list (based on BupaR analysis)
+   - Filter post-target leakage features from aggregated feature importance list
    - **Note**: Administrative codes are identified through code research but filtered at event level in Step 4b
-   - Adjust importance scores based on BupaR and code research findings
+   - Adjust importance scores based on post-target leakage and code research findings
    - Generate refined `cohort_feature_importance` files
 6. **Save outputs locally and upload to S3**:
    - Save all outputs to local filesystem
@@ -122,15 +110,6 @@ $PYTHON_ENV 3b_feature_importance_eda/run_feature_importance_eda.py --cohort fal
 which python  # or: which python3
 ```
 
-**For R scripts:**
-```bash
-# Find Rscript path
-which Rscript
-
-# Required leakage artifacts are generated with Python/DuckDB.
-python 3b_feature_importance_eda/1_bupaR/create_bupar_post_target_analysis.py --cohort falls --age-band 65-74
-```
-
 **For Jupyter notebooks (EC2 Environment):**
 ```bash
 # Use full path to jupyter (EC2)
@@ -143,8 +122,8 @@ jupyter notebook --no-browser --port=8888
 ## Memory when running multiple age bands
 
 - **CLI (`run_feature_importance_eda.py --all-cohorts` or loop over age bands):** The script runs each age band in subprocesses and calls `gc.collect()` after each, so the main process does not accumulate large in-memory data. No extra cleanup is required.
-- **Notebooks / interactive workflow:** If you run multiple age bands in the same kernel (e.g. loop over age bands in `feature_importance_eda_workflow` or a step3b notebook), large objects (aggregated_fi, bupar_results, model_events, refined_fi, etc.) can accumulate. To avoid memory growth:
-  - After each age band, delete large variables you no longer need: `del aggregated_fi, bupar_results, refined_fi` (and any other large DataFrames).
+- **Notebooks / interactive workflow:** If you run multiple age bands in the same kernel (e.g. loop over age bands in `feature_importance_eda_workflow` or a step3b notebook), large objects (aggregated_fi, post_target_results, refined_fi, etc.) can accumulate. To avoid memory growth:
+  - After each age band, delete large variables you no longer need: `del aggregated_fi, post_target_results, refined_fi` (and any other large DataFrames).
   - Then run garbage collection: `from 3b_feature_importance_eda.run_feature_importance_eda import clear_age_band_memory; clear_age_band_memory()` or `import gc; gc.collect()`.
 
 ## Scripts
@@ -155,8 +134,8 @@ jupyter notebook --no-browser --port=8888
 - `feature_importance_eda_interactive_analysis_cohort*.ipynb` - Cohort-specific interactive notebooks
 
 ### Analysis Scripts
-- `run_bupar_post_target_analysis.py` - BupaR analysis for post-target leakage detection
-- `create_bupar_post_target_analysis.py` - Creates post-target analysis CSV from BupaR outputs
+- `run_post_target_leakage_analysis.py` - Post-target leakage analysis wrapper
+- `create_post_target_leakage_analysis.py` - Creates post-target analysis CSV from Step 2 cohort parquet
 - `filter_and_refine_features.py` - Main script to filter and refine feature importances
 
 ### Feature Filtering Scripts
@@ -167,8 +146,8 @@ jupyter notebook --no-browser --port=8888
 - `0_icd_cpt_check/validate_icd_cpt_codes.py` - Interactive validation workflow
 
 ### Target-Leakage Analysis Scripts
-- `1_bupaR/run_bupar_post_target_analysis.py` - Compatibility wrapper for post-target leakage analysis
-- `1_bupaR/create_bupar_post_target_analysis.py` - Python/DuckDB pre/post target analysis for falls and ED
+- `1_post_target_leakage/run_post_target_leakage_analysis.py` - Wrapper for post-target leakage analysis
+- `1_post_target_leakage/create_post_target_leakage_analysis.py` - Python/DuckDB pre/post target analysis for falls and ED
 - `2_filtering/create_safe_feature_filter_json.py` - Builds the safe feature filter from post-target analysis
 
 ## Usage
@@ -225,30 +204,14 @@ You can run multiple Jupyter notebooks interactively at the same time! Each note
 - **No conflicts**: Different output directories prevent file conflicts
 - **S3 uploads**: May happen simultaneously, but AWS handles this
 
-**R Script Execution:**
-- Each notebook calls R scripts via `subprocess`
-- Multiple R processes can run simultaneously
-- R scripts write to cohort-specific output directories (no conflicts)
-
-**Control Cohort Creation:**
-- ✅ **No conflicts**: Control cohorts are age-band specific
-  - falls cohort (65-74): `cohort_name=falls/age_band=65-74/model_events.parquet`
-  - falls cohort (75-84): `cohort_name=falls/age_band=75-84/model_events.parquet`
-  - ed cohort (65-74): `cohort_name=ed/age_band=65-74/model_events.parquet`
-  - ed cohort (75-84): `cohort_name=ed/age_band=75-84/model_events.parquet`
-- Each notebook creates/uses its own cohort/age-band-specific control cohort file
-- **Safe to run in parallel**: No file conflicts between different cohorts/age bands
+**Output Files:**
+- No conflicts: each cohort and age band writes to a separate output directory.
+- Safe to run in parallel: different cohorts and age bands do not share output files.
 
 #### Best Practices
 
 **Option 1: Parallel Execution (Recommended)**
-✅ **Safe to run all 4 notebooks in parallel** - Each uses its own cohort/age-band-specific input:
-- falls/65-74 → `cohort_name=falls/age_band=65-74/model_events.parquet`
-- falls/75-84 → `cohort_name=falls/age_band=75-84/model_events.parquet`
-- ed/65-74 → `cohort_name=ed/age_band=65-74/model_events.parquet`
-- ed/75-84 → `cohort_name=ed/age_band=75-84/model_events.parquet`
-
-**No conflicts**: Each notebook creates/uses a separate control cohort file.
+Safe to run all cohort/age-band analyses in parallel. Each reads its own Step 2 cohort partitions and writes to its own Step 3b output directory.
 
 **Option 2: Sequential Execution (If Resource Constrained)**
 If you have limited resources (memory/CPU), run sequentially:
@@ -259,7 +222,6 @@ If you have limited resources (memory/CPU), run sequentially:
 This ensures:
 - Easier to monitor progress
 - Less resource contention
-- But not required for avoiding conflicts (each age band has its own control cohort)
 
 **Option 3: Use tmux/screen for Multiple Sessions**
 ```bash
@@ -311,28 +273,11 @@ ls -lh /home/pgx3874/cpic_time_to_event_analysis/3b_feature_importance_eda/outpu
 
 #### Troubleshooting
 
-**Issue: "Control cohort not found" errors**
-**Solution**: Each notebook will automatically create its age-band-specific control cohort if it doesn't exist. If you want to pre-create them:
-```bash
-# Create control cohorts for all three age bands (use full path to Python jupyter environment - EC2)
-# Step 3b: write control under 3b outputs only (no 4_model_data)
-/home/pgx3874/jupyter-env/bin/python3.11 4_model_data/create_control_cohort_model_data.py --age-band 65-74 --sample-size 100000 --output-root 3b_feature_importance_eda/outputs
-/home/pgx3874/jupyter-env/bin/python3.11 4_model_data/create_control_cohort_model_data.py --age-band 75-84 --sample-size 100000 --output-root 3b_feature_importance_eda/outputs
-/home/pgx3874/jupyter-env/bin/python3.11 4_model_data/create_control_cohort_model_data.py --age-band 85-94 --sample-size 100000 --output-root 3b_feature_importance_eda/outputs
-```
-
-**Note**: Each age band creates its own separate control cohort file, so you can run these in parallel too!
-
 **Issue: Out of memory**
 **Solution**: 
 - Run notebooks sequentially instead of parallel
 - Close other applications
 - Consider using the script-based approach (`run_feature_importance_eda.py`) which is more memory-efficient
-
-**Issue: R script conflicts**
-**Solution**: R scripts write to cohort-specific directories, so no conflicts. If you see errors, check:
-- Each notebook is using the correct cohort/age_band
-- Output directories are separate
 
 ## Feature Filtering Strategy
 
@@ -354,16 +299,13 @@ See `FEATURE_FILTERING_APPROACH.md` for detailed documentation.
 │   ├── validate_icd_cpt_codes.py
 │   ├── administrative_codes_lookup.json
 │   └── README_icd_cpt_check.md   # Code validation documentation
-├── 1_bupaR/                      # Target-leakage analysis and optional BupaR visualizations
-│   ├── run_bupar_post_target_analysis.py
-│   ├── create_bupar_post_target_analysis.py
-│   ├── create_plots.R
-│   └── README_bupaR.md           # BupaR process mining documentation
+├── 1_post_target_leakage/        # Target-leakage analysis
+│   ├── run_post_target_leakage_analysis.py
+│   ├── create_post_target_leakage_analysis.py
+│   └── README_post_target_leakage.md
 ├── outputs/                      # All outputs organized by cohort/age_band
 │   ├── {cohort}/
 │   │   └── {age_band_fname}/
-│   │       ├── features/         # BupaR feature files
-│   │       ├── plots/            # Visualization PNG files
 │   │       └── *.csv, *.json     # Analysis results
 ├── feature_importance_eda_workflow.py            # Main interactive workflow
 ├── feature_importance_eda_interactive_analysis_cohort*.ipynb  # Cohort-specific notebooks
@@ -388,4 +330,4 @@ See `FEATURE_FILTERING_APPROACH.md` for detailed documentation.
 - **`OUTPUTS_AND_VISUALIZATIONS.md`**: Complete output file manifest and visualization documentation
 - **`LEAKAGE_ANALYSIS_SUMMARY.md`**: Summary of identified leakage features
 - **`0_icd_cpt_check/README_icd_cpt_check.md`**: ICD/CPT code validation process
-- **`1_bupaR/README_bupaR.md`**: BupaR process mining documentation
+- **`1_post_target_leakage/README_post_target_leakage.md`**: Post-target leakage analysis documentation

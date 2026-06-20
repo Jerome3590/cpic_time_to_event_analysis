@@ -146,7 +146,7 @@ def load_safe_feature_filter(
     
     if not filter_json_path.exists():
         print(f"[WARN] Safe feature filter not found: {filter_json_path}")
-        print(f"       Will fall back to BupaR CSV-based filtering")
+        print(f"       Will fall back to post-target leakage CSV-based filtering")
         return None, None
     
     try:

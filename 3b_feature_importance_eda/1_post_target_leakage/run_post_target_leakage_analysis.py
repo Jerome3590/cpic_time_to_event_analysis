@@ -2,12 +2,13 @@
 """
 Post-target leakage analysis for the falls and ED cohorts.
 
-This compatibility entrypoint builds the Step 3b event-level input and then
-runs the Python/DuckDB analysis that creates:
-    *_bupar_post_target_analysis.csv
+This compatibility entrypoint runs the Python/DuckDB analysis that creates:
+    *_post_target_leakage_analysis.csv
 
-The project no longer uses opioid-era BupaR R scripts for this required leakage
-artifact. Optional process-mining visualizations are handled separately.
+The current workflow reads Step 2 cohort parquet directly.
+
+The project no longer uses opioid-era process-mining scripts for this required
+leakage artifact.
 """
 
 import argparse
@@ -31,8 +32,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from py_helpers.env_utils import get_workflow_python_bin
 
 
-def run_bupar_analysis(cohort: str, age_band: str, project_root: Path) -> bool:
-    """Build Step 3b input and run post-target leakage analysis."""
+def run_post_target_leakage_analysis(cohort: str, age_band: str, project_root: Path) -> bool:
+    """Run post-target leakage analysis from Step 2 cohort parquet."""
     if cohort not in {"falls", "ed"}:
         print(f"[ERROR] Unknown cohort: {cohort}")
         print("        Valid cohorts: falls, ed")
@@ -42,35 +43,11 @@ def run_bupar_analysis(cohort: str, age_band: str, project_root: Path) -> bool:
     print(f"Post-Target Leakage Analysis: {cohort} / {age_band}")
     print(f"{'=' * 80}")
 
-    target_parquet = (
-        project_root
-        / "3b_feature_importance_eda"
-        / "outputs"
-        / f"cohort_name={cohort}"
-        / f"age_band={age_band}"
-        / "model_events.parquet"
-    )
-    build_script = project_root / "3b_feature_importance_eda" / "create_bupar_input_from_cohort.py"
-    if target_parquet.exists():
-        print(f"[INFO] Step 3b event input already exists: {target_parquet}")
-    elif build_script.exists():
-        print("[INFO] Building Step 3b event input from cohort data + Step 3a aggregated FI + target...")
-        build_result = subprocess.run(
-            [str(get_workflow_python_bin()), str(build_script), "--cohort", cohort, "--age-band", age_band],
-            cwd=str(project_root),
-        )
-        if build_result.returncode != 0:
-            print(f"[ERROR] Step 3b event input build failed with exit code {build_result.returncode}")
-            return False
-    else:
-        print(f"[ERROR] Step 3b event input builder not found: {build_script}")
-        return False
-
     analysis_script = (
         project_root
         / "3b_feature_importance_eda"
-        / "1_bupaR"
-        / "create_bupar_post_target_analysis.py"
+        / "1_post_target_leakage"
+        / "create_post_target_leakage_analysis.py"
     )
     if not analysis_script.exists():
         print(f"[ERROR] Post-target analysis script not found: {analysis_script}")
@@ -104,7 +81,7 @@ def main() -> None:
     args = parser.parse_args()
     project_root = Path(args.project_root).resolve() if args.project_root else PROJECT_ROOT
 
-    success = run_bupar_analysis(
+    success = run_post_target_leakage_analysis(
         cohort=args.cohort,
         age_band=args.age_band,
         project_root=project_root,
