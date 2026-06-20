@@ -3,8 +3,11 @@
 Check pipeline status via S3 objects (project-scoped checkpoints and optional pgxdatalake outputs).
 
 Reads:
-- s3://{CHECKPOINT_BUCKET}/gold/{PROJECT_SLUG}/pipeline_checkpoints/{step}/{cohort}/{age_band}/checkpoint.json
-  (steps: 4_model_data, 5_pgx_analysis, 6_final_model, 9_dashboard_metadata, 9_dashboard_visuals, etc.)
+- Workflow notebook checkpoints:
+  s3://{CHECKPOINT_BUCKET}/gold/{PROJECT_SLUG}/pipeline_checkpoints/{step}/{cohort}/{age_band}/checkpoint.json
+- PipelineState checkpoints, including create_cohort:
+  s3://{CHECKPOINT_BUCKET}/gold/{PROJECT_SLUG}/pipeline_checkpoints/{pipeline}/{entity_id}/state.json
+  s3://{CHECKPOINT_BUCKET}/gold/{PROJECT_SLUG}/pipeline_checkpoints/{pipeline}/{entity_id}/checkpoints/{step}.json
 - Optionally: pgxdatalake gold/{PROJECT_SLUG}/cohorts_model_data,
   gold/{PROJECT_SLUG}/final_model (object counts per cohort/age_band)
 
@@ -17,6 +20,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from collections import defaultdict
@@ -60,6 +64,21 @@ def _s3_list(s3_client, bucket: str, prefix: str, max_keys: int = 2000):
     return out
 
 
+def _read_json_object(s3_client, bucket: str, key: str) -> dict:
+    try:
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+        return json.loads(response["Body"].read().decode("utf-8"))
+    except Exception:
+        return {}
+
+
+def _parse_create_cohort_entity(entity_id: str) -> tuple[str, str, str]:
+    parts = entity_id.split("_")
+    if len(parts) < 3:
+        return entity_id, "?", "?"
+    return "_".join(parts[:-2]), parts[-2].replace("_", "-"), parts[-1]
+
+
 def run(profile: str | None, show_outputs: bool) -> None:
     session = boto3.Session(profile_name=profile) if profile else boto3.Session()
     s3 = session.client("s3")
@@ -74,32 +93,93 @@ def run(profile: str | None, show_outputs: bool) -> None:
     # ----- 1. Pipeline checkpoints -----
     print("1. Pipeline checkpoints (s3://{}/{}/)".format(REPO_BUCKET, PIPELINE_CHECKPOINTS_PREFIX))
     print("-" * 70)
-    all_objs = _s3_list(s3, REPO_BUCKET, PIPELINE_CHECKPOINTS_PREFIX + "/", max_keys=2000)
-    checkpoint_files = [o for o in all_objs if o["Key"].endswith("checkpoint.json")]
+    all_objs = _s3_list(s3, REPO_BUCKET, PIPELINE_CHECKPOINTS_PREFIX + "/", max_keys=5000)
+    workflow_checkpoint_files = [o for o in all_objs if o["Key"].endswith("/checkpoint.json")]
+    state_files = [o for o in all_objs if o["Key"].endswith("/state.json")]
+    pipeline_step_files = [
+        o
+        for o in all_objs
+        if "/checkpoints/" in o["Key"] and o["Key"].endswith(".json") and not o["Key"].endswith("/checkpoint.json")
+    ]
 
-    if not checkpoint_files:
+    if not workflow_checkpoint_files and not state_files and not pipeline_step_files:
         print("  No pipeline checkpoint files found.")
     else:
-        # Parse: gold/{PROJECT_SLUG}/pipeline_checkpoints/{step}/{cohort}/{age_band}/checkpoint.json
-        by_step: dict[str, list[tuple[str, str, datetime | None]]] = defaultdict(list)
-        for o in checkpoint_files:
-            rest = o["Key"][len(PIPELINE_CHECKPOINTS_PREFIX) + 1 : -len("/checkpoint.json")]
-            parts = rest.split("/")
-            step = parts[0] if len(parts) >= 1 else "?"
-            cohort = parts[1] if len(parts) >= 2 else "?"
-            age_band = (parts[2].replace("_", "-") if len(parts) >= 3 else "?")
-            by_step[step].append((cohort, age_band, o.get("LastModified")))
+        print("  Objects under checkpoint prefix: {}".format(len(all_objs)))
+        print("    PipelineState state.json files: {}".format(len(state_files)))
+        print("    PipelineState step checkpoints: {}".format(len(pipeline_step_files)))
+        print("    Workflow checkpoint.json files: {}".format(len(workflow_checkpoint_files)))
+        print()
 
-        for step_name, entries in sorted(by_step.items()):
-            # Sort by cohort, age_band
-            entries.sort(key=lambda e: (e[0], e[1]))
-            print("  Step: {}  ({} checkpoint(s))".format(step_name, len(entries)))
-            for cohort, age_band, last_mod in entries[:12]:
+        if state_files:
+            print("  PipelineState entities")
+            print("  " + "-" * 68)
+            rows = []
+            for o in state_files:
+                rest = o["Key"][len(PIPELINE_CHECKPOINTS_PREFIX) + 1 : -len("/state.json")]
+                parts = rest.split("/")
+                pipeline = parts[0] if len(parts) >= 1 else "?"
+                entity_id = parts[1] if len(parts) >= 2 else "?"
+                state = _read_json_object(s3, REPO_BUCKET, o["Key"])
+                status = state.get("status", "?")
+                completed_steps = len(state.get("completed_steps", []))
+                failed_steps = len(state.get("failed_steps", []))
+                cohort, age_band, event_year = (
+                    _parse_create_cohort_entity(entity_id) if pipeline == "create_cohort" else (entity_id, "?", "?")
+                )
+                rows.append((pipeline, cohort, age_band, event_year, status, completed_steps, failed_steps, o.get("LastModified")))
+            rows.sort(key=lambda r: (r[0], r[1], r[2], r[3]))
+            for pipeline, cohort, age_band, event_year, status, completed_steps, failed_steps, last_mod in rows[:30]:
                 mt_str = last_mod.strftime("%Y-%m-%d %H:%M UTC") if last_mod else "-"
-                print("    {}  {} / {}  {}".format(mt_str, cohort, age_band, ""))
-            if len(entries) > 12:
-                print("    ... and {} more".format(len(entries) - 12))
+                print(
+                    "    {}  {:14s} {:8s} {:5s} {:4s} status={:10s} steps={} failed={}".format(
+                        mt_str,
+                        pipeline,
+                        cohort,
+                        age_band,
+                        event_year,
+                        status,
+                        completed_steps,
+                        failed_steps,
+                    )
+                )
+            if len(rows) > 30:
+                print("    ... and {} more".format(len(rows) - 30))
             print()
+
+        if pipeline_step_files:
+            by_pipeline: dict[str, int] = defaultdict(int)
+            for o in pipeline_step_files:
+                rest = o["Key"][len(PIPELINE_CHECKPOINTS_PREFIX) + 1 :]
+                pipeline = rest.split("/", 1)[0]
+                by_pipeline[pipeline] += 1
+            print("  PipelineState step checkpoint counts")
+            for pipeline, count in sorted(by_pipeline.items()):
+                print("    {}: {}".format(pipeline, count))
+            print()
+
+        if workflow_checkpoint_files:
+            # Parse: gold/{PROJECT_SLUG}/pipeline_checkpoints/{step}/{cohort}/{age_band}/checkpoint.json
+            by_step: dict[str, list[tuple[str, str, datetime | None]]] = defaultdict(list)
+            for o in workflow_checkpoint_files:
+                rest = o["Key"][len(PIPELINE_CHECKPOINTS_PREFIX) + 1 : -len("/checkpoint.json")]
+                parts = rest.split("/")
+                step = parts[0] if len(parts) >= 1 else "?"
+                cohort = parts[1] if len(parts) >= 2 else "?"
+                age_band = (parts[2].replace("_", "-") if len(parts) >= 3 else "?")
+                by_step[step].append((cohort, age_band, o.get("LastModified")))
+
+            print("  Workflow notebook checkpoint.json files")
+            print("  " + "-" * 68)
+            for step_name, entries in sorted(by_step.items()):
+                entries.sort(key=lambda e: (e[0], e[1]))
+                print("    Step: {}  ({} checkpoint(s))".format(step_name, len(entries)))
+                for cohort, age_band, last_mod in entries[:12]:
+                    mt_str = last_mod.strftime("%Y-%m-%d %H:%M UTC") if last_mod else "-"
+                    print("      {}  {} / {}".format(mt_str, cohort, age_band))
+                if len(entries) > 12:
+                    print("      ... and {} more".format(len(entries) - 12))
+                print()
 
     # Expected (cohort, age_band) count for reference
     expected = sum(len(bands) for bands in REQUIRED_COHORTS.values())
