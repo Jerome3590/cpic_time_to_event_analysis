@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run Athena QA queries for CPIC time-to-event cohort parquet outputs."""
+"""Run Athena QA queries for CPIC time-to-event cohort and model-event parquet outputs."""
 
 from __future__ import annotations
 
@@ -18,11 +18,15 @@ DEFAULT_OUTPUT_LOCATION = (
 )
 
 SQL_DIR = Path(__file__).resolve().parents[1] / "sql"
-SETUP_SQL = SQL_DIR / "create_cohort_qa_tables.sql"
+SETUP_SQL_FILES = [
+    SQL_DIR / "create_cohort_qa_tables.sql",
+    SQL_DIR / "create_model_events_qa_tables.sql",
+]
 QA_SQL_FILES = [
     SQL_DIR / "qa_combined_cohort_coverage.sql",
     SQL_DIR / "qa_falls_cohort.sql",
     SQL_DIR / "qa_ed_cohort.sql",
+    SQL_DIR / "qa_model_events_coverage.sql",
 ]
 
 
@@ -145,7 +149,8 @@ def main() -> int:
     athena = boto3.client("athena", region_name=args.region)
 
     if not args.skip_ddl:
-        run_sql_file(athena, SETUP_SQL, args, print_results=False)
+        for setup_sql in SETUP_SQL_FILES:
+            run_sql_file(athena, setup_sql, args, print_results=False)
 
     qa_files = [SQL_DIR / name for name in args.qa_file] if args.qa_file else QA_SQL_FILES
     for sql_file in qa_files:
