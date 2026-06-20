@@ -305,7 +305,7 @@ def get_important_items(agg_csv: Path, cohort: Optional[str] = None) -> List[str
 
 def _validate_model_events_has_controls(parquet_path: Path) -> dict:
     """
-    Validate that model_events.parquet contains both cases (target=1) and controls (target=0).
+    Validate that model_events.parquet contains both cases/controls and usable event dates.
     
     Returns:
         dict with keys: has_controls (bool), n_cases (int), n_controls (int)
@@ -316,19 +316,22 @@ def _validate_model_events_has_controls(parquet_path: Path) -> dict:
             f"""
             SELECT 
                 COUNT(*) FILTER (WHERE target = 1) AS n_cases,
-                COUNT(*) FILTER (WHERE target = 0) AS n_controls
+                COUNT(*) FILTER (WHERE target = 0) AS n_controls,
+                COUNT(*) FILTER (WHERE event_date IS NULL) AS n_null_event_dates
             FROM read_parquet('{parquet_path}')
             """
         ).fetchone()
         
         n_cases = result[0] if result else 0
         n_controls = result[1] if result else 0
+        n_null_event_dates = result[2] if result else 0
         has_controls = n_controls > 0
         
         return {
             "has_controls": has_controls,
             "n_cases": n_cases,
             "n_controls": n_controls,
+            "n_null_event_dates": n_null_event_dates,
         }
     finally:
         con.close()
@@ -647,6 +650,12 @@ def filter_cohort_events_for_items(
                     print(
                         f"[WARN] Existing model_events.parquet is missing controls! "
                         f"Cases: {validation_result['n_cases']}, Controls: {validation_result['n_controls']}. "
+                        "Rebuilding."
+                    )
+                    out_path.unlink()
+                elif validation_result["n_null_event_dates"] > 0:
+                    print(
+                        f"[WARN] Existing model_events.parquet has {validation_result['n_null_event_dates']} null event_date rows. "
                         "Rebuilding."
                     )
                     out_path.unlink()
@@ -1066,7 +1075,7 @@ def filter_cohort_events_for_items(
             SELECT
                 {common_cols_sql_control},
                 0 AS target
-            FROM read_parquet([{all_control_paths_literal}], union_by_name=True) c
+            FROM all_gold_events c
             JOIN control_patients cp
                 ON c.mi_person_key = cp.mi_person_key
             WHERE {control_exclusion_condition}
@@ -1074,7 +1083,7 @@ def filter_cohort_events_for_items(
         control_survival = con.execute(
             f"""
             SELECT COUNT(*)::BIGINT
-            FROM read_parquet([{all_control_paths_literal}], union_by_name=True) c
+            FROM all_gold_events c
             JOIN control_patients cp
                 ON c.mi_person_key = cp.mi_person_key
             WHERE {control_exclusion_condition}
@@ -1300,6 +1309,12 @@ def filter_cohort_events_for_items(
         print(
             f"[ERROR] Generated file {out_path} is missing controls! "
             f"Cases: {validation_result['n_cases']}, Controls: {validation_result['n_controls']}"
+        )
+        sys.exit(1)
+    if validation_result["n_null_event_dates"] > 0:
+        print(
+            f"[ERROR] Generated file {out_path} has null event_date rows: "
+            f"{validation_result['n_null_event_dates']}"
         )
         sys.exit(1)
 
