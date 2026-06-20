@@ -26,7 +26,14 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 # Import constants (py_helpers)
-from py_helpers.constants import OPIOID_ICD_CODES, get_opioid_icd_sql_condition, ALL_ICD_DIAGNOSIS_COLUMNS, S3_BUCKET
+from py_helpers.constants import (
+    ALL_ICD_DIAGNOSIS_COLUMNS,
+    FALL_EXTERNAL_CAUSE_PREFIXES,
+    FALL_INJURY_ICD_PREFIXES,
+    OPIOID_ICD_CODES,
+    S3_BUCKET,
+    get_opioid_icd_sql_condition,
+)
 from py_helpers.env_utils import get_data_root, is_linux
 from pathlib import Path
 import subprocess
@@ -511,11 +518,8 @@ def get_dynamic_targeting_config():
         for value in target_icd_codes + target_icd_prefixes
     }
     falls_prefixes = {
-        "S", "T07", "T14", "T20", "T21", "T22", "T23", "T24", "T25", "T26",
-        "T27", "T28", "T29", "T30", "T31", "T32", "T33", "T34", "T79",
-        "W00", "W01", "W02", "W03", "W04", "W05", "W06", "W07", "W08",
-        "W09", "W10", "W11", "W12", "W13", "W14", "W15", "W16", "W17",
-        "W18", "W19",
+        value.upper().replace(".", "").replace(" ", "")
+        for value in FALL_INJURY_ICD_PREFIXES + FALL_EXTERNAL_CAUSE_PREFIXES
     }
     is_falls_target = target_name in {"falls", "fall_injury_any", "fall_injury"} or bool(
         normalized_targets & falls_prefixes

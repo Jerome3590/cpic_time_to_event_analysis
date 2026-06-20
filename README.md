@@ -18,9 +18,6 @@ Outcome label: **`fall_injury_any = 1`** when **both** criteria are present on t
 | S00–S99 | Injuries to specific body regions (head, neck, thorax, abdomen, extremities, etc.) |
 | T07 | Unspecified multiple injuries |
 | T14 | Injury of unspecified body region |
-| T20–T32 | Burns and corrosions |
-| T33–T34 | Frostbite |
-| T79 | Certain early complications of trauma (traumatic shock, compartment syndrome) |
 
 #### Criterion 2 — External cause fall code (any of the following ICD-10-CM codes):
 | Range | Description |
@@ -41,7 +38,7 @@ Outcome label: **`fall_injury_any = 1`** when **both** criteria are present on t
 #### Auxiliary outcome flags:
 | Flag | Definition |
 |------|------------|
-| `fall_injury_any` | Injury (S00–T79 subset) + W00–W19 on same encounter |
+| `fall_injury_any` | Injury (S00–S99/T07/T14) + W00–W19 on same encounter |
 | `fall_injury_serious` | `fall_injury_any = 1` AND any fracture code: T02.\*, S12.\*, S22.\*, S32.\*, S42.\*, S52.\*, S62.\*, S72.\*, S82.\*, S92.\* |
 | `fall_injury_head` | `fall_injury_any = 1` AND any head injury code S00–S09 |
 
@@ -221,7 +218,7 @@ BupaR visuals:    s3://pgxdatalake/gold/cpic_time_to_event/feature_importance/{c
 
 | Aspect | pgx-analysis | cpic_time_to_event_analysis |
 |--------|-------------|----------------------------|
-| Target 1 | Opioid-related ED visit | **Falls** (`fall_injury_any`: injury S00–S99/T07/T14/T20–T34/T79 + external cause W00–W19) |
+| Target 1 | Opioid-related ED visit | **Falls** (`fall_injury_any`: injury S00–S99/T07/T14 + external cause W00–W19) |
 | Target 2 | Polypharmacy/geriatric ED visit | **ED visit** (same logic) |
 | **Age bands** | Full set (0–12 through 85–114) | **65–74 and 75–84 only** (falls risk is clinically concentrated in the 65–85 population) |
 | Exclusions | Admin codes only | + Z91.81 (fall history) + CPT 1100F + R29.6 (moved to feature) + T80–T88 (surgical complications) |

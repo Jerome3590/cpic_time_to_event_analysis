@@ -10,7 +10,7 @@ This document provides a **complete reference** for the Cohort Creation Pipeline
 
 The Cohort Pipeline builds **event-based fact tables** for analytical cohorts used in geriatric fall injury and ED visit risk prediction. It generates two main cohorts for **age bands 65–74 and 75–84 only**:
 
-- **falls:** Patients with fall-related injury evidence (`fall_injury_any = 1`). Requires BOTH an injury ICD code (S00–S99, T07, T14, T20–T34, T79) AND an external cause fall code (W00–W19) for the same patient within the configured falls target window (`CPIC_FALL_TARGET_WINDOW_DAYS`, default 7 days). This cohort does **not** require separate ED visit evidence unless an explicit ED restriction is added in a future definition.
+- **falls:** Patients with fall-related injury evidence (`fall_injury_any = 1`). Requires BOTH an injury ICD code (S00–S99, T07, T14) AND an external cause fall code (W00–W19) for the same patient within the configured falls target window (`CPIC_FALL_TARGET_WINDOW_DAYS`, default 7 days). This cohort does **not** require separate ED visit evidence unless an explicit ED restriction is added in a future definition.
 - **ed:** Patients with emergency department visits (`ed_event = 1`). Identified by CMS place of service code 23 or revenue codes 045x / 0981.
 
 Each cohort includes **target cases** and **5 matching controls** per case. Age bands processed: `65-74`, `75-84`. Event years: 2016–2019.
@@ -654,7 +654,7 @@ print(state.get_progress())
 The pipeline uses two independent target identification methods:
 
 1. **ICD/External Cause Targets** (falls cohort):
-   - Injury ICD (S00–S99, T07, T14, T20–T34, T79) + external cause W00–W19 for the same patient within `CPIC_FALL_TARGET_WINDOW_DAYS` (default 7 days)
+   - Injury ICD (S00–S99, T07, T14) + external cause W00–W19 for the same patient within `CPIC_FALL_TARGET_WINDOW_DAYS` (default 7 days)
    - Configurable via environment variables (see below)
    - Codes are normalized before matching (uppercase, punctuation removed)
    - **Comprehensive checking:** All 10 ICD diagnosis columns are checked (primary through ten), not just `primary_icd_diagnosis_code`
@@ -698,14 +698,14 @@ The pipeline supports dynamic target selection via environment variables:
 ```bash
 # Set falls as target
 export PGX_TARGET_NAME="falls"
-export PGX_TARGET_ICD_PREFIXES="S,T07,T14,T20,T21,T22,T23,T24,T25,T26,T27,T28,T29,T30,T31,T32,T33,T34,T79,W00,W01,W02,W03,W04,W05,W06,W07,W08,W09,W10,W11,W12,W13,W14,W15,W16,W17,W18,W19"
+export PGX_TARGET_ICD_PREFIXES="S,T07,T14,W00,W01,W02,W03,W04,W05,W06,W07,W08,W09,W10,W11,W12,W13,W14,W15,W16,W17,W18,W19"
 
 # Or use command-line arguments
 python 0_create_cohort.py \
   --age-band "65-74" \
   --event-year 2019 \
   --target-name "falls" \
-  --target-icd-prefixes "S,T07,T14,T20,T21,T22,T23,T24,T25,T26,T27,T28,T29,T30,T31,T32,T33,T34,T79,W00,W01,W02,W03,W04,W05,W06,W07,W08,W09,W10,W11,W12,W13,W14,W15,W16,W17,W18,W19"
+  --target-icd-prefixes "S,T07,T14,W00,W01,W02,W03,W04,W05,W06,W07,W08,W09,W10,W11,W12,W13,W14,W15,W16,W17,W18,W19"
 ```
 
 **Note:** When environment variables are set, the pipeline uses generic `'target'`/`'non_target'` classification labels. When unset, it defaults to `'falls'`/`'ed'` classification.

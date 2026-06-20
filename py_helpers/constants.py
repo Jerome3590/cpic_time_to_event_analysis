@@ -51,9 +51,6 @@ FALL_INJURY_ICD_PREFIXES = (
     'S',    # S00-S99: injuries to specific body regions
     'T07',  # Unspecified multiple injuries
     'T14',  # Injury of unspecified body region
-    'T20', 'T21', 'T22', 'T23', 'T24', 'T25', 'T26', 'T27', 'T28', 'T29',  # Burns/corrosions
-    'T30', 'T31', 'T32', 'T33', 'T34',  # Burns + frostbite
-    'T79',  # Early complications of trauma
 )
 FALL_EXTERNAL_CAUSE_PREFIXES = (
     'W00', 'W01', 'W02', 'W03', 'W04', 'W05', 'W06', 'W07', 'W08', 'W09',
@@ -232,7 +229,7 @@ EVENT_YEARS = ['2016', '2017', '2018', '2019']
 COHORT_NAMES = ['falls', 'ed']
 
 # Pipeline-supported (cohort, age_band) combinations.
-# falls: fall_injury_any = 1 (injury S00-S99/T07/T14/T20-T34/T79 + external cause W00-W19)
+# falls: fall_injury_any = 1 (injury S00-S99/T07/T14 + external cause W00-W19)
 # ed:    ed_event = 1     (POS=23 or revenue code 045x/0981)
 REQUIRED_COHORTS = {
     "falls": list(AGE_BANDS),

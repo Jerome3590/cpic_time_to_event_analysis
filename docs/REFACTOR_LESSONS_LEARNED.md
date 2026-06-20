@@ -456,7 +456,7 @@ Target detection codes are currently split across three places:
 
 **`py_helpers/constants.py` — hardcoded detection constants:**
 ```python
-FALL_INJURY_ICD_PREFIXES = ('S', 'T07', 'T14', 'T20', ..., 'T79')
+FALL_INJURY_ICD_PREFIXES = ('S', 'T07', 'T14')
 FALL_EXTERNAL_CAUSE_PREFIXES = ('W00', 'W01', ..., 'W19')
 ED_PLACE_OF_SERVICE_CODES = {'23'}
 ED_REVENUE_CODE_PREFIXES = ('045',)
@@ -537,11 +537,7 @@ COHORT_TARGET_DEFINITIONS: dict[str, TargetDefinition] = {
         target_column="fall_injury_any",
         target_date_column="first_fall_date",
         display_name="Falls",
-        icd_prefixes=(
-            'S', 'T07', 'T14',
-            'T20', 'T21', 'T22', 'T23', 'T24', 'T25', 'T26', 'T27', 'T28', 'T29',
-            'T30', 'T31', 'T32', 'T33', 'T34', 'T79',
-        ),
+        icd_prefixes=('S', 'T07', 'T14'),
         external_cause_prefixes=(
             'W00', 'W01', 'W02', 'W03', 'W04', 'W05', 'W06', 'W07',
             'W08', 'W09', 'W10', 'W11', 'W12', 'W13', 'W14', 'W15',
@@ -676,9 +672,7 @@ cohorts:
     target_date_column: first_fall_date
     display_name: Falls
     detection:
-      icd_prefixes: ["S", "T07", "T14", "T20", "T21", "T22", "T23", "T24",
-                     "T25", "T26", "T27", "T28", "T29", "T30", "T31", "T32",
-                     "T33", "T34", "T79"]
+      icd_prefixes: ["S", "T07", "T14"]
       external_cause_prefixes: ["W00", "W01", "W02", "W03", "W04", "W05",
                                  "W06", "W07", "W08", "W09", "W10", "W11",
                                  "W12", "W13", "W14", "W15", "W16", "W17",
