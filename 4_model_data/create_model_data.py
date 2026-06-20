@@ -642,15 +642,30 @@ def filter_cohort_events_for_items(
             n_rows = _chk.execute(f"SELECT COUNT(*) FROM read_parquet('{str(out_path).replace(chr(92), '/')}')").fetchone()[0]
             _chk.close()
             if n_rows > 0:
-                msg = (
-                    f"[INFO] model_events.parquet already exists ({n_rows:,} rows) at {out_path.resolve()}; "
-                    f"skipping rebuild for {cohort_name}/{age_band}."
-                )
-                print(msg)
-                if logger:
-                    logger.info(msg)
-                con.close()
-                return
+                validation_result = _validate_model_events_has_controls(out_path)
+                if not validation_result["has_controls"]:
+                    print(
+                        f"[WARN] Existing model_events.parquet is missing controls! "
+                        f"Cases: {validation_result['n_cases']}, Controls: {validation_result['n_controls']}. "
+                        "Rebuilding."
+                    )
+                    out_path.unlink()
+                else:
+                    td_ok, td_msg = _validate_model_events_target_date_column(out_path, cohort_name)
+                    if not td_ok:
+                        print(f"[WARN] Existing model_events.parquet failed target-date validation: {td_msg} Rebuilding.")
+                        out_path.unlink()
+                    else:
+                        msg = (
+                            f"[INFO] model_events.parquet already exists ({n_rows:,} rows) at {out_path.resolve()}; "
+                            f"validated {validation_result['n_cases']} cases and {validation_result['n_controls']} controls; "
+                            f"skipping rebuild for {cohort_name}/{age_band}."
+                        )
+                        print(msg)
+                        if logger:
+                            logger.info(msg)
+                        con.close()
+                        return
             else:
                 print(f"[WARN] Existing model_events.parquet has 0 rows - treating as corrupt, rebuilding.")
                 out_path.unlink()
@@ -1004,6 +1019,13 @@ def filter_cohort_events_for_items(
         LIMIT {desired_controls}
         """
     )
+    n_sampled_control_patients = con.execute(
+        "SELECT COUNT(*)::BIGINT FROM control_patients"
+    ).fetchone()[0]
+    print(
+        f"[INFO] Control sampling for {cohort_name}/{age_band}: "
+        f"eligible_patients={int(n_candidate_controls):,}, sampled_patients={int(n_sampled_control_patients or 0):,}"
+    )
 
     # Build control exclusion filter (blacklist approach)
     # Controls keep all features EXCEPT post-target leakage features
@@ -1012,12 +1034,12 @@ def filter_cohort_events_for_items(
         exclusion_list_literal = ", ".join(f"'{v}'" for v in control_exclusions)
         # Build exclusion conditions for all item-bearing columns
         exclusion_icd_conditions = " OR ".join(
-            f"{col} IN ({exclusion_list_literal})" for col in ALL_ICD_DIAGNOSIS_COLUMNS
+            f"COALESCE({col} IN ({exclusion_list_literal}), FALSE)" for col in ALL_ICD_DIAGNOSIS_COLUMNS
         )
         control_exclusion_condition = f"""NOT (
-            drug_name IN ({exclusion_list_literal}) OR
+            COALESCE(drug_name IN ({exclusion_list_literal}), FALSE) OR
             {exclusion_icd_conditions} OR
-            procedure_code IN ({exclusion_list_literal})
+            COALESCE(procedure_code IN ({exclusion_list_literal}), FALSE)
         )"""
         print(f"[INFO] Applying control exclusions: excluding {len(control_exclusions)} post-target leakage features")
 
@@ -1049,6 +1071,19 @@ def filter_cohort_events_for_items(
                 ON c.mi_person_key = cp.mi_person_key
             WHERE {control_exclusion_condition}
         """
+        control_survival = con.execute(
+            f"""
+            SELECT COUNT(*)::BIGINT
+            FROM read_parquet([{all_control_paths_literal}], union_by_name=True) c
+            JOIN control_patients cp
+                ON c.mi_person_key = cp.mi_person_key
+            WHERE {control_exclusion_condition}
+            """
+        ).fetchone()[0]
+        print(
+            f"[INFO] Control event survival after exclusions for {cohort_name}/{age_band}: "
+            f"{int(control_survival or 0):,} rows"
+        )
     else:
         lookback_days = 365
         con.execute(
