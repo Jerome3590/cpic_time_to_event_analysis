@@ -718,8 +718,9 @@ def filter_cohort_events_for_items(
 
             if check_s3_output_exists(s3_output_path):
                 # File exists in S3 but not locally - download it
-                print(
-                    f"[INFO] model_events.parquet exists in S3 but not locally. Downloading from S3..."
+                _log_status(
+                    f"[INFO] model_events.parquet exists in S3 but not locally. Downloading from S3...",
+                    logger,
                 )
                 aws_cli = shutil.which("aws")
                 if aws_cli:
@@ -731,31 +732,48 @@ def filter_cohort_events_for_items(
                         check=False,
                     )
                     if result.returncode == 0 and out_path.exists():
-                        print(f"[INFO] Successfully downloaded from S3: {out_path}")
-                        # Validate downloaded file has controls
+                        _log_status(f"[INFO] Successfully downloaded from S3: {out_path}", logger)
+                        # Validate downloaded file has controls and usable event dates.
                         validation_result = _validate_model_events_has_controls(out_path)
-                        if validation_result["has_controls"]:
-                            print(
+                        if validation_result["has_controls"] and validation_result["n_null_event_dates"] == 0:
+                            _log_status(
                                 f"[INFO] Downloaded file validated: {validation_result['n_cases']} cases, "
-                                f"{validation_result['n_controls']} controls"
+                                f"{validation_result['n_controls']} controls, "
+                                f"{validation_result['n_null_event_dates']} null event_date rows",
+                                logger,
                             )
                             con.close()
                             return
+                        elif validation_result["n_null_event_dates"] > 0:
+                            _log_status(
+                                f"[WARN] Downloaded file from S3 has {validation_result['n_null_event_dates']} null event_date rows. "
+                                f"Cases: {validation_result['n_cases']}, Controls: {validation_result['n_controls']}. "
+                                "Will rebuild...",
+                                logger,
+                                "warning",
+                            )
+                            out_path.unlink()  # Delete invalid file, will rebuild below
                         else:
-                            print(
+                            _log_status(
                                 f"[WARN] Downloaded file from S3 is missing controls! "
                                 f"Cases: {validation_result['n_cases']}, Controls: {validation_result['n_controls']}. "
-                                f"Will rebuild..."
+                                f"Will rebuild...",
+                                logger,
+                                "warning",
                             )
                             out_path.unlink()  # Delete invalid file, will rebuild below
                     else:
-                        print(f"[WARN] Failed to download from S3: {result.stderr if result.stderr else 'Unknown error'}")
+                        _log_status(
+                            f"[WARN] Failed to download from S3: {result.stderr if result.stderr else 'Unknown error'}",
+                            logger,
+                            "warning",
+                        )
                 else:
-                    print("[WARN] AWS CLI not found, cannot download from S3")
+                    _log_status("[WARN] AWS CLI not found, cannot download from S3", logger, "warning")
         except ImportError:
             pass  # Fallback to local check if checkpoint_utils not available
         except Exception as e:
-            print(f"[WARN] Error checking/downloading from S3: {e}")
+            _log_status(f"[WARN] Error checking/downloading from S3: {e}", logger, "warning")
 
     # Derive a common set of columns present in both cohort and control sources,
     # so that set operations (UNION ALL) are well-defined.
