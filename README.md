@@ -83,44 +83,48 @@ cpic_time_to_event_analysis/
 
 ---
 
-## � Pipeline Overview
+## Final Production Analytical Workflow
 
 ```mermaid
-flowchart LR
-    subgraph INPUT["Data Inputs"]
-        A([Virginia APCD Claims])
+flowchart TD
+    SETUP["0_config_and_pipeline.ipynb<br/>Setup · environment checks · cleanup/reset"]
+
+    subgraph N1["1_cohort_workflow.ipynb"]
+        A["Step 1a: APCD input data<br/>Bronze → silver → gold parquet"]
+        B["Step 1b: Event filter<br/>fall_injury_any · ed_event"]
+        C["Step 2: Cohort creation<br/>falls + ed × 65-74, 75-84"]
     end
 
-    subgraph PREP["Steps 1a–1b: Prepare"]
-        B[1a: Bronze → Silver → Gold\nParquet · Imputation · Cleaning]
-        C[1b: Event Filter\nfall_injury_any · ed_event\nW00–W19 + S00–S99]
+    subgraph N2["2_feature_importance.ipynb"]
+        D["Step 3a: MC-CV feature importance<br/>CatBoost · XGBoost · XGBoostRF"]
+        E["Step 3b artifacts<br/>Refined feature lists / leakage-screened inputs"]
     end
 
-    subgraph COHORT["Step 2: Cohorts\n(Age bands: 65–74, 75–84 only)"]
-        D1[falls cohort\nfall_injury_any = 1]
-        D2[ed cohort\ned_event = 1]
+    subgraph N3["3_model_train_shap_ffa.ipynb"]
+        F["Step 4: Model data<br/>model_events.parquet"]
+        G["Step 5: PGx enrichment<br/>CPIC drug and gene-drug features"]
+        H["Step 6: Final models<br/>Per-bin XGBoost/CatBoost"]
+        I["Step 7: SHAP analysis<br/>Local/global attribution"]
+        J["Step 8: FFA / FP-Growth / BupaR<br/>Pattern and process analysis"]
     end
 
-    subgraph FI["Steps 3a–3b: Feature Importance"]
-        E[3a: MC-CV\nCatBoost · XGBoost · XGBoostRF]
-        F[3b: BupaR post-target\nleakage removal]
-    end
+    K["Post-pipeline: Step 9 DTW trajectories<br/>9_dtw_analysis/run_dtw_analysis.py"]
 
-    subgraph MODEL["Steps 4–9: Model Pipeline"]
-        G[4: Model Data\nmodel_events.parquet]
-        H[5: PGx Enrichment\nCPIC drug features]
-        I[6: Final Model\nXGBoost · CatBoost per bin]
-        J[7: SHAP Analysis]
-        K[8: FFA · FP-Growth · BupaR]
-        L[9: DTW Trajectories\nchart_data.json · plots]
-    end
+    SETUP -. "optional before reruns" .-> A
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K
 
-    A --> B --> C --> D1 & D2
-    D1 & D2 --> E --> F --> G --> H --> I --> J --> K --> L
+    C --> COUT[("S3: gold/cpic_time_to_event/cohorts")]
+    D --> FIOUT[("S3: gold/cpic_time_to_event/feature_importance")]
+    H --> MOUT[("S3: gold/cpic_time_to_event/final_model")]
+    I --> SHAPOUT[("S3: gold/cpic_time_to_event/shap_analysis")]
+    J --> FFAOUT[("S3: gold/cpic_time_to_event/ffa_analysis")]
+    K --> DTWOUT[("S3: gold/cpic_time_to_event/dtw_analysis")]
 
-    style INPUT fill:#e8f4fd,stroke:#1a73e8
-    style COHORT fill:#fff3cd,stroke:#ffc107
-    style MODEL fill:#d4edda,stroke:#28a745
+    style SETUP fill:#f3f4f6,stroke:#6b7280
+    style N1 fill:#fff7ed,stroke:#f97316
+    style N2 fill:#eff6ff,stroke:#2563eb
+    style N3 fill:#ecfdf5,stroke:#16a34a
+    style K fill:#f5f3ff,stroke:#7c3aed
 ```
 
 ---
@@ -129,7 +133,7 @@ flowchart LR
 
 | # | Notebook | Purpose | Steps |
 |---|----------|---------|-------|
-| 0 | `0_config_and_pipeline.ipynb` | Configure EC2/local setup, S3 paths, cohort parameters | Config |
+| 0 | `0_config_and_pipeline.ipynb` | Setup, environment checks, cleanup/reset, and run instructions | Config |
 | 1 | `1_cohort_workflow.ipynb` | Cohort creation (APCD input, event filtering, QA) | 1a → 1b → 2 |
 | 2 | `2_feature_importance.ipynb` | Feature importance screening and refinement | 3a |
 | 3 | `3_model_train_shap_ffa.ipynb` | Model training, SHAP, FFA, BupaR | 4 → 5 → 6 → 7 → 8 |
@@ -141,7 +145,7 @@ python 9_dtw_analysis/run_dtw_analysis.py   # DTW trajectories → S3 (after Ste
 
 ---
 
-## � Pipeline Status
+## Pipeline Status
 
 ### Implementation — ✅ Complete (ready to run on EC2)
 
@@ -180,7 +184,7 @@ python 9_dtw_analysis/run_dtw_analysis.py   # DTW trajectories → S3 (after Ste
 
 ---
 
-## �🔬 Research Questions (DTW / BupaR)
+## Research Questions (DTW / BupaR)
 
 1. **What temporal medication sequences (DTW clusters) are most predictive of fall events?**
 2. **Which drug-drug interaction patterns (FP-Growth rules) co-occur in high-fall-risk patients?**
@@ -243,4 +247,4 @@ cd cpic_time_to_event_analysis
 
 ---
 
-*Analysis by R. Jerome Dixon — VCU School of Pharmacy, Dept. of Pharmacotherapy and Outcomes Science*
+*Analysis by R. Jerome Dixon — VCU Integrative Life Sciences*
