@@ -75,5 +75,9 @@ tmp/
 npm-debug.log*
 yarn-error.log*
 
-# ── Local AWS operations ──────────────────────────────────────────────────────
-aws/
+# ── Local AWS generated artifacts ─────────────────────────────────────────────
+aws/**/__pycache__/
+aws/**/*.pyc
+aws/**/.env
+aws/**/athena-results/
+aws/**/query-results/

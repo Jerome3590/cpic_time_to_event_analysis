@@ -11,7 +11,7 @@ final_cohort_schema = [
     ("mi_person_key", "str", "Unique masked person key (primary identifier)"),
     
     # Event details
-    ("event_date", "str", "Date of event (YYYY-MM-DD)"),
+    ("event_date", "timestamp", "Date/time of event"),
     ("event_type", "str", "Type of event: 'medical' or 'pharmacy'"),
     ("data_source", "str", "Source of event data: 'medical' or 'pharmacy'"),
     
@@ -65,10 +65,10 @@ final_cohort_schema = [
     ("event_sequence", "int", "Sequential order of events per patient (globally ordered across medical and pharmacy)"),
     
     # Cohort metadata
-    # NOTE: target column is legacy compatibility - use is_target_case for actual target/control distinction
-    ("target", "int", "Legacy target column: 1 for falls/ed cohorts (use is_target_case instead)"),
+    # NOTE: target is normalized to match is_target_case for legacy consumers.
+    ("target", "int", "Target/control indicator normalized from is_target_case: 1=target case, 0=control"),
     ("cohort_name", "str", "Cohort group name: 'falls' or 'ed'"),
-    ("cohort", "str", "Cohort classification: 'falls', 'ed', or 'NON_ED'"),
+    ("cohort", "str", "Cohort classification label for target/control grouping"),
     
     # Target case indicators
     # NOTE: is_target_case uses a fixed 21-day window for adverse drug event identification (excluding 0-day discharge prescriptions)
@@ -76,10 +76,10 @@ final_cohort_schema = [
     ("is_target_case", "int", "Target case indicator: 1=target case (drug event 1-21 days before ED), 0=control (ED without qualifying drug event)"),
     
     # Cohort-specific event dates
-    # NOTE: first_fall_date is populated for falls cohort only (NULL for ed)
+    # NOTE: first_falls_date is populated for falls cohort targets only (NULL for ed and falls controls)
     # NOTE: first_ed_date is populated for ed cohort only (NULL for falls)
-    ("first_fall_date", "str", "Date of first fall injury event (if any) - falls cohort only"),
-    ("first_ed_date", "str", "Date of first ED visit event (if any) - ed cohort only"),
+    ("first_falls_date", "timestamp", "Date of first qualifying falls event - falls cohort targets only"),
+    ("first_ed_date", "timestamp", "Date of first qualifying ED target event - ed cohort targets only"),
     
     # Temporal analysis
     # NOTE: days_to_target_event is NULL for falls cohort (can be calculated from event_date and first_fall_date)

@@ -390,7 +390,7 @@ def run_phase3_step3_final_cohort_fact(context):
             logger.info(f"  ED COHORT: Filtering to patients with <{max_ed_visits} ED visits per year AND drug event within {time_window_days} days of ED event")
         _save_phase3_log_checkpoint(context, "phase3_step3_target_case_counts")
         
-        if target_case_count == 0:
+        if requested_cohort != "ed" and target_case_count == 0:
             logger.warning(f"⚠️ [PHASE 3 STEP 3] WARNING: No target cases found for FALLS cohort ({label_target})")
             logger.warning(f"   Cohort will be empty and will not be saved to S3")
             logger.warning(f"   Check: Are target ICD codes present in {age_band}/{event_year}?")
@@ -401,7 +401,7 @@ def run_phase3_step3_final_cohort_fact(context):
         
         # Load pre-computed average target count for control-only cohorts
         avg_target_count = None
-        if target_case_count == 0 or (requested_cohort != "falls" and ed_case_count == 0):
+        if (requested_cohort != "ed" and target_case_count == 0) or (requested_cohort != "falls" and ed_case_count == 0):
             import json
             import boto3
             
@@ -444,7 +444,15 @@ def run_phase3_step3_final_cohort_fact(context):
                 logger.warning(f"⚠️ [PHASE 3 STEP 3] Using fallback average target count: {avg_target_count:,}")
         
         # Create FALLS cohort with 5:1 control-to-target ratio
-        if target_case_count > 0:
+        if requested_cohort == "ed":
+            logger.info("→ [PHASE 3 STEP 3] Skipping FALLS cohort creation for ed-only run")
+            falls_cohort_sql = """
+            CREATE OR REPLACE TEMP VIEW falls_cohort AS
+            SELECT *
+            FROM unified_event_fact_table
+            WHERE 1 = 0
+            """
+        elif target_case_count > 0:
             # HIGH-IMPACT FIX #1: Replace NOT IN with NOT EXISTS
             # HIGH-IMPACT FIX #2: Replace ORDER BY RANDOM() with hash-based sampling (deterministic, fast, parallelizable)
             falls_cohort_sql = f"""
@@ -556,8 +564,11 @@ def run_phase3_step3_final_cohort_fact(context):
             INNER JOIN sampled_controls sc ON uef.mi_person_key = sc.mi_person_key;
             """
         execute_sql_with_dev_validation(cohort_conn_duckdb, logger, falls_cohort_sql)
-        logger.info("→ [PHASE 3 STEP 3] FALLS cohort created")
-        _save_phase3_log_checkpoint(context, "phase3_step3_falls_cohort_created")
+        if requested_cohort == "ed":
+            logger.info("→ [PHASE 3 STEP 3] FALLS cohort skipped for ed-only run")
+        else:
+            logger.info("→ [PHASE 3 STEP 3] FALLS cohort created")
+            _save_phase3_log_checkpoint(context, "phase3_step3_falls_cohort_created")
 
         if requested_cohort == "falls":
             falls_count_df = cohort_conn_duckdb.sql("SELECT CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) AS count FROM falls_cohort").fetchdf()
@@ -1361,6 +1372,38 @@ def run_phase3_step3_final_cohort_fact(context):
                     logger.info(f"  [OK] All target patients have drug event within {time_window_days} days of ED event (filter working correctly)")
             except Exception as e:
                 logger.debug(f"Could not calculate drug window stats: {e}")
+
+        if requested_cohort == "ed":
+            ed_count_df = cohort_conn_duckdb.sql("SELECT CAST(COUNT(DISTINCT mi_person_key) AS BIGINT) AS count FROM ed_cohort").fetchdf()
+            ed_count = int(ed_count_df.iloc[0]['count']) if not ed_count_df.empty else 0
+            ed_ratio_df = cohort_conn_duckdb.sql("""
+            SELECT
+                CAST(COUNT(DISTINCT CASE WHEN is_target_case = 1 THEN mi_person_key END) AS BIGINT) as target_cases,
+                CAST(COUNT(DISTINCT CASE WHEN is_target_case = 0 THEN mi_person_key END) AS BIGINT) as control_cases
+            FROM ed_cohort
+            """).fetchdf()
+            ed_targets = int(ed_ratio_df.iloc[0]['target_cases']) if not ed_ratio_df.empty and ed_ratio_df.iloc[0]['target_cases'] is not None else 0
+            ed_controls = int(ed_ratio_df.iloc[0]['control_cases']) if not ed_ratio_df.empty and ed_ratio_df.iloc[0]['control_cases'] is not None else 0
+            ed_control_ratio = ed_controls / ed_targets if ed_targets > 0 else 0
+
+            logger.info("→ [PHASE 3 STEP 3] Skipping FALLS QA for ed-only run")
+            logger.info(f"→ [PHASE 3 STEP 3] QA: ED patients: {ed_count:,}")
+            logger.info(f"→ [PHASE 3 STEP 3] QA: ED control ratio: {ed_control_ratio:.2f}:1")
+            _save_phase3_log_checkpoint(context, "phase3_step3_ed_only_complete")
+
+            force_checkpoint(cohort_conn_duckdb, logger)
+            disable_query_profiling(cohort_conn_duckdb, logger)
+            if pipeline_state:
+                pipeline_state.mark_step_completed(step_name, {
+                    'falls_count': None,
+                    'ed_count': ed_count,
+                    'falls_control_ratio': None,
+                    'ed_control_ratio': float(ed_control_ratio),
+                    'skipped_falls_for_ed_only': True,
+                    'timestamp': datetime.now().isoformat()
+                })
+            logger.info(f"{SYMBOLS['success']} [PHASE 3 STEP 3] Optimized ed-only cohort creation completed")
+            return
         
         # QA checks
         # CRITICAL: Use COUNT(DISTINCT mi_person_key) instead of COUNT(*) to avoid row explosion issues

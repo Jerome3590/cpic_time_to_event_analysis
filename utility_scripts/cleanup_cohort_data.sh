@@ -15,7 +15,7 @@
 # /mnt/nvme/4_model_data.
 #
 # Usage:
-#   ./utility_scripts/cleanup_cohort_data.sh [--skip-checkpoints] [--skip-s3] [--skip-local] [--clear-feature-importance] [--yes]
+#   ./utility_scripts/cleanup_cohort_data.sh [--skip-checkpoints] [--skip-s3] [--skip-local] [--clear-feature-importance] [--clear-athena-qa] [--yes]
 #
 # Defaults:
 #   CPIC_S3_BUCKET=pgxdatalake
@@ -37,10 +37,11 @@ SKIP_CHECKPOINTS=false
 SKIP_S3=false
 SKIP_LOCAL=false
 CLEAR_FEATURE_IMPORTANCE=false
+CLEAR_ATHENA_QA=false
 AUTO_CONFIRM=false
 
 usage() {
-    echo "Usage: $0 [--skip-checkpoints] [--skip-s3] [--skip-local] [--clear-feature-importance] [--yes]"
+    echo "Usage: $0 [--skip-checkpoints] [--skip-s3] [--skip-local] [--clear-feature-importance] [--clear-athena-qa] [--yes]"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -63,6 +64,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --clear-feature-importance)
             CLEAR_FEATURE_IMPORTANCE=true
+            shift
+            ;;
+        --clear-athena-qa)
+            CLEAR_ATHENA_QA=true
             shift
             ;;
         --yes)
@@ -88,6 +93,8 @@ PROJECT_NAME="cpic_time_to_event_analysis"
 PROJECT_SLUG="${CPIC_PROJECT_SLUG:-cpic_time_to_event}"
 S3_BUCKET="${CPIC_S3_BUCKET:-pgxdatalake}"
 CHECKPOINT_BUCKET="${CPIC_CHECKPOINT_BUCKET:-$S3_BUCKET}"
+NOTEBOOK_METADATA_BUCKET="${CPIC_NOTEBOOK_METADATA_BUCKET:-mushin-solutions-project-metadata}"
+ATHENA_RESULTS_BUCKET="${CPIC_ATHENA_RESULTS_BUCKET:-aws-athena-query-results-us-east-1-535362115856}"
 NVME_ROOT="${CPIC_NVME_ROOT:-/mnt/nvme}"
 PROJECT_NVME_ROOT="${CPIC_PROJECT_NVME_ROOT:-${NVME_ROOT}/${PROJECT_SLUG}}"
 
@@ -97,6 +104,9 @@ EVENT_YEARS=("2016" "2017" "2018" "2019")
 
 S3_PROJECT_ROOT="s3://${S3_BUCKET}/gold/${PROJECT_SLUG}"
 S3_CHECKPOINT_ROOT="s3://${CHECKPOINT_BUCKET}/gold/${PROJECT_SLUG}/pipeline_checkpoints"
+S3_NOTEBOOK_METADATA_ROOT="s3://${NOTEBOOK_METADATA_BUCKET}/notebooks/cpic-time-to-event-analysis"
+S3_CREATE_COHORT_NOTEBOOK_ROOT="s3://${NOTEBOOK_METADATA_BUCKET}/notebooks/create_cohort"
+S3_ATHENA_QA_ROOT="s3://${ATHENA_RESULTS_BUCKET}/cpic_time_to_event_qa"
 
 if [ "$PROJECT_NVME_ROOT" = "/" ] || [ "$PROJECT_NVME_ROOT" = "$NVME_ROOT" ]; then
     echo "Invalid project NVMe root: $PROJECT_NVME_ROOT"
@@ -145,6 +155,15 @@ S3_ALWAYS_CLEAN=(
     "${S3_PROJECT_ROOT}/logs/"
 )
 
+S3_NOTEBOOK_METADATA_CLEAN=(
+    "${S3_NOTEBOOK_METADATA_ROOT}/"
+    "${S3_CREATE_COHORT_NOTEBOOK_ROOT}/"
+)
+
+S3_ATHENA_QA_CLEAN=(
+    "${S3_ATHENA_QA_ROOT}/"
+)
+
 LOCAL_ALWAYS_CLEAN=(
     "${PROJECT_ROOT}/data/gold/cohorts"
     "${PROJECT_NVME_ROOT}/gold/cohorts"
@@ -164,7 +183,7 @@ is_project_s3_path() {
     local path=$1
 
     case "$path" in
-        "${S3_PROJECT_ROOT}/"*|"${S3_CHECKPOINT_ROOT}/"*) return 0 ;;
+        "${S3_PROJECT_ROOT}/"*|"${S3_CHECKPOINT_ROOT}/"*|"${S3_NOTEBOOK_METADATA_ROOT}/"*|"${S3_CREATE_COHORT_NOTEBOOK_ROOT}/"*|"${S3_ATHENA_QA_ROOT}/"*) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -333,6 +352,7 @@ print_summary() {
     echo "Project slug:      $PROJECT_SLUG"
     echo "S3 project root:   $S3_PROJECT_ROOT"
     echo "Checkpoint root:   $S3_CHECKPOINT_ROOT"
+    echo "Notebook metadata: $S3_NOTEBOOK_METADATA_ROOT"
     echo "Project NVMe root: $PROJECT_NVME_ROOT"
     echo ""
     echo "This script will clear generated artifacts for cohorts: ${COHORTS[*]}"
@@ -344,6 +364,9 @@ print_summary() {
     echo "  - Any S3 path outside ${S3_PROJECT_ROOT}/ and ${S3_CHECKPOINT_ROOT}/"
     if [ "$CLEAR_FEATURE_IMPORTANCE" = false ]; then
         echo "  - Step 3 feature-importance outputs and checkpoints"
+    fi
+    if [ "$CLEAR_ATHENA_QA" = false ]; then
+        echo "  - Athena QA query result files"
     fi
     echo ""
     echo -e "${YELLOW}WARNING: This deletes generated local and S3 data for this project.${NC}"
@@ -391,6 +414,16 @@ if [ "$SKIP_CHECKPOINTS" = false ]; then
     check_s3_path "$S3_CHECKPOINT_ROOT/" "Project pipeline checkpoints"
 fi
 
+for path in "${S3_NOTEBOOK_METADATA_CLEAN[@]}"; do
+    check_s3_path "$path" "Notebook metadata artifact: $path"
+done
+
+if [ "$CLEAR_ATHENA_QA" = true ]; then
+    for path in "${S3_ATHENA_QA_CLEAN[@]}"; do
+        check_s3_path "$path" "Athena QA query result artifact: $path"
+    done
+fi
+
 for path in "${LOCAL_ALWAYS_CLEAN[@]}"; do
     check_local_path "$path" "Generated local data: $path"
 done
@@ -432,6 +465,19 @@ if [ "$SKIP_CHECKPOINTS" = false ]; then
     delete_s3_path "$S3_CHECKPOINT_ROOT/" "Project pipeline checkpoints"
 fi
 
+for path in "${S3_NOTEBOOK_METADATA_CLEAN[@]}"; do
+    delete_s3_path "$path" "Notebook metadata artifact: $path"
+done
+
+if [ "$CLEAR_ATHENA_QA" = true ]; then
+    for path in "${S3_ATHENA_QA_CLEAN[@]}"; do
+        delete_s3_path "$path" "Athena QA query result artifact: $path"
+    done
+else
+    echo "--- Athena QA results (preserved) ---"
+    log_message "Athena QA query result files preserved; use --clear-athena-qa to clear them."
+fi
+
 for path in "${LOCAL_ALWAYS_CLEAN[@]}"; do
     delete_local_path "$path" "Generated local data: $path"
 done
@@ -461,14 +507,17 @@ echo "Deleted $DELETED_COUNT item groups"
 echo "Log file saved to: $LOG_FILE"
 echo ""
 echo "Next steps:"
-echo "  1. Re-run Step 2:"
-echo "     python 2_create_cohort/0_create_cohort.py --age-band <age_band> --event-year <year> --cohort both"
-echo "  2. Re-run Step 3b as needed:"
+echo "  1. Re-run Step 2 cohort series:"
+echo "     python 2_create_cohort/run_series_falls.py --skip-existing --concurrent-workers 1"
+echo "     python 2_create_cohort/run_series_ed.py --skip-existing --concurrent-workers 1"
+echo "  2. Re-run Athena cohort QA:"
+echo "     python aws/athena/scripts/run_cohort_qa.py"
+echo "  3. Re-run Step 3b as needed:"
 echo "     python 3b_feature_importance_eda/run_feature_importance_eda.py --cohort falls --age-band <age_band>"
 echo "     python 3b_feature_importance_eda/run_feature_importance_eda.py --cohort ed --age-band <age_band>"
-echo "  3. Re-run Step 4:"
+echo "  4. Re-run Step 4:"
 echo "     python 4_model_data/create_model_data.py --cohort falls --age-band <age_band>"
 echo "     python 4_model_data/create_model_data.py --cohort ed --age-band <age_band>"
-echo "  4. Re-run Step 6:"
+echo "  5. Re-run Step 6:"
 echo "     python 6_final_model/train_final_model.py --cohort falls --age-band <age_band>"
 echo "     python 6_final_model/train_final_model.py --cohort ed --age-band <age_band>"

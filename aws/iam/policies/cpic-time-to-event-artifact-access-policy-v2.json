@@ -1,0 +1,195 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ViewAvailableBuckets",
+      "Effect": "Allow",
+      "Action": "s3:ListAllMyBuckets",
+      "Resource": "*"
+    },
+    {
+      "Sid": "GetAssociatedBucketLocations",
+      "Effect": "Allow",
+      "Action": "s3:GetBucketLocation",
+      "Resource": [
+        "arn:aws:s3:::pgxdatalake",
+        "arn:aws:s3:::mushin-solutions-project-metadata",
+        "arn:aws:s3:::pgx-repository",
+        "arn:aws:s3:::athena-output-testing-pgx",
+        "arn:aws:s3:::aws-athena-query-results-*"
+      ]
+    },
+    {
+      "Sid": "ListCpicArtifactFolders",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::pgxdatalake",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "gold",
+            "gold/",
+            "gold/cpic_time_to_event",
+            "gold/cpic_time_to_event/",
+            "gold/cpic_time_to_event/*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ReadCpicArtifactObjects",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ],
+      "Resource": "arn:aws:s3:::pgxdatalake/gold/cpic_time_to_event/*"
+    },
+    {
+      "Sid": "ListCpicMetadataFolders",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::mushin-solutions-project-metadata",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "notebooks",
+            "notebooks/",
+            "notebooks/cpic-time-to-event-analysis",
+            "notebooks/cpic-time-to-event-analysis/",
+            "notebooks/cpic-time-to-event-analysis/*",
+            "notebooks/create_cohort",
+            "notebooks/create_cohort/",
+            "notebooks/create_cohort/*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ReadCpicMetadataObjects",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ],
+      "Resource": [
+        "arn:aws:s3:::mushin-solutions-project-metadata/notebooks/cpic-time-to-event-analysis/*",
+        "arn:aws:s3:::mushin-solutions-project-metadata/notebooks/create_cohort/*"
+      ]
+    },
+    {
+      "Sid": "ListLegacyCpicRepositoryFolders",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::pgx-repository",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "cpic_time_to_event_analysis",
+            "cpic_time_to_event_analysis/",
+            "cpic_time_to_event_analysis/*",
+            "pgx-pipeline-status",
+            "pgx-pipeline-status/",
+            "pgx-pipeline-status/*",
+            "pipeline_checkpoints",
+            "pipeline_checkpoints/",
+            "pipeline_checkpoints/*",
+            "*_log",
+            "*_log/*",
+            "*_checkpoint",
+            "*_checkpoint/*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ReadLegacyCpicRepositoryObjects",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ],
+      "Resource": [
+        "arn:aws:s3:::pgx-repository/cpic_time_to_event_analysis/*",
+        "arn:aws:s3:::pgx-repository/pgx-pipeline-status/*",
+        "arn:aws:s3:::pgx-repository/pipeline_checkpoints/*",
+        "arn:aws:s3:::pgx-repository/*_log/*",
+        "arn:aws:s3:::pgx-repository/*_checkpoint/*"
+      ]
+    },
+    {
+      "Sid": "ListAthenaResultFolders",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": [
+        "arn:aws:s3:::athena-output-testing-pgx",
+        "arn:aws:s3:::aws-athena-query-results-*"
+      ]
+    },
+    {
+      "Sid": "ReadWriteAthenaQueryResults",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion",
+        "s3:PutObject",
+        "s3:AbortMultipartUpload",
+        "s3:ListMultipartUploadParts"
+      ],
+      "Resource": [
+        "arn:aws:s3:::athena-output-testing-pgx/*",
+        "arn:aws:s3:::aws-athena-query-results-*/*"
+      ]
+    },
+    {
+      "Sid": "AthenaQueryAccess",
+      "Effect": "Allow",
+      "Action": [
+        "athena:BatchGetNamedQuery",
+        "athena:BatchGetPreparedStatement",
+        "athena:BatchGetQueryExecution",
+        "athena:GetDatabase",
+        "athena:GetDataCatalog",
+        "athena:GetNamedQuery",
+        "athena:GetPreparedStatement",
+        "athena:GetQueryExecution",
+        "athena:GetQueryResults",
+        "athena:GetQueryResultsStream",
+        "athena:GetTableMetadata",
+        "athena:GetWorkGroup",
+        "athena:ListDatabases",
+        "athena:ListDataCatalogs",
+        "athena:ListNamedQueries",
+        "athena:ListPreparedStatements",
+        "athena:ListQueryExecutions",
+        "athena:ListTableMetadata",
+        "athena:ListWorkGroups",
+        "athena:StartQueryExecution",
+        "athena:StopQueryExecution"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "GlueCatalogReadAccess",
+      "Effect": "Allow",
+      "Action": [
+        "glue:BatchGetPartition",
+        "glue:GetCatalogImportStatus",
+        "glue:GetColumnStatisticsForPartition",
+        "glue:GetColumnStatisticsForTable",
+        "glue:GetDatabase",
+        "glue:GetDatabases",
+        "glue:GetPartition",
+        "glue:GetPartitions",
+        "glue:GetTable",
+        "glue:GetTableVersion",
+        "glue:GetTableVersions",
+        "glue:GetTables",
+        "glue:GetUserDefinedFunction",
+        "glue:GetUserDefinedFunctions",
+        "glue:SearchTables"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

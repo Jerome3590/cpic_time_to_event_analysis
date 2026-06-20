@@ -25,6 +25,107 @@ from pathlib import Path
 from py_helpers.env_utils import get_project_data_root, is_linux
 
 
+CANONICAL_COHORT_COLUMNS = [
+    ("mi_person_key", "VARCHAR"),
+    ("event_date", "TIMESTAMP"),
+    ("event_type", "VARCHAR"),
+    ("data_source", "VARCHAR"),
+    ("age_imputed", "INTEGER"),
+    ("member_gender", "VARCHAR"),
+    ("member_race", "VARCHAR"),
+    ("zip_imputed", "VARCHAR"),
+    ("county_imputed", "VARCHAR"),
+    ("payer_imputed", "VARCHAR"),
+    ("primary_icd_diagnosis_code", "VARCHAR"),
+    ("two_icd_diagnosis_code", "VARCHAR"),
+    ("three_icd_diagnosis_code", "VARCHAR"),
+    ("four_icd_diagnosis_code", "VARCHAR"),
+    ("five_icd_diagnosis_code", "VARCHAR"),
+    ("six_icd_diagnosis_code", "VARCHAR"),
+    ("seven_icd_diagnosis_code", "VARCHAR"),
+    ("eight_icd_diagnosis_code", "VARCHAR"),
+    ("nine_icd_diagnosis_code", "VARCHAR"),
+    ("ten_icd_diagnosis_code", "VARCHAR"),
+    ("two_icd_procedure_code", "VARCHAR"),
+    ("three_icd_procedure_code", "VARCHAR"),
+    ("four_icd_procedure_code", "VARCHAR"),
+    ("five_icd_procedure_code", "VARCHAR"),
+    ("six_icd_procedure_code", "VARCHAR"),
+    ("seven_icd_procedure_code", "VARCHAR"),
+    ("eight_icd_procedure_code", "VARCHAR"),
+    ("nine_icd_procedure_code", "VARCHAR"),
+    ("ten_icd_procedure_code", "VARCHAR"),
+    ("drug_name", "VARCHAR"),
+    ("therapeutic_class_1", "VARCHAR"),
+    ("procedure_code", "VARCHAR"),
+    ("cpt_mod_1_code", "VARCHAR"),
+    ("cpt_mod_2_code", "VARCHAR"),
+    ("hcg_setting", "VARCHAR"),
+    ("hcg_line", "VARCHAR"),
+    ("hcg_detail", "VARCHAR"),
+    ("event_classification", "VARCHAR"),
+    ("event_sequence", "BIGINT"),
+    ("target", "INTEGER"),
+    ("cohort_name", "VARCHAR"),
+    ("cohort", "VARCHAR"),
+    ("is_target_case", "INTEGER"),
+    ("first_falls_date", "TIMESTAMP"),
+    ("first_ed_date", "TIMESTAMP"),
+    ("days_to_target_event", "BIGINT"),
+]
+
+
+def _cast_column_or_null(column_names: set[str], column_name: str, sql_type: str) -> str:
+    if column_name in column_names:
+        return f"CAST({column_name} AS {sql_type}) AS {column_name}"
+    return f"CAST(NULL AS {sql_type}) AS {column_name}"
+
+
+def _normalize_cohort_table_schema(cohort_conn_duckdb, logger, table_name: str, cohort_name: str) -> None:
+    """Normalize a cohort table to a stable parquet schema before S3 write."""
+    schema_df = cohort_conn_duckdb.sql(f"""
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = 'main'
+      AND table_name = '{table_name}'
+    """).fetchdf()
+    column_names = set(schema_df["column_name"].tolist()) if not schema_df.empty else set()
+    if not column_names:
+        raise Exception(f"Cannot normalize missing cohort table: {table_name}")
+
+    select_exprs = []
+    for column_name, sql_type in CANONICAL_COHORT_COLUMNS:
+        if column_name == "target":
+            if "is_target_case" in column_names:
+                select_exprs.append("CAST(is_target_case AS INTEGER) AS target")
+            else:
+                select_exprs.append(_cast_column_or_null(column_names, column_name, sql_type))
+        elif column_name == "cohort_name":
+            select_exprs.append(f"'{cohort_name}' AS cohort_name")
+        elif column_name == "first_ed_date":
+            if "first_ed_date_1" in column_names:
+                select_exprs.append("CAST(first_ed_date_1 AS TIMESTAMP) AS first_ed_date")
+            else:
+                select_exprs.append(_cast_column_or_null(column_names, column_name, sql_type))
+        else:
+            select_exprs.append(_cast_column_or_null(column_names, column_name, sql_type))
+
+    normalized_table = f"{table_name}__normalized"
+    select_sql = ",\n        ".join(select_exprs)
+    cohort_conn_duckdb.sql(f"""
+    CREATE OR REPLACE TABLE {normalized_table} AS
+    SELECT
+        {select_sql}
+    FROM {table_name}
+    """)
+    cohort_conn_duckdb.sql(f"CREATE OR REPLACE TABLE {table_name} AS SELECT * FROM {normalized_table}")
+    cohort_conn_duckdb.sql(f"DROP TABLE IF EXISTS {normalized_table}")
+    logger.info(
+        f"→ [PHASE 4] Normalized {table_name} schema "
+        f"({len(CANONICAL_COHORT_COLUMNS)} columns, target=is_target_case)"
+    )
+
+
 def run_phase4_complete_pipeline(context):
     """Phase 4: Complete Pipeline with DuckDB optimizations."""
     logger = context["logger"]
@@ -98,6 +199,11 @@ def run_phase4_complete_pipeline(context):
         if missing_views:
             logger.error(f"❌ [PHASE 4] Missing cohort views: {missing_views}")
             raise Exception(f"Cohort views missing: {missing_views}. Phase 3 may have failed silently.")
+
+        if requested_cohort in ("falls", "both"):
+            _normalize_cohort_table_schema(cohort_conn_duckdb, logger, "falls_cohort", "falls")
+        if requested_cohort in ("ed", "both"):
+            _normalize_cohort_table_schema(cohort_conn_duckdb, logger, "ed_cohort", "ed")
         
         # Check both cohorts exist and get patient counts
         # CRITICAL: Use COUNT(DISTINCT mi_person_key) instead of COUNT(*) to avoid row explosion issues
