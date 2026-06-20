@@ -3518,8 +3518,7 @@ def main() -> None:
             try:
                 import boto3
                 s3_client = boto3.client("s3")
-                S3_BUCKET = "pgxdatalake"
-                s3_base_key = f"gold/final_model/{args.cohort}/{args.age_band}"
+                s3_base_key = f"gold/{PROJECT_SLUG}/final_model/{args.cohort}/{args.age_band}"
                 
                 # Download each file
                 out_base_check.mkdir(parents=True, exist_ok=True)
