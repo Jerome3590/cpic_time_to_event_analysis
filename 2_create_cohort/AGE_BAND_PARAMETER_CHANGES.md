@@ -108,5 +108,5 @@ The following age bands from the original pgx-analysis are **not used in this pr
 
 - `py_helpers/constants.py` — `AGE_BANDS`, `REQUIRED_COHORTS`, `COHORT_TARGET_COLUMN`
 - `2_create_cohort/README.md` — cohort creation pipeline overview
-- `RUNTIME_ENVIRONMENT.md` — EC2 paths, env vars
+- `docs/RUNTIME_ENVIRONMENT.md` — EC2 paths, env vars
 - `2_create_cohort/README_ec2_32core_1tb_cohort_runs.md` — EC2 runbook

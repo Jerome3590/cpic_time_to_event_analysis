@@ -11,7 +11,7 @@ Key Optimizations Applied:
 - S3 performance tuning
 - Query profiling and monitoring
 - Robust error handling and cleanup
-- Centralized checkpoint system at s3://pgx-repository/pgx-pipeline-status/
+- Centralized checkpoint system at s3://{CHECKPOINT_BUCKET}/gold/{PROJECT_SLUG}/pipeline_checkpoints/
 """
 
 import os

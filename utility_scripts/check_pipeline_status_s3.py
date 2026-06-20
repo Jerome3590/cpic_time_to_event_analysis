@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Check pipeline status via S3 objects (pgx-repository checkpoints and optional pgxdatalake outputs).
+Check pipeline status via S3 objects (project-scoped checkpoints and optional pgxdatalake outputs).
 
 Reads:
-- s3://pgx-repository/pipeline_checkpoints/{step}/{cohort}/{age_band}/checkpoint.json
+- s3://{CHECKPOINT_BUCKET}/gold/{PROJECT_SLUG}/pipeline_checkpoints/{step}/{cohort}/{age_band}/checkpoint.json
   (steps: 4_model_data, 5_pgx_analysis, 6_final_model, 9_dashboard_metadata, 9_dashboard_visuals, etc.)
 - Optionally: pgxdatalake gold/{PROJECT_SLUG}/cohorts_model_data,
   gold/{PROJECT_SLUG}/final_model (object counts per cohort/age_band)
@@ -71,8 +71,8 @@ def run(profile: str | None, show_outputs: bool) -> None:
         print(f"Outputs bucket:     s3://{DATALAKE_BUCKET}/gold/{PROJECT_SLUG}/ (cohorts_model_data, final_model)")
     print()
 
-    # ----- 1. Pipeline checkpoints (pgx-repository) -----
-    print("1. Pipeline checkpoints (s3://{}/pipeline_checkpoints/)".format(REPO_BUCKET))
+    # ----- 1. Pipeline checkpoints -----
+    print("1. Pipeline checkpoints (s3://{}/{}/)".format(REPO_BUCKET, PIPELINE_CHECKPOINTS_PREFIX))
     print("-" * 70)
     all_objs = _s3_list(s3, REPO_BUCKET, PIPELINE_CHECKPOINTS_PREFIX + "/", max_keys=2000)
     checkpoint_files = [o for o in all_objs if o["Key"].endswith("checkpoint.json")]
@@ -80,7 +80,7 @@ def run(profile: str | None, show_outputs: bool) -> None:
     if not checkpoint_files:
         print("  No pipeline checkpoint files found.")
     else:
-        # Parse: pipeline_checkpoints/{step}/{cohort}/{age_band}/checkpoint.json
+        # Parse: gold/{PROJECT_SLUG}/pipeline_checkpoints/{step}/{cohort}/{age_band}/checkpoint.json
         by_step: dict[str, list[tuple[str, str, datetime | None]]] = defaultdict(list)
         for o in checkpoint_files:
             rest = o["Key"][len(PIPELINE_CHECKPOINTS_PREFIX) + 1 : -len("/checkpoint.json")]

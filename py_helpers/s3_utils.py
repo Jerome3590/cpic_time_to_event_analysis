@@ -1251,6 +1251,10 @@ def release_lock(lock_key, bucket_name="pgxdatalake"):
 
 
 # ===== Checkpoint Functions =====
+_COHORT_CHECKPOINT_PREFIX = f"gold/{PROJECT_SLUG}/pipeline_checkpoints/cohorts"
+_LEGACY_COHORT_CHECKPOINT_PREFIX = "checkpoints/cohorts"
+
+
 def get_checkpoint_path(step_name: str, age_band: str, event_year: int, bucket_name: str = S3_BUCKET) -> str:
     """
     Generate checkpoint S3 path for a specific step.
@@ -1265,7 +1269,14 @@ def get_checkpoint_path(step_name: str, age_band: str, event_year: int, bucket_n
         Full S3 path for the checkpoint
     """
     sanitized_age_band = _sanitize_age_band(age_band)
-    checkpoint_key = f"checkpoints/cohorts/{step_name}_{sanitized_age_band}_{event_year}.json"
+    checkpoint_key = f"{_COHORT_CHECKPOINT_PREFIX}/{step_name}_{sanitized_age_band}_{event_year}.json"
+    return f"s3://{bucket_name}/{checkpoint_key}"
+
+
+def _get_legacy_checkpoint_path(step_name: str, age_band: str, event_year: int, bucket_name: str = S3_BUCKET) -> str:
+    """Previous unscoped cohort checkpoint path retained as a read/delete fallback."""
+    sanitized_age_band = _sanitize_age_band(age_band)
+    checkpoint_key = f"{_LEGACY_COHORT_CHECKPOINT_PREFIX}/{step_name}_{sanitized_age_band}_{event_year}.json"
     return f"s3://{bucket_name}/{checkpoint_key}"
 
 
@@ -1283,7 +1294,10 @@ def checkpoint_exists(step_name: str, age_band: str, event_year: int, bucket_nam
         True if checkpoint exists, False otherwise
     """
     checkpoint_path = get_checkpoint_path(step_name, age_band, event_year, bucket_name)
-    return s3_exists(checkpoint_path, bucket_name)
+    if s3_exists(checkpoint_path, bucket_name):
+        return True
+    legacy_checkpoint_path = _get_legacy_checkpoint_path(step_name, age_band, event_year, bucket_name)
+    return s3_exists(legacy_checkpoint_path, bucket_name)
 
 
 def save_checkpoint(
@@ -1353,19 +1367,25 @@ def load_checkpoint(
     """
     try:
         checkpoint_path = get_checkpoint_path(step_name, age_band, event_year, bucket_name)
+        legacy_checkpoint_path = _get_legacy_checkpoint_path(step_name, age_band, event_year, bucket_name)
 
-        if not s3_exists(checkpoint_path, bucket_name):
+        if s3_exists(checkpoint_path, bucket_name):
+            load_path = checkpoint_path
+        elif s3_exists(legacy_checkpoint_path, bucket_name):
+            load_path = legacy_checkpoint_path
+            logger.info(f"Using legacy unscoped checkpoint for {step_name}: {legacy_checkpoint_path}")
+        else:
             logger.info(f"No checkpoint found for {step_name}: {checkpoint_path}")
             return None
 
         # Parse S3 path
-        bucket, key = _parse_s3_path_components(checkpoint_path)
+        bucket, key = _parse_s3_path_components(load_path)
 
         # Download checkpoint data
         response = s3_client.get_object(Bucket=bucket, Key=key)
         checkpoint_data = json.loads(response['Body'].read().decode('utf-8'))
 
-        logger.info(f"✓ Checkpoint loaded for {step_name}: {checkpoint_path}")
+        logger.info(f"✓ Checkpoint loaded for {step_name}: {load_path}")
         logger.info(f"  Checkpoint timestamp: {checkpoint_data.get('checkpoint_metadata', {}).get('timestamp', 'unknown')}")
 
         return checkpoint_data
@@ -1397,9 +1417,11 @@ def delete_checkpoint(
     """
     try:
         checkpoint_path = get_checkpoint_path(step_name, age_band, event_year, bucket_name)
-        bucket, key = _parse_s3_path_components(checkpoint_path)
+        legacy_checkpoint_path = _get_legacy_checkpoint_path(step_name, age_band, event_year, bucket_name)
 
-        s3_client.delete_object(Bucket=bucket, Key=key)
+        for path in (checkpoint_path, legacy_checkpoint_path):
+            bucket, key = _parse_s3_path_components(path)
+            s3_client.delete_object(Bucket=bucket, Key=key)
         logger.info(f"✓ Checkpoint deleted for {step_name}: {checkpoint_path}")
         return True
 
@@ -1428,25 +1450,30 @@ def list_checkpoints(
     """
     try:
         sanitized_age_band = _sanitize_age_band(age_band)
-        prefix = "checkpoints/cohorts/"
-
-        response = s3_client.list_objects_v2(
-            Bucket=bucket_name,
-            Prefix=prefix
+        prefixes = (
+            f"{_COHORT_CHECKPOINT_PREFIX}/",
+            f"{_LEGACY_COHORT_CHECKPOINT_PREFIX}/",
         )
 
         checkpoints = []
-        if 'Contents' in response:
-            for obj in response['Contents']:
-                # Extract step name from key
-                key = obj['Key']
-                # Look for files matching the pattern: {step_name}_{age_band}_{event_year}.json
-                if key.endswith('.json') and f"_{sanitized_age_band}_{event_year}.json" in key:
-                    # Extract step name from the key
-                    # Key format: checkpoints/cohorts/{step_name}_{age_band}_{event_year}.json
-                    filename = key.split('/')[-1]  # Get the filename part
-                    step_name = filename.replace(f"_{sanitized_age_band}_{event_year}.json", "")
-                    checkpoints.append(step_name)
+        for prefix in prefixes:
+            response = s3_client.list_objects_v2(
+                Bucket=bucket_name,
+                Prefix=prefix
+            )
+
+            if 'Contents' in response:
+                for obj in response['Contents']:
+                    # Extract step name from key
+                    key = obj['Key']
+                    # Look for files matching the pattern: {step_name}_{age_band}_{event_year}.json
+                    if key.endswith('.json') and f"_{sanitized_age_band}_{event_year}.json" in key:
+                        # Extract step name from the key
+                        # Key format: gold/{PROJECT_SLUG}/pipeline_checkpoints/cohorts/{step_name}_{age_band}_{event_year}.json
+                        filename = key.split('/')[-1]  # Get the filename part
+                        step_name = filename.replace(f"_{sanitized_age_band}_{event_year}.json", "")
+                        if step_name not in checkpoints:
+                            checkpoints.append(step_name)
 
         logger.info(f"Found {len(checkpoints)} checkpoints for {age_band}/{event_year}: {checkpoints}")
         return checkpoints
@@ -1503,7 +1530,7 @@ def get_checkpoint_data_path(step_name: str, age_band: str, event_year: int, dat
         Full S3 path for the checkpoint data file
     """
     sanitized_age_band = _sanitize_age_band(age_band)
-    data_key = f"checkpoints/cohorts/data/{step_name}_{sanitized_age_band}_{event_year}/{data_type}.parquet"
+    data_key = f"{_COHORT_CHECKPOINT_PREFIX}/data/{step_name}_{sanitized_age_band}_{event_year}/{data_type}.parquet"
     return f"s3://{bucket_name}/{data_key}"
 
 
@@ -1975,25 +2002,27 @@ def list_checkpoints_with_data(age_band, event_year, logger):
     try:
         # List data checkpoints (those with .parquet extension in data subdirectory)
         data_checkpoints = []
-        prefix = f"checkpoints/cohorts/data/"
-        
-        response = s3_client.list_objects_v2(
-            Bucket=S3_BUCKET,
-            Prefix=prefix
+        prefixes = (
+            f"{_COHORT_CHECKPOINT_PREFIX}/data/",
+            f"{_LEGACY_COHORT_CHECKPOINT_PREFIX}/data/",
         )
-        
+
         # Filter for checkpoints matching this age_band and event_year
         sanitized_age_band = _sanitize_age_band(age_band)
         target_pattern = f"_{sanitized_age_band}_{event_year}/"
-        
-        for obj in response.get('Contents', []):
-            key = obj['Key']
-            if target_pattern in key and key.endswith('.parquet'):
-                # Extract step name from the key
-                # Key format: checkpoints/cohorts/data/{step_name}_{age_band}_{event_year}/{data_type}.parquet
-                parts = key.split('/')
-                if len(parts) >= 5:
-                    step_name = parts[3]  # Get the step_name part
+
+        for prefix in prefixes:
+            response = s3_client.list_objects_v2(
+                Bucket=S3_BUCKET,
+                Prefix=prefix
+            )
+
+            for obj in response.get('Contents', []):
+                key = obj['Key']
+                if target_pattern in key and key.endswith('.parquet'):
+                    # Key format:
+                    # gold/{PROJECT_SLUG}/pipeline_checkpoints/cohorts/data/{step_name}_{age_band}_{event_year}/{data_type}.parquet
+                    step_name = key.split('/')[-2]
                     data_checkpoints.append(step_name)
         
         # Remove duplicates (same step can have multiple data files)
