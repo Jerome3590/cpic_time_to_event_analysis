@@ -3394,7 +3394,7 @@ def main() -> None:
         "--train-mode",
         choices=["per_bin", "aggregate", "both"],
         default="per_bin",
-        help="per_bin (default): train density-bin models only; mirror one bin to aggregate outputs for deploy. "
+        help="per_bin (default): train density-bin models for both falls and ed; mirror one bin to aggregate outputs for deploy. "
         "aggregate: single cohort-wide model only (legacy). both: cohort-wide then per-bin subdirs.",
     )
     parser.add_argument(

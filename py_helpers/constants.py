@@ -222,7 +222,7 @@ MAX_RETRIES = 3
 RETRY_DELAY = 2
 AWS_REGION = "us-east-1"
 
-# Age bands: 65–85 group only (falls risk is clinically concentrated here)
+# Production age bands shared by both falls and ED visit cohorts.
 AGE_BANDS = ['65-74', '75-84']
 
 # Event years for cohort analysis

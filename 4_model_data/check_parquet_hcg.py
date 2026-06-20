@@ -10,9 +10,9 @@ from pathlib import Path
 
 import duckdb
 
-# Default: use downloaded ed 55-64 model_events; or pass path as first arg
+# Default: use downloaded ed 65-74 model_events; or pass path as first arg
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-default_path = PROJECT_ROOT / "4_model_data" / "cohort_name=ed" / "age_band=55-64" / "model_events.parquet"
+default_path = PROJECT_ROOT / "4_model_data" / "cohort_name=ed" / "age_band=65-74" / "model_events.parquet"
 parquet_path = Path(sys.argv[1]) if len(sys.argv) > 1 else default_path
 if not parquet_path.exists():
     print(f"Not found: {parquet_path}")

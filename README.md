@@ -158,7 +158,7 @@ python 9_dtw_analysis/run_dtw_analysis.py   # DTW trajectories → S3 (after Ste
 | **3b** BupaR EDA | `3b_feature_importance_eda/1_bupaR/create_bupar_visualizations.py` | `gold/cpic_time_to_event/feature_importance/{cohort}/{age_band}/plots/` | ✅ |
 | **4** Model Data | `4_model_data/create_model_data.py` | `gold/cpic_time_to_event/cohorts_model_data/` | ✅ |
 | **5** PGx Analysis | `5_pgx_analysis/` | `gold/cpic_time_to_event/pgx_features/` | ✅ |
-| **6** Final Model | `6_final_model/` | `gold/cpic_time_to_event/final_model/` | ✅ |
+| **6** Final Model | `6_final_model/` | `gold/cpic_time_to_event/final_model/` | ✅ per-bin for falls + ED |
 | **7** SHAP | `7_shap_analysis/` | `gold/cpic_time_to_event/shap_analysis/` | ✅ |
 | **8** FFA / FP-Growth | `8_ffa_analysis/` | `gold/cpic_time_to_event/ffa_analysis/` | ✅ |
 | **9** DTW Trajectories | `9_dtw_analysis/run_dtw_analysis.py` | `gold/cpic_time_to_event/dtw_analysis/` | ✅ |
