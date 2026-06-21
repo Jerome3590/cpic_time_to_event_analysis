@@ -17,10 +17,12 @@ Output CSV columns (minimal for visualization):
 - trajectory_diversity: Number of unique activities
 - dtw_min_distance: Placeholder (NaN); DTW distances computed in create_dtw_features.py (Step 2)
 - mean_days_between_events: Mean days between consecutive events in the trajectory (N3: times between sequences)
-- days_first_event_to_target: For target=1, days from first event to target date; else NaN (N3)
+- days_first_event_to_target: For target=1, days from first consensus drug event to target date; else NaN (legacy N3 alias)
+- days_first_consensus_drug_to_target: For target=1, days from first consensus drug event to target date; else NaN
+- days_last_consensus_drug_to_target: For target=1, days from last consensus drug event to target date; else NaN
 - temporal_span_days: Days between first and last event in trajectory (0 if single event)
 - events_per_month: trajectory_length / (temporal_span_days/30) when span > 0, else NaN
-- event_density_bin: Trajectory bin by event density ('low', 'medium', 'high', 'extreme'), aligned with FP-Growth
+- event_density_bin: Trajectory bin by event density ('low', 'medium', 'high', 'extreme')
 
 Model data (parquet) columns needed for N3 time-between metrics:
 - Event timestamp: one of event_date, incurred_date, service_date, event_timestamp, claim_date, event_dt (first present in schema is used for ordering and for mean_days_between_events / days_first_event_to_target).
@@ -29,7 +31,7 @@ Model data (parquet) columns needed for N3 time-between metrics:
 
 Requirements:
 - 4_model_data (Step 4) with model_events parquet
-- 7_shap_analysis and 8_ffa_analysis (Steps 7-8) for SHAP/FFA important codes
+- SHAP/FFA Consensus Filter artifacts by cohort / age band / density bin
 - 1b_apcd_event_filter/administrative_codes_lookup.json - administrative ICD codes that identify routine appointments (e.g. well visits, screenings)
 
 Runtime: ~1-2 minutes per cohort/age_band (fast!)
@@ -40,7 +42,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Optional, Set, Tuple
+from typing import Dict, Optional, Set, Tuple
 
 import duckdb
 import pandas as pd
@@ -68,7 +70,7 @@ from py_helpers.event_density_utils import (  # noqa: E402
     DENSITY_BINS as _EVENT_DENSITY_BINS,
     assign_n_event_bins as _assign_n_event_bins,
     compute_bin_thresholds as _compute_bin_thresholds,
-    load_thresholds as _load_thresholds,
+    load_or_compute_thresholds as _load_or_compute_thresholds,
     default_threshold_cache_path as _threshold_cache_path,
 )
 
@@ -92,6 +94,8 @@ DTW_TRAJECTORY_CSV_COLUMNS = [
     "dtw_min_distance",
     "mean_days_between_events",
     "days_first_event_to_target",
+    "days_first_consensus_drug_to_target",
+    "days_last_consensus_drug_to_target",
     "temporal_span_days",
     "events_per_month",
     "event_density_bin",
@@ -221,34 +225,52 @@ def extract_patient_trajectories(
 
     _log("info", "Using model_events: %s", model_data_path)
 
-    # SHAP/FFA combined allowed codes file is required (same prerequisite as BupaR); we never use all events.
-    # For extreme-density cohorts (e.g. non_opioid_ed_extreme_density), use the base cohort's allowed_codes.
+    # SHAP/FFA Consensus Filter codes are required by cohort / age band / density bin.
+    # DTW is drug-sequence only, so only consensus drug features are used.
     age_band_fname = age_band.replace("-", "_")
-    bupar_output_root = project_root / "10_analysis_results" / "visualizations" / "bupar"
-    allowed_codes_path = bupar_output_root / f"allowed_codes_shap_ffa_{cohort_name}_{age_band_fname}.json"
-    if not allowed_codes_path.exists() and cohort_name.endswith("_extreme_density"):
-        base_cohort = cohort_name.replace("_extreme_density", "")
-        fallback_path = bupar_output_root / f"allowed_codes_shap_ffa_{base_cohort}_{age_band_fname}.json"
-        if fallback_path.exists():
-            allowed_codes_path = fallback_path
-            _log("info", "Using base cohort allowed_codes for extreme: %s", allowed_codes_path)
-    if not allowed_codes_path.exists():
+    try:
+        from py_helpers.shap_ffa_fpgrowth_utils import get_shap_ffa_allowed_codes_by_density_bin
+    except ImportError as exc:
+        raise SystemExit(f"Could not import consensus allowed-code helper: {exc}") from exc
+
+    consensus_codes_by_bin = get_shap_ffa_allowed_codes_by_density_bin(
+        cohort_name,
+        age_band,
+        project_root=project_root,
+    )
+    if not consensus_codes_by_bin:
+        scenario_root = (
+            project_root
+            / "10_analysis_results"
+            / "visualizations"
+            / "scenario"
+            / cohort_name
+            / age_band_fname
+            / "bin_models"
+        )
         print(
-            f"[ERROR] SHAP/FFA allowed codes file is required (prerequisite). Not found: {allowed_codes_path}\n"
-            "  Generate the combined allowed_codes file before running DTW (same as BupaR)."
+            "[ERROR] Consensus Filter artifacts are required before running DTW.\n"
+            f"  Expected per-bin artifacts under: {scenario_root}\n"
+            "  Run Step 8 combined SHAP/FFA consensus outputs before Notebook 4 DTW."
         )
         raise SystemExit(1)
-    with open(allowed_codes_path, encoding="utf-8") as f:
-        allowed_codes_list = json.load(f)
-    allowed_codes = {str(c).strip() for c in allowed_codes_list if c is not None and str(c).strip()}
-    if not allowed_codes:
+
+    consensus_drugs_by_bin: Dict[str, Set[str]] = {}
+    for bin_name, codes in consensus_codes_by_bin.items():
+        drug_codes, _, _ = _split_allowed_codes_by_type(codes)
+        if drug_codes:
+            consensus_drugs_by_bin[bin_name] = drug_codes
+    if not consensus_drugs_by_bin:
         print(
-            f"[ERROR] SHAP/FFA allowed codes file is empty: {allowed_codes_path}\n"
-            "  Cannot run DTW without allowed codes."
+            "[ERROR] Consensus Filter artifacts were found, but no consensus drug features could be parsed for DTW.\n"
+            "  DTW is drug-sequence only, so at least one consensus drug feature is required in a density bin."
         )
         raise SystemExit(1)
-    _log("info", "Filtering to %d SHAP/FFA important codes (from combined file)", len(allowed_codes))
-    drug_set, icd_set, cpt_set = _split_allowed_codes_by_type(allowed_codes)
+    _log(
+        "info",
+        "Filtering DTW to SHAP/FFA consensus drug features by density bin: %s",
+        {k: len(v) for k, v in consensus_drugs_by_bin.items()},
+    )
     use_filter = True
 
     # Administrative ICD codes identify routine appointments (1+ events with these codes = routine)
@@ -422,31 +444,72 @@ def extract_patient_trajectories(
     except Exception as e:
         _log("warning", "Failed to write DTW model_events diagnostics: %s", e)
 
-    # Build SQL query with SHAP/FFA filtering
+    # Build SQL query with per-density-bin SHAP/FFA Consensus Filter codes.
     con = duckdb.connect(":memory:")
 
-    # Clause that keeps all drug events (no SHAP/FFA filter); used for fallback when filter yields 0 trajectories.
+    _tcache = _threshold_cache_path(project_root, cohort_name, age_band)
+    _density_thresholds = _load_or_compute_thresholds(
+        model_data_path,
+        cache_path=_tcache,
+        cohort=cohort_name,
+        age_band=age_band,
+    )
+    _log(
+        "info",
+        "Density bins for DTW consensus filtering (n_events thresholds): P25=%.2f, P50=%.2f, P95=%.2f",
+        _density_thresholds["p25"],
+        _density_thresholds["p50"],
+        _density_thresholds["p95"],
+    )
+
+    patient_bins_cte = f"""
+    patient_bins AS (
+        SELECT
+            CAST(mi_person_key AS VARCHAR) AS mi_person_key,
+            CASE
+                WHEN COUNT(*) <= {_density_thresholds["p25"]} THEN 'low'
+                WHEN COUNT(*) <= {_density_thresholds["p50"]} THEN 'medium'
+                WHEN COUNT(*) <= {_density_thresholds["p95"]} THEN 'high'
+                ELSE 'extreme'
+            END AS event_density_bin
+        FROM read_parquet('{path_str}')
+        GROUP BY mi_person_key
+    )
+    """
+    model_events_with_bins = (
+        f"(SELECT e.*, pb.event_density_bin "
+        f"FROM read_parquet('{path_str}') e "
+        f"JOIN patient_bins pb ON CAST(e.mi_person_key AS VARCHAR) = pb.mi_person_key)"
+    )
+
     drug_only_clause = "WHERE drug_name IS NOT NULL AND drug_name != ''"
 
     if use_filter:
-        # DTW is drug-only for both cohorts: only events with allowed drug codes.
+        # DTW is drug-only for both cohorts: only events with consensus drug codes for the patient's density bin.
         def safe_sql_list(codes: Set[str]) -> str:
             escaped = [f"'{str(c).replace(chr(39), chr(39)+chr(39))}'" for c in codes if c]
             return "(" + ",".join(escaped) + ")" if escaped else "(NULL)"
 
         filters = []
-        if drug_set:
+        for bin_name in DENSITY_BINS:
+            drug_codes = consensus_drugs_by_bin.get(bin_name, set())
+            if not drug_codes:
+                continue
             filters.append(
-                f"REPLACE(REPLACE(drug_name, '.', ''), '-', '') IN {safe_sql_list(drug_set)}"
+                "("
+                f"event_density_bin = '{bin_name}' "
+                f"AND REPLACE(REPLACE(drug_name, '.', ''), '-', '') IN {safe_sql_list(drug_codes)}"
+                ")"
             )
         if filters:
-            filter_clause = f"WHERE ({' AND '.join(filters)}) AND drug_name IS NOT NULL AND drug_name != ''"
+            filter_clause = f"WHERE ({' OR '.join(filters)}) AND drug_name IS NOT NULL AND drug_name != ''"
         else:
-            filter_clause = drug_only_clause
-        _log("info", "Filter: drug-only, drugs=%d (ICD/CPT excluded for DTW)", len(drug_set))
-        if drug_set:
-            sample = sorted(drug_set)[:5]
-            _log("info", "Allowed drug codes sample (normalized): %s", sample)
+            print("[ERROR] No density-bin consensus drug filters were available for DTW.")
+            raise SystemExit(1)
+        _log("info", "Filter: drug-only consensus features by density bin (ICD/CPT excluded for DTW)")
+        for bin_name, drug_codes in consensus_drugs_by_bin.items():
+            sample = sorted(drug_codes)[:5]
+            _log("info", "Allowed consensus drug sample for bin=%s: %s", bin_name, sample)
     else:
         filter_clause = drug_only_clause
 
@@ -469,7 +532,8 @@ def extract_patient_trajectories(
     )
     # Extract trajectories with cutoff dates (target = before target event, control = all events)
     query = f"""
-    WITH patient_events AS (
+    WITH {patient_bins_cte},
+    patient_events AS (
         SELECT
             CAST(mi_person_key AS VARCHAR) as mi_person_key,
             target,
@@ -477,8 +541,9 @@ def extract_patient_trajectories(
             drug_name,
             primary_icd_diagnosis_code,
             procedure_code,
-            ({target_date_expr}) as target_date
-        FROM read_parquet('{model_data_path}')
+            ({target_date_expr}) as target_date,
+            event_density_bin
+        FROM {model_events_with_bins}
         {filter_clause}
     ),
     filtered_events AS (
@@ -488,7 +553,8 @@ def extract_patient_trajectories(
             event_date,
             drug_name,
             primary_icd_diagnosis_code,
-            procedure_code
+            procedure_code,
+            event_density_bin
         FROM patient_events
         WHERE
             -- For target patients: only events before target date
@@ -501,12 +567,13 @@ def extract_patient_trajectories(
         SELECT
             mi_person_key,
             target,
+            event_density_bin,
             STRING_AGG('DRUG:' || drug_name, '_' ORDER BY event_date)
                 FILTER (WHERE drug_name IS NOT NULL AND drug_name != '') as seq_pattern_str,
             COUNT(*) as trajectory_length,
             COUNT(DISTINCT COALESCE(drug_name, '') || '|' || COALESCE(primary_icd_diagnosis_code, '') || '|' || COALESCE(procedure_code, '')) as trajectory_diversity
         FROM filtered_events
-        GROUP BY mi_person_key, target
+        GROUP BY mi_person_key, target, event_density_bin
     )
     SELECT * FROM trajectories
     WHERE seq_pattern_str IS NOT NULL
@@ -541,87 +608,19 @@ def extract_patient_trajectories(
         "diagnostics": diag_main,
     }
 
-    # If SHAP/FFA drug filter matched no events (e.g. allowed codes don't match model_events drug_name normalization),
-    # retry using all drug events so we still get trajectories when patients have drug events.
-    fallback_diag = None
-    if df.empty and use_filter and drug_set:
-        try:
-            total_drug_events = con.execute(
-                f"SELECT COUNT(*) FROM read_parquet('{path_str}') {drug_only_clause}"
-            ).fetchone()[0]
-            _log(
-                "warning",
-                "No trajectories with SHAP/FFA drug filter (%d codes). Total drug events in model_events: %d; trying fallback: all drug events.",
-                len(drug_set),
-                total_drug_events,
-            )
-        except Exception:
-            _log(
-                "warning",
-                "No trajectories with SHAP/FFA drug filter (%d codes); trying fallback: all drug events.",
-                len(drug_set),
-            )
-        filter_clause = drug_only_clause
-        query_fallback = f"""
-    WITH patient_events AS (
-        SELECT
-            CAST(mi_person_key AS VARCHAR) as mi_person_key,
-            target,
-            ({event_date_expr}) as event_date,
-            drug_name,
-            primary_icd_diagnosis_code,
-            procedure_code,
-            ({target_date_expr}) as target_date
-        FROM read_parquet('{path_str}')
-        {filter_clause}
-    ),
-    filtered_events AS (
-        SELECT
-            mi_person_key,
-            target,
-            event_date,
-            drug_name,
-            primary_icd_diagnosis_code,
-            procedure_code
-        FROM patient_events
-        WHERE
-            (target = 1 AND event_date < target_date
-             AND DATEDIFF('month', event_date, target_date) <= {max_lookback_months})
-            OR (target = 0)
-    ),
-    trajectories AS (
-        SELECT
-            mi_person_key,
-            target,
-            STRING_AGG('DRUG:' || drug_name, '_' ORDER BY event_date)
-                FILTER (WHERE drug_name IS NOT NULL AND drug_name != '') as seq_pattern_str,
-            COUNT(*) as trajectory_length,
-            COUNT(DISTINCT COALESCE(drug_name, '') || '|' || COALESCE(primary_icd_diagnosis_code, '') || '|' || COALESCE(procedure_code, '')) as trajectory_diversity
-        FROM filtered_events
-        GROUP BY mi_person_key, target
-    )
-    SELECT * FROM trajectories
-    WHERE seq_pattern_str IS NOT NULL
-    """
-        df, fallback_diag = duckdb_query_df_with_diagnostics(
-            con,
-            query_fallback,
-            expected_columns=expected_cols,
-            expected_types=expected_types,
+    if df.empty and use_filter:
+        _log(
+            "warning",
+            "No trajectories matched density-bin SHAP/FFA consensus drug filters. "
+            "No fallback to all drug events will be used.",
         )
-        if fallback_diag is not None:
-            dtw_sql_diagnostics["fallback"] = {
-                "query_name": "trajectories_fallback_all_drugs",
-                "diagnostics": fallback_diag,
-            }
-        if not df.empty:
-            _log("info", "Fallback succeeded: %d trajectories using all drug events (no SHAP/FFA filter).", len(df))
 
     # Monthly trajectory: one token per calendar month, drug only for both cohorts.
     monthly_where = "AND drug_name IS NOT NULL AND drug_name != ''"
     _log("info", "Monthly trajectory: drug only (both cohorts)")
     monthly_events_query = f"""
-    WITH patient_events AS (
+    WITH {patient_bins_cte},
+    patient_events AS (
         SELECT
             CAST(mi_person_key AS VARCHAR) as mi_person_key,
             target,
@@ -629,8 +628,9 @@ def extract_patient_trajectories(
             drug_name,
             primary_icd_diagnosis_code,
             procedure_code,
-            ({target_date_expr}) as target_date
-        FROM read_parquet('{path_str}')
+            ({target_date_expr}) as target_date,
+            event_density_bin
+        FROM {model_events_with_bins}
         {filter_clause}
     ),
     filtered_events AS (
@@ -718,10 +718,11 @@ def extract_patient_trajectories(
 
     # Count events analyzed (filtered_events row count) for logging and status JSON
     count_query = f"""
-    WITH patient_events AS (
+    WITH {patient_bins_cte},
+    patient_events AS (
         SELECT CAST(mi_person_key AS VARCHAR) as mi_person_key, target,
                ({event_date_expr}) as event_date, ({target_date_expr}) as target_date
-        FROM read_parquet('{path_str}')
+        FROM {model_events_with_bins}
         {filter_clause}
     ),
     filtered_events AS (
@@ -741,13 +742,14 @@ def extract_patient_trajectories(
 
     # Time-between metrics (N3: times between sequences) - use event timestamp column for gaps and days to target
     time_query = f"""
-    WITH patient_events AS (
+    WITH {patient_bins_cte},
+    patient_events AS (
         SELECT
             CAST(mi_person_key AS VARCHAR) as mi_person_key,
             target,
             ({event_date_expr}) as event_date,
             ({target_date_expr}) as target_date
-        FROM read_parquet('{model_data_path}')
+        FROM {model_events_with_bins}
         {filter_clause}
     ),
     filtered_events AS (
@@ -783,7 +785,9 @@ def extract_patient_trajectories(
     first_to_target AS (
         SELECT
             mi_person_key,
-            DATEDIFF('day', MIN(first_event_date), MAX(target_date))::DOUBLE as days_first_event_to_target
+            DATEDIFF('day', MIN(first_event_date), MAX(target_date))::DOUBLE as days_first_event_to_target,
+            DATEDIFF('day', MIN(first_event_date), MAX(target_date))::DOUBLE as days_first_consensus_drug_to_target,
+            DATEDIFF('day', MAX(event_date), MAX(target_date))::DOUBLE as days_last_consensus_drug_to_target
         FROM ordered
         WHERE target = 1 AND target_date IS NOT NULL
         GROUP BY mi_person_key
@@ -794,17 +798,27 @@ def extract_patient_trajectories(
     SELECT
         a.mi_person_key,
         m.mean_days_between_events,
-        f.days_first_event_to_target
+        f.days_first_event_to_target,
+        f.days_first_consensus_drug_to_target,
+        f.days_last_consensus_drug_to_target
     FROM all_patients a
     LEFT JOIN mean_gap m ON a.mi_person_key = m.mi_person_key
     LEFT JOIN first_to_target f ON a.mi_person_key = f.mi_person_key
     """
     try:
-        time_expected_cols = ["mi_person_key", "mean_days_between_events", "days_first_event_to_target"]
+        time_expected_cols = [
+            "mi_person_key",
+            "mean_days_between_events",
+            "days_first_event_to_target",
+            "days_first_consensus_drug_to_target",
+            "days_last_consensus_drug_to_target",
+        ]
         time_expected_types = {
             "mi_person_key": "VARCHAR",
             "mean_days_between_events": "DOUBLE",
             "days_first_event_to_target": "DOUBLE",
+            "days_first_consensus_drug_to_target": "DOUBLE",
+            "days_last_consensus_drug_to_target": "DOUBLE",
         }
         time_df, diag_time = duckdb_query_df_with_diagnostics(
             con,
@@ -832,20 +846,25 @@ def extract_patient_trajectories(
         else:
             df["mean_days_between_events"] = float("nan")
             df["days_first_event_to_target"] = float("nan")
+            df["days_first_consensus_drug_to_target"] = float("nan")
+            df["days_last_consensus_drug_to_target"] = float("nan")
     except Exception as e:
         _log("warning", "Time-between query failed: %s; adding NaN columns", e)
         df["mean_days_between_events"] = float("nan")
         df["days_first_event_to_target"] = float("nan")
+        df["days_first_consensus_drug_to_target"] = float("nan")
+        df["days_last_consensus_drug_to_target"] = float("nan")
 
     # Temporal span (first to last event) for event density - same filtered events as trajectories
     span_query = f"""
-    WITH patient_events AS (
+    WITH {patient_bins_cte},
+    patient_events AS (
         SELECT
             CAST(mi_person_key AS VARCHAR) as mi_person_key,
             target,
             ({event_date_expr}) as event_date,
             ({target_date_expr}) as target_date
-        FROM read_parquet('{path_str}')
+        FROM {model_events_with_bins}
         {filter_clause}
     ),
     filtered_events AS (
@@ -1059,9 +1078,15 @@ def extract_patient_trajectories(
         df["mean_days_between_events"] = float("nan")
     if "days_first_event_to_target" not in df.columns:
         df["days_first_event_to_target"] = float("nan")
+    if "days_first_consensus_drug_to_target" not in df.columns:
+        df["days_first_consensus_drug_to_target"] = df["days_first_event_to_target"]
+    if "days_last_consensus_drug_to_target" not in df.columns:
+        df["days_last_consensus_drug_to_target"] = float("nan")
     # For target=0, days_first_event_to_target should be NaN
     if "target" in df.columns:
         df.loc[df["target"] != 1, "days_first_event_to_target"] = float("nan")
+        df.loc[df["target"] != 1, "days_first_consensus_drug_to_target"] = float("nan")
+        df.loc[df["target"] != 1, "days_last_consensus_drug_to_target"] = float("nan")
     if "temporal_span_days" not in df.columns:
         df["temporal_span_days"] = float("nan")
 
@@ -1079,27 +1104,18 @@ def extract_patient_trajectories(
         length.loc[valid_span] / (span_days.loc[valid_span] / 30.0)
     )
 
-    # Bin trajectories by event density (low/medium/high/extreme).
-    # Try to load canonical model-training thresholds (n_events-based) first for cross-layer
-    # consistency; fall back to dynamic P25/P50/P95 of events_per_month when not yet available.
-    density_value = df["events_per_month"].fillna(0)  # single-event / zero-span -> 0 (low)
-    _tcache = _threshold_cache_path(project_root, cohort_name, age_band)
-    _density_thresholds = _load_thresholds(_tcache)
-    if _density_thresholds is None:
+    # Density bins were assigned before trajectory extraction using model-training n_event thresholds
+    # so each patient is filtered by the consensus feature set for their own density bin.
+    if "event_density_bin" not in df.columns:
+        density_value = df["events_per_month"].fillna(0)  # single-event / zero-span -> 0 (low)
         _log(
             "warning",
-            "n_event_bin_thresholds.json not found at %s. "
-            "Model training (notebook 3 / run_final_model.py) must run BEFORE dashboard visuals (notebook 4). "
-            "Falling back to dynamic P25/P50/P95 of events_per_month - bins may not match the trained model.",
-            _tcache,
+            "event_density_bin was not returned by the extraction query; falling back to events_per_month binning.",
         )
-        _density_thresholds = _compute_bin_thresholds(density_value)
-        _log("info", "Event density bins (events_per_month, dynamic fallback): P25=%.2f, P50=%.2f, P95=%.2f",
-             _density_thresholds["p25"], _density_thresholds["p50"], _density_thresholds["p95"])
+        df["event_density_bin"] = _assign_n_event_bins(density_value, _density_thresholds)
     else:
-        _log("info", "Event density bins (loaded from model-training thresholds): P25=%.2f, P50=%.2f, P95=%.2f",
-             _density_thresholds["p25"], _density_thresholds["p50"], _density_thresholds["p95"])
-    df["event_density_bin"] = _assign_n_event_bins(density_value, _density_thresholds)
+        df["event_density_bin"] = df["event_density_bin"].fillna("low").astype(str)
+        _log("info", "Event density bins assigned from model-training n_event thresholds before consensus filtering.")
     for bin_name in DENSITY_BINS:
         n = (df["event_density_bin"] == bin_name).sum()
         pct = 100.0 * n / len(df) if len(df) > 0 else 0

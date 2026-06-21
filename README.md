@@ -8,8 +8,8 @@ End-to-end machine learning pipeline predicting **fall-related** and **ED visit*
 
 - **SHAP:** model-level attribution for local and global feature importance across final XGBoost/CatBoost models.
 - **FFA:** symbolic/pseudo-causal feature attribution used to identify scenario factors and interaction candidates.
-- **Consensus Filter:** combines SHAP and FFA outputs to retain features supported by both attribution frameworks before final results review.
-- **DTW:** temporal medication and event trajectory alignment/clustering used to compare patterns preceding falls and ED visits.
+- **Consensus Filter:** combines SHAP and FFA outputs to retain features supported by both attribution frameworks before final results review, stratified by cohort, age band, and density bin.
+- **DTW:** temporal medication and event trajectory alignment/clustering using only density-bin-specific Consensus Filter drug feature importances.
 - **FFA Interaction Analysis:** reviews FFA-derived interaction/scenario factors to identify co-occurring drug, event, and PGx patterns in high-risk patients.
 
 ---
@@ -148,7 +148,7 @@ flowchart TD
 | 3 | `3_model_train_shap_ffa.ipynb` | Model training, SHAP, FFA, and Consensus Filter artifacts | 4 → 5 → 6 → 7 → 8 |
 | 4 | `4_results_review.ipynb` | Final results summary, DTW generation when inputs are present, and visual review | Review Steps 6–9 artifacts |
 
-DTW can be run directly from the Results notebook when Step 4 `model_events.parquet` files are present on EC2 or a local machine. It can also be run manually:
+DTW can be run directly from the Results notebook when Step 4 `model_events.parquet` files and per-bin Consensus Filter artifacts are present on EC2 or a local machine. It can also be run manually:
 ```bash
 python 9_dtw_analysis/run_dtw_analysis.py   # DTW trajectories and visuals → S3
 ```
@@ -180,10 +180,10 @@ The Results notebook also persists review tables and figures under `10_analysis_
 
 | Cohort | Age Band | Model / SHAP / FFA / Consensus | DTW | Notebook 4 Review |
 |--------|----------|----------------------------------|-----|-------------------|
-| `falls` | 65–74 | ✅ Scenario artifacts synced to S3 | Runs from notebook 4 when Step 4 `model_events.parquet` is present | ✅ Ready |
-| `falls` | 75–84 | ✅ Scenario artifacts synced to S3 | Runs from notebook 4 when Step 4 `model_events.parquet` is present | ✅ Ready |
-| `ed` | 65–74 | ✅ Scenario artifacts synced to S3 | Runs from notebook 4 when Step 4 `model_events.parquet` is present | ✅ Ready |
-| `ed` | 75–84 | ✅ Scenario artifacts synced to S3 | Runs from notebook 4 when Step 4 `model_events.parquet` is present | ✅ Ready |
+| `falls` | 65–74 | ✅ Scenario artifacts synced to S3 | Uses only `falls` / `65-74` / density-bin Consensus Filter drug features | ✅ Ready |
+| `falls` | 75–84 | ✅ Scenario artifacts synced to S3 | Uses only `falls` / `75-84` / density-bin Consensus Filter drug features | ✅ Ready |
+| `ed` | 65–74 | ✅ Scenario artifacts synced to S3 | Uses only `ed` / `65-74` / density-bin Consensus Filter drug features | ✅ Ready |
+| `ed` | 75–84 | ✅ Scenario artifacts synced to S3 | Uses only `ed` / `75-84` / density-bin Consensus Filter drug features | ✅ Ready |
 
 ### Key Configuration
 

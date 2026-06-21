@@ -1,14 +1,15 @@
 """
 Feature importance utilities for dashboard visuals.
 
-Allowed codes for BupaR, DTW, and FP-Growth are mandatory from a single source only:
-Step 3b cohort_feature_importance (final feature importances). No fallbacks.
-See get_shap_ffa_allowed_codes_combined and write_shap_ffa_allowed_codes_for_bupar.
+Allowed codes for DTW are mandatory from a single source only:
+SHAP/FFA Consensus Filter artifacts under 10_analysis_results/visualizations/scenario.
+No fallback to Step 3b feature importance or all drug events.
+See get_shap_ffa_allowed_codes_by_density_bin.
 """
 
 import json
 from pathlib import Path
-from typing import Dict, Optional, Set, Tuple
+from typing import Any, Dict, Optional, Set, Tuple
 
 import pandas as pd
 
@@ -197,6 +198,117 @@ def _load_combined_importance_from_dashboard(
         return pd.DataFrame()
 
 
+def _extract_consensus_features(payload: Any) -> Set[str]:
+    """Extract the consensus feature list from supported JSON payload shapes."""
+    if isinstance(payload, list):
+        return {str(x).strip() for x in payload if str(x).strip()}
+    if not isinstance(payload, dict):
+        return set()
+    raw = payload.get("consensus_features", [])
+    if isinstance(raw, dict):
+        raw = raw.get("features", [])
+    if isinstance(raw, list):
+        return {str(x).strip() for x in raw if str(x).strip()}
+    return set()
+
+
+def _load_consensus_feature_importance(
+    cohort: str,
+    age_band: str,
+    project_root: Optional[Path] = None,
+    bin_name: Optional[str] = None,
+) -> pd.DataFrame:
+    """
+    Load Consensus Filter features and their combined importances.
+
+    Source:
+      10_analysis_results/visualizations/scenario/{cohort}/{age_band_fname}/bin_models/{bin}/
+
+    The returned dataframe has columns feature and importance and contains only
+    features present in consensus_features.json.
+    """
+    project_root = project_root or Path.cwd()
+    age_band_fname = age_band.replace("-", "_")
+    base = (
+        Path(project_root)
+        / "10_analysis_results"
+        / "visualizations"
+        / "scenario"
+        / cohort
+        / age_band_fname
+    )
+    candidates = []
+    if bin_name:
+        candidates.append(base / "bin_models" / bin_name)
+    else:
+        try:
+            from py_helpers.event_density_utils import DENSITY_BINS
+        except ImportError:
+            DENSITY_BINS = ("low", "medium", "high", "extreme")
+        candidates.extend(base / "bin_models" / b for b in DENSITY_BINS)
+        candidates.append(base)
+
+    frames = []
+    for artifact_dir in candidates:
+        consensus_path = artifact_dir / "consensus_features.json"
+        if not consensus_path.exists():
+            continue
+        try:
+            consensus_features = _extract_consensus_features(
+                json.loads(consensus_path.read_text(encoding="utf-8"))
+            )
+        except Exception:
+            consensus_features = set()
+        if not consensus_features:
+            continue
+
+        combined_path = artifact_dir / "combined_importance.csv"
+        if not combined_path.exists():
+            combined_path = artifact_dir / "combined_shap_importance.csv"
+        if combined_path.exists():
+            try:
+                df = pd.read_csv(combined_path)
+                if "feature" not in df.columns and len(df.columns) >= 1:
+                    df = df.rename(columns={df.columns[0]: "feature"})
+                imp_col = next(
+                    (
+                        c
+                        for c in df.columns
+                        if c != "feature" and ("combined" in c.lower() or "importance" in c.lower())
+                    ),
+                    None,
+                )
+                if imp_col is None and len(df.columns) > 1:
+                    imp_col = df.columns[1]
+                if imp_col:
+                    df = df[["feature", imp_col]].copy()
+                    df.columns = ["feature", "importance"]
+                    df["feature"] = df["feature"].astype(str)
+                    df = df[df["feature"].isin(consensus_features)].copy()
+                else:
+                    df = pd.DataFrame()
+            except Exception:
+                df = pd.DataFrame()
+        else:
+            df = pd.DataFrame()
+
+        if df.empty:
+            df = pd.DataFrame(
+                {"feature": sorted(consensus_features), "importance": 1.0}
+            )
+        df["importance"] = pd.to_numeric(df["importance"], errors="coerce").fillna(0.0)
+        frames.append(df[["feature", "importance"]])
+
+    if not frames:
+        return pd.DataFrame(columns=["feature", "importance"])
+    out = pd.concat(frames, ignore_index=True)
+    return (
+        out.groupby("feature", as_index=False)["importance"]
+        .max()
+        .sort_values("importance", ascending=False)
+    )
+
+
 def get_shap_ffa_important_codes(
     cohort: str,
     age_band: str,
@@ -208,12 +320,12 @@ def get_shap_ffa_important_codes(
     use_ffa: bool = True,
 ) -> Set[str]:
     """
-    Return the set of item codes (drug/ICD/CPT) for BupaR/DTW/FP-Growth allowed codes.
+    Return the set of item codes (drug/ICD/CPT) from SHAP/FFA Consensus Filter artifacts.
 
-    Single source: Step 3b cohort_feature_importance only (same input as Step 4 model training
-    and SHAP/FFA analysis). No fallback; raises FileNotFoundError if 3b artifact is missing.
+    Single source: 10_analysis_results/visualizations/scenario/{cohort}/{age_band}/bin_models/{bin}.
+    No fallback to Step 3b feature importance or all events.
     """
-    merged = _load_final_feature_importance(cohort, age_band, project_root, data_root)
+    merged = _load_consensus_feature_importance(cohort, age_band, project_root, bin_name=None)
     if merged.empty:
         return set()
     if "importance" not in merged.columns:
@@ -247,8 +359,8 @@ def get_shap_ffa_allowed_codes_combined(
     use_ffa: bool = True,
 ) -> Set[str]:
     """
-    Return the union of allowed codes (drug + ICD + CPT) for BupaR/DTW/FP-Growth.
-    Single source: Step 3b cohort_feature_importance only (same as Step 4 model training and SHAP/FFA). No fallback.
+    Return the union of consensus allowed codes (drug + ICD + CPT) across density bins.
+    Single source: SHAP/FFA Consensus Filter artifacts.
     """
     drug = get_shap_ffa_important_codes(
         cohort, age_band, "drug_name", top_n, project_root, data_root, use_shap, use_ffa
@@ -262,6 +374,41 @@ def get_shap_ffa_allowed_codes_combined(
     return drug | icd | cpt
 
 
+def get_shap_ffa_allowed_codes_by_density_bin(
+    cohort: str,
+    age_band: str,
+    top_n: int = 500,
+    project_root: Optional[Path] = None,
+) -> Dict[str, Set[str]]:
+    """
+    Return consensus allowed codes by density bin.
+
+    Keys are low / medium / high / extreme when corresponding Consensus Filter
+    artifacts exist. Each value is the parsed set of drug/ICD/CPT codes from
+    consensus features ordered by combined importance.
+    """
+    try:
+        from py_helpers.event_density_utils import DENSITY_BINS
+    except ImportError:
+        DENSITY_BINS = ("low", "medium", "high", "extreme")
+    by_bin: Dict[str, Set[str]] = {}
+    for bin_name in DENSITY_BINS:
+        df = _load_consensus_feature_importance(cohort, age_band, project_root, bin_name=bin_name)
+        codes: Set[str] = set()
+        if not df.empty:
+            if "importance" in df.columns:
+                df = df.sort_values("importance", ascending=False)
+            if top_n and top_n > 0:
+                df = df.head(top_n)
+            for feat in df["feature"].astype(str):
+                code_type, code = _parse_feature_name(feat)
+                if code and code_type in {"drug", "icd", "cpt"}:
+                    codes.add(code)
+        if codes:
+            by_bin[str(bin_name)] = codes
+    return by_bin
+
+
 def write_shap_ffa_allowed_codes_for_bupar(
     cohort: str,
     age_band: str,
@@ -273,17 +420,17 @@ def write_shap_ffa_allowed_codes_for_bupar(
     use_ffa: bool = True,
 ) -> bool:
     """
-    Write a JSON array of allowed codes for BupaR/DTW/FP-Growth from Step 3b cohort_feature_importance only.
-    Returns True if the file was written (at least one code), False if cohort_feature_importance missing or empty.
+    Write a JSON object of consensus allowed codes by density bin for DTW.
+    Returns True if the file was written (at least one code), False if consensus artifacts are missing or empty.
     """
-    codes = get_shap_ffa_allowed_codes_combined(
-        cohort, age_band, top_n, project_root, data_root, use_shap, use_ffa
+    by_bin = get_shap_ffa_allowed_codes_by_density_bin(
+        cohort, age_band, top_n=top_n, project_root=project_root
     )
-    if not codes:
+    if not by_bin:
         return False
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(sorted(codes), f, indent=0)
+        json.dump({k: sorted(v) for k, v in by_bin.items()}, f, indent=2)
     return True
 
 
@@ -370,7 +517,7 @@ def get_final_feature_importance_codes(
     Return the set of item codes from final (cohort) feature importance for FP-Growth.
 
     item_type: 'drug_name', 'icd_code', 'cpt_code', or 'medical_code'.
-    Used by FP-Growth only; BupaR and DTW use get_shap_ffa_allowed_codes_combined.
+    Used by legacy FP-Growth helpers only; DTW uses Consensus Filter artifacts.
     """
     df = _load_final_feature_importance(cohort, age_band, project_root, data_root)
     if df.empty:

@@ -1104,6 +1104,19 @@ def _build_sequence_heatmap_data(dtw_df: pd.DataFrame) -> Optional[Dict[str, Any
 DENSITY_BINS = ("low", "medium", "high", "extreme")
 
 
+def _numeric_summary(series: pd.Series) -> Dict[str, Any]:
+    values = pd.to_numeric(series, errors="coerce").dropna()
+    if values.empty:
+        return {"n": 0, "mean": None, "median": None, "min": None, "max": None}
+    return {
+        "n": int(len(values)),
+        "mean": float(round(values.mean(), 2)),
+        "median": float(round(values.median(), 2)),
+        "min": float(round(values.min(), 2)),
+        "max": float(round(values.max(), 2)),
+    }
+
+
 def _build_chart_data_summary(dtw_df: pd.DataFrame) -> Dict[str, Any]:
     """Build a reusable summary block for chart_data.json so multiple visuals can use the same counts and stats.
     All trajectories are drug-only; one row = one patient trajectory."""
@@ -1113,6 +1126,10 @@ def _build_chart_data_summary(dtw_df: pd.DataFrame) -> Dict[str, Any]:
             "trajectories_with_time_between": 0,
             "trajectories_target1_with_time_to_target": 0,
             "trajectory_length": {"min": None, "max": None, "mean": None, "median": None},
+            "consensus_drug_to_target_days": {
+                "first_consensus_drug": {"n": 0, "mean": None, "median": None, "min": None, "max": None},
+                "last_consensus_drug": {"n": 0, "mean": None, "median": None, "min": None, "max": None},
+            },
             "has_dtw_distances": False,
             "target_counts": {"target_1": 0, "target_0": 0},
         }
@@ -1148,11 +1165,23 @@ def _build_chart_data_summary(dtw_df: pd.DataFrame) -> Dict[str, Any]:
         t0 = int((dtw_df["target"] == 0).sum())
     else:
         t1 = t0 = 0
+    target1_df = dtw_df[dtw_df["target"] == 1].copy() if "target" in dtw_df.columns else dtw_df.copy()
+    first_col = (
+        "days_first_consensus_drug_to_target"
+        if "days_first_consensus_drug_to_target" in target1_df.columns
+        else "days_first_event_to_target"
+    )
+    last_col = "days_last_consensus_drug_to_target"
+    timing_summary = {
+        "first_consensus_drug": _numeric_summary(target1_df[first_col]) if first_col in target1_df.columns else _numeric_summary(pd.Series(dtype=float)),
+        "last_consensus_drug": _numeric_summary(target1_df[last_col]) if last_col in target1_df.columns else _numeric_summary(pd.Series(dtype=float)),
+    }
     return {
         "total_trajectories": total,
         "trajectories_with_time_between": n_time_between,
         "trajectories_target1_with_time_to_target": n_time_to_target,
         "trajectory_length": tlstats,
+        "consensus_drug_to_target_days": timing_summary,
         "has_dtw_distances": bool(has_dtw),
         "target_counts": {"target_1": t1, "target_0": t0},
     }
