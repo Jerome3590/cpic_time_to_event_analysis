@@ -25,6 +25,8 @@ optuna>=3.0.0
 matplotlib>=3.6.0
 seaborn>=0.12.0
 plotly>=5.18.0
+notebook>=7.0
+anywidget>=0.9.13
 networkx>=3.0
 
 # PubMed search (Step 5 PGx)
