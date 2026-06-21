@@ -12,6 +12,7 @@ using locally built and downloaded artifacts:
 """
 
 import argparse
+import atexit
 import subprocess
 import sys
 from pathlib import Path
@@ -3316,7 +3317,7 @@ def evaluate_temporal_holdout(
     """Evaluate saved models on the 2019 temporal holdout; save metrics JSON and upload to S3."""
     import json, boto3
     from sklearn.metrics import roc_auc_score, average_precision_score
-    from py_helpers.model_utils import load_model as _load_model
+    from py_helpers.model_utils import load_model
 
     age_band_fname = age_band_to_fname(age_band)
     out_dir = PROJECT_ROOT / "6_final_model" / "outputs" / cohort / age_band_fname
@@ -3330,25 +3331,56 @@ def evaluate_temporal_holdout(
             return
         y_true = df_holdout[target_col].values
         holdout_prevalence = float(np.mean(y_true)) if len(y_true) else 0.0
-        drop_cols = [c for c in df_holdout.columns if c in (
-            "mi_person_key", "target", "target_time", "first_time",
-            "first_f1120_date", "first_o11_p_date",
-            "first_opioid_ed_date", "first_ed_non_opioid_date",
-        )]
-        X_holdout = df_holdout.drop(columns=drop_cols, errors="ignore")
-
-        xgb_path = out_dir / "final_model_json" / f"{cohort}_{age_band_fname}_best_xgboost_model.json"
-        if not xgb_path.exists():
-            print(f"[WARN] evaluate_temporal_holdout: model not found at {xgb_path} - skipping.")
+        if len(set(y_true)) < 2:
+            print("[WARN] evaluate_temporal_holdout: holdout has one class only - skipping metrics.")
             return
 
-        model = _load_model(xgb_path)
+        xgb_ffa_json_path = (
+            out_dir
+            / "final_model_json"
+            / f"{cohort}_{age_band_fname}_best_xgboost_model.json"
+        )
+
+        model, model_path = load_model(
+            cohort,
+            age_band,
+            "xgboost",
+            final_model_dir=PROJECT_ROOT / "6_final_model" / "outputs",
+            return_path=True,
+        )
+        if model is None or model_path is None:
+            print(
+                "[WARN] evaluate_temporal_holdout: XGBoost model artifact not found "
+                f"for {cohort}/{age_band} - skipping."
+            )
+            return
+
+        feature_names = None
+        if xgb_ffa_json_path.exists():
+            try:
+                with open(xgb_ffa_json_path) as f:
+                    feature_names = json.load(f).get("feature_names")
+            except Exception as feature_err:
+                print(f"[WARN] evaluate_temporal_holdout: could not read feature list: {feature_err}")
+        if feature_names is None and hasattr(model, "feature_names_in_"):
+            feature_names = list(model.feature_names_in_)
+
+        exclude_from_features = {"mi_person_key", "target", "n_event_bin", "n_events"}
+        candidate_cols = [c for c in df_holdout.columns if c not in exclude_from_features]
+        numeric_cols = [
+            c for c in candidate_cols if pd.api.types.is_numeric_dtype(df_holdout[c]) or c.startswith("item_")
+        ]
+        X_holdout = df_holdout[numeric_cols].replace([float("inf"), float("-inf")], pd.NA).fillna(0)
+        if feature_names:
+            X_holdout = X_holdout.reindex(columns=feature_names, fill_value=0)
+
         y_prob = model.predict_proba(X_holdout)[:, 1]
         pr_auc = float(average_precision_score(y_true, y_prob))
         pr_lift = pr_auc / holdout_prevalence if holdout_prevalence > 0 else None
         metrics = {
             "cohort": cohort,
             "age_band": age_band,
+            "model_path": str(model_path),
             "holdout_year": 2019,
             "n_holdout": int(len(y_true)),
             "n_positive": int(y_true.sum()),
@@ -3422,6 +3454,20 @@ def main() -> None:
         fh.setFormatter(formatter)
         logger.addHandler(fh)
     logger.propagate = False
+
+    def _mirror_final_model_log() -> None:
+        try:
+            mirror_log_to_s3(
+                feature_step="6_final_model",
+                cohort=args.cohort,
+                age_band=args.age_band,
+                log_path=log_path,
+                logger=logger,
+            )
+        except Exception:
+            pass
+
+    atexit.register(_mirror_final_model_log)
 
     env = detect_runtime_environment(PROJECT_ROOT)
     logger.info(
@@ -3702,11 +3748,23 @@ def main() -> None:
         prepare_script = PROJECT_ROOT / "6_final_model" / "prepare_train_test_s3.py"
         if prepare_script.exists():
             logger.info("Uploading model training input data to S3 (required for SHAP/FFA)...")
-            subprocess.run(
+            prepare_result = subprocess.run(
                 [str(get_workflow_python_bin()), str(prepare_script), "--cohort-name", args.cohort, "--age-band", args.age_band, "--project-root", str(PROJECT_ROOT)],
-                check=True,
+                capture_output=True,
+                text=True,
                 cwd=PROJECT_ROOT,
             )
+            if prepare_result.stdout:
+                logger.info("prepare_train_test_s3.py stdout:\n%s", prepare_result.stdout)
+                print(prepare_result.stdout, end="" if prepare_result.stdout.endswith("\n") else "\n")
+            if prepare_result.stderr:
+                logger.error("prepare_train_test_s3.py stderr:\n%s", prepare_result.stderr)
+                print(prepare_result.stderr, end="" if prepare_result.stderr.endswith("\n") else "\n", file=sys.stderr)
+            if prepare_result.returncode != 0:
+                raise RuntimeError(
+                    "prepare_train_test_s3.py failed with return code "
+                    f"{prepare_result.returncode}; see the Step 6 log for stdout/stderr."
+                )
             logger.info("Model training input data uploaded to S3 successfully.")
         else:
             raise RuntimeError(

@@ -224,7 +224,7 @@ def extract_patient_trajectories(
     # SHAP/FFA combined allowed codes file is required (same prerequisite as BupaR); we never use all events.
     # For extreme-density cohorts (e.g. non_opioid_ed_extreme_density), use the base cohort's allowed_codes.
     age_band_fname = age_band.replace("-", "_")
-    bupar_output_root = project_root / "10_risk_dashboard" / "visualizations" / "bupar"
+    bupar_output_root = project_root / "10_analysis_results" / "visualizations" / "bupar"
     allowed_codes_path = bupar_output_root / f"allowed_codes_shap_ffa_{cohort_name}_{age_band_fname}.json"
     if not allowed_codes_path.exists() and cohort_name.endswith("_extreme_density"):
         base_cohort = cohort_name.replace("_extreme_density", "")

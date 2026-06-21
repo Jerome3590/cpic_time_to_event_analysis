@@ -3,6 +3,8 @@ Model evaluation and metrics utilities.
 """
 import sys
 import os
+from pathlib import Path
+from typing import Any, Optional
 
 # Set root of project (e.g., /home/pgx3874/cpic_time_to_event_analysis)
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -11,6 +13,77 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from py_helpers.common_imports import *
+import joblib
+
+
+def load_model(
+    cohort: str,
+    age_band: str,
+    model_type: str,
+    final_model_dir: Optional[Path] = None,
+    bin_name: Optional[str] = None,
+    return_path: bool = False,
+) -> Any:
+    """
+    Load a Step 6 model from the final_model output directory.
+
+    Adapted from the pgx-analysis dashboard data-prep model loader.
+    Supports aggregate outputs and per-density-bin outputs.
+    """
+    age_band_fname = age_band.replace("-", "_")
+    final_model_dir = final_model_dir or (Path(project_root) / "6_final_model" / "outputs")
+    model_base = Path(final_model_dir) / cohort / age_band_fname
+    if bin_name:
+        model_base = model_base / "bin_models" / bin_name
+    model_dir = model_base / "models"
+
+    def _result(model: Any, path: Path) -> Any:
+        if return_path:
+            return model, path
+        return model
+
+    if model_type == "catboost":
+        model_path = model_dir / "catboost.joblib"
+        if model_path.exists():
+            from catboost import CatBoostClassifier  # type: ignore
+
+            model = CatBoostClassifier()
+            model.load_model(str(model_path))
+            return _result(model, model_path)
+
+        binary_path = model_dir / "catboost_model.cbm"
+        if binary_path.exists():
+            from catboost import CatBoostClassifier  # type: ignore
+
+            model = CatBoostClassifier()
+            model.load_model(str(binary_path))
+            return _result(model, binary_path)
+
+        legacy_joblib = model_dir / f"{cohort}_{age_band_fname}_final_model.joblib"
+        if legacy_joblib.exists():
+            return _result(joblib.load(legacy_joblib), legacy_joblib)
+
+    elif model_type == "xgboost":
+        joblib_path = model_dir / "xgboost.joblib"
+        if joblib_path.exists():
+            return _result(joblib.load(joblib_path), joblib_path)
+
+        native_path = model_dir / "xgboost_model.ubj"
+        if native_path.exists():
+            import xgboost as xgb  # type: ignore
+
+            model = xgb.XGBClassifier()
+            model.load_model(str(native_path))
+            return _result(model, native_path)
+
+    elif model_type == "xgboost_rf":
+        joblib_path = model_dir / "xgboost_rf.joblib"
+        if joblib_path.exists():
+            return _result(joblib.load(joblib_path), joblib_path)
+
+    if return_path:
+        return None, None
+    return None
 
 
 def analyze_drug_importance(model: Any, feature_name: str) -> Dict[str, float]:

@@ -64,8 +64,9 @@ cpic_time_to_event_analysis/
 │
 ├── 6_final_model/             # Step 6:  XGBoost/CatBoost training (per n_event_bin)
 ├── 7_shap_analysis/           # Step 7:  SHAP analysis
-├── 8_ffa_analysis/            # Step 8:  FFA + FP-Growth
+├── 8_ffa_analysis/            # Step 8:  FFA + combined SHAP/FFA scenario artifacts
 ├── 9_dtw_analysis/            # Step 9:  DTW trajectory clustering → S3
+├── 10_analysis_results/         # Results/scenario artifacts (no dashboard notebook)
 │
 ├── py_helpers/                # Shared Python utilities
 ├── r_helpers/                 # Shared R utilities
@@ -102,19 +103,21 @@ flowchart TD
         G["Step 5: PGx enrichment<br/>CPIC drug and gene-drug features"]
         H["Step 6: Final models<br/>Per-bin XGBoost/CatBoost"]
         I["Step 7: SHAP analysis<br/>Local/global attribution"]
-        J["Step 8: FFA / FP-Growth<br/>Pattern analysis"]
+        J["Step 8: FFA + combined SHAP/FFA<br/>Scenario / pseudo-causal importance"]
     end
 
     K["Post-pipeline: Step 9 DTW trajectories<br/>9_dtw_analysis/run_dtw_analysis.py"]
+    L["4_results_review.ipynb<br/>Final results summary and visual review"]
 
     SETUP -. "optional before reruns" .-> A
-    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K --> L
 
     C --> COUT[("S3: gold/cpic_time_to_event/cohorts")]
     D --> FIOUT[("S3: gold/cpic_time_to_event/feature_importance")]
     H --> MOUT[("S3: gold/cpic_time_to_event/final_model")]
     I --> SHAPOUT[("S3: gold/cpic_time_to_event/shap_analysis")]
     J --> FFAOUT[("S3: gold/cpic_time_to_event/ffa_analysis")]
+    J --> SCENARIOOUT[("S3: gold/cpic_time_to_event/analysis_visuals/scenario")]
     K --> DTWOUT[("S3: gold/cpic_time_to_event/dtw_analysis")]
 
     style SETUP fill:#f3f4f6,stroke:#6b7280
@@ -122,6 +125,7 @@ flowchart TD
     style N2 fill:#eff6ff,stroke:#2563eb
     style N3 fill:#ecfdf5,stroke:#16a34a
     style K fill:#f5f3ff,stroke:#7c3aed
+    style L fill:#fdf2f8,stroke:#db2777
 ```
 
 ---
@@ -134,11 +138,15 @@ flowchart TD
 | 1 | `1_cohort_workflow.ipynb` | Cohort creation (APCD input, event filtering, QA) | 1a → 1b → 2 |
 | 2 | `2_feature_importance.ipynb` | Feature importance screening and refinement | 3a |
 | 3 | `3_model_train_shap_ffa.ipynb` | Model training, SHAP, FFA | 4 → 5 → 6 → 7 → 8 |
+| 4 | `4_results_review.ipynb` | Final results summary and visual review | Review Steps 6–9 artifacts |
 
 Post-pipeline:
 ```bash
 python 9_dtw_analysis/run_dtw_analysis.py   # DTW trajectories → S3 (after Step 8)
 ```
+
+Then run `4_results_review.ipynb` to summarize model performance, SHAP, FFA, combined scenario / pseudo-causal importances, patient explanations, and DTW artifact availability.
+The Results notebook also persists review tables and figures under `10_analysis_results/visualizations/results_review/` and syncs both scenario artifacts and results-review visualizations to `s3://pgxdatalake/gold/cpic_time_to_event/analysis_visuals/`.
 
 ---
 
@@ -157,7 +165,7 @@ python 9_dtw_analysis/run_dtw_analysis.py   # DTW trajectories → S3 (after Ste
 | **5** PGx Analysis | `5_pgx_analysis/` | `gold/cpic_time_to_event/pgx_features/` | ✅ |
 | **6** Final Model | `6_final_model/` | `gold/cpic_time_to_event/final_model/` | ✅ per-bin for falls + ED |
 | **7** SHAP | `7_shap_analysis/` | `gold/cpic_time_to_event/shap_analysis/` | ✅ |
-| **8** FFA / FP-Growth | `8_ffa_analysis/` | `gold/cpic_time_to_event/ffa_analysis/` | ✅ |
+| **8** FFA + SHAP/FFA combine | `8_ffa_analysis/`, `10_analysis_results/data_preparation/` | `gold/cpic_time_to_event/ffa_analysis/`, `gold/cpic_time_to_event/analysis_visuals/scenario/` | ✅ |
 | **9** DTW Trajectories | `9_dtw_analysis/run_dtw_analysis.py` | `gold/cpic_time_to_event/dtw_analysis/` | ✅ |
 
 ### Execution — ⏳ Pending (EC2)
