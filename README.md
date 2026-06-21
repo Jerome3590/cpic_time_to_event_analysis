@@ -1,8 +1,16 @@
 # CPIC Time-to-Event Analysis: Falls and ED Visit Risk Prediction
 
-End-to-end machine learning pipeline predicting **fall-related** and **ED visit** events from APCD claims data — from cohort creation through ensemble model training, causal feature attribution, temporal trajectory analysis, and process mining.
+End-to-end machine learning pipeline predicting **fall-related** and **ED visit** events from APCD claims data — from cohort creation through ensemble model training, explainability, consensus feature filtering, and temporal trajectory analysis.
 
-**Combines XGBoost/CatBoost ensemble modeling, SHAP analysis, Formal Feature Attribution (FFA), Dynamic Time Warping (DTW) trajectory clustering, FP-Growth pattern mining, and post-target leakage screening on large-scale healthcare claims data (Virginia APCD). CPIC pharmacogenomic features are incorporated as causal inputs to explain drug and gene-drug interaction contributions to fall and ED event risk.**
+**Combines XGBoost/CatBoost ensemble modeling, SHAP analysis, Formal Feature Attribution (FFA), a SHAP/FFA Consensus Filter, Dynamic Time Warping (DTW) trajectory clustering, and post-target leakage screening on large-scale healthcare claims data (Virginia APCD). CPIC pharmacogenomic features are incorporated as model inputs to explain drug and gene-drug interaction contributions to fall and ED event risk.**
+
+## Analytical Frameworks
+
+- **SHAP:** model-level attribution for local and global feature importance across final XGBoost/CatBoost models.
+- **FFA:** symbolic/pseudo-causal feature attribution used to identify scenario factors and interaction candidates.
+- **Consensus Filter:** combines SHAP and FFA outputs to retain features supported by both attribution frameworks before final results review.
+- **DTW:** temporal medication and event trajectory alignment/clustering used to compare patterns preceding falls and ED visits.
+- **FFA Interaction Analysis:** reviews FFA-derived interaction/scenario factors to identify co-occurring drug, event, and PGx patterns in high-risk patients.
 
 ---
 
@@ -64,8 +72,8 @@ cpic_time_to_event_analysis/
 │
 ├── 6_final_model/             # Step 6:  XGBoost/CatBoost training (per n_event_bin)
 ├── 7_shap_analysis/           # Step 7:  SHAP analysis
-├── 8_ffa_analysis/            # Step 8:  FFA + combined SHAP/FFA scenario artifacts
-├── 9_dtw_analysis/            # Step 9:  DTW trajectory clustering → S3
+├── 8_ffa_analysis/            # Step 8:  FFA + SHAP/FFA Consensus Filter artifacts
+├── 9_dtw_analysis/            # Step 9:  DTW trajectory clustering and visuals → S3
 ├── 10_analysis_results/         # Results/scenario artifacts (no dashboard notebook)
 │
 ├── py_helpers/                # Shared Python utilities
@@ -103,10 +111,10 @@ flowchart TD
         G["Step 5: PGx enrichment<br/>CPIC drug and gene-drug features"]
         H["Step 6: Final models<br/>Per-bin XGBoost/CatBoost"]
         I["Step 7: SHAP analysis<br/>Local/global attribution"]
-        J["Step 8: FFA + combined SHAP/FFA<br/>Scenario / pseudo-causal importance"]
+        J["Step 8: FFA + SHAP/FFA Consensus Filter<br/>Scenario factors + consensus importance"]
     end
 
-    K["Post-pipeline: Step 9 DTW trajectories<br/>9_dtw_analysis/run_dtw_analysis.py"]
+    K["Step 9: DTW trajectories<br/>9_dtw_analysis/run_dtw_analysis.py"]
     L["4_results_review.ipynb<br/>Final results summary and visual review"]
 
     SETUP -. "optional before reruns" .-> A
@@ -137,15 +145,15 @@ flowchart TD
 | 0 | `0_config_and_pipeline.ipynb` | Setup, environment checks, cleanup/reset, and run instructions | Config |
 | 1 | `1_cohort_workflow.ipynb` | Cohort creation (APCD input, event filtering, QA) | 1a → 1b → 2 |
 | 2 | `2_feature_importance.ipynb` | Feature importance screening and refinement | 3a |
-| 3 | `3_model_train_shap_ffa.ipynb` | Model training, SHAP, FFA | 4 → 5 → 6 → 7 → 8 |
-| 4 | `4_results_review.ipynb` | Final results summary and visual review | Review Steps 6–9 artifacts |
+| 3 | `3_model_train_shap_ffa.ipynb` | Model training, SHAP, FFA, and Consensus Filter artifacts | 4 → 5 → 6 → 7 → 8 |
+| 4 | `4_results_review.ipynb` | Final results summary, DTW generation when inputs are present, and visual review | Review Steps 6–9 artifacts |
 
-Post-pipeline:
+DTW can be run directly from the Results notebook when Step 4 `model_events.parquet` files are present on EC2 or a local machine. It can also be run manually:
 ```bash
-python 9_dtw_analysis/run_dtw_analysis.py   # DTW trajectories → S3 (after Step 8)
+python 9_dtw_analysis/run_dtw_analysis.py   # DTW trajectories and visuals → S3
 ```
 
-Then run `4_results_review.ipynb` to summarize model performance, SHAP, FFA, combined scenario / pseudo-causal importances, patient explanations, and DTW artifact availability.
+Run `4_results_review.ipynb` to summarize model performance, SHAP, FFA, Consensus Filter outputs, patient explanations, and DTW trajectory artifacts.
 The Results notebook also persists review tables and figures under `10_analysis_results/visualizations/results_review/` and syncs both scenario artifacts and results-review visualizations to `s3://pgxdatalake/gold/cpic_time_to_event/analysis_visuals/`.
 
 ---
@@ -165,17 +173,17 @@ The Results notebook also persists review tables and figures under `10_analysis_
 | **5** PGx Analysis | `5_pgx_analysis/` | `gold/cpic_time_to_event/pgx_features/` | ✅ |
 | **6** Final Model | `6_final_model/` | `gold/cpic_time_to_event/final_model/` | ✅ per-bin for falls + ED |
 | **7** SHAP | `7_shap_analysis/` | `gold/cpic_time_to_event/shap_analysis/` | ✅ |
-| **8** FFA + SHAP/FFA combine | `8_ffa_analysis/`, `10_analysis_results/data_preparation/` | `gold/cpic_time_to_event/ffa_analysis/`, `gold/cpic_time_to_event/analysis_visuals/scenario/` | ✅ |
+| **8** FFA + Consensus Filter | `8_ffa_analysis/`, `10_analysis_results/data_preparation/` | `gold/cpic_time_to_event/ffa_analysis/`, `gold/cpic_time_to_event/analysis_visuals/scenario/` | ✅ |
 | **9** DTW Trajectories | `9_dtw_analysis/run_dtw_analysis.py` | `gold/cpic_time_to_event/dtw_analysis/` | ✅ |
 
-### Execution — ⏳ Pending (EC2)
+### Execution — Results Review Ready
 
-| Cohort | Age Band | Status |
-|--------|----------|--------|
-| `falls` | 65–74 | ⏳ |
-| `falls` | 75–84 | ⏳ |
-| `ed` | 65–74 | ⏳ |
-| `ed` | 75–84 | ⏳ |
+| Cohort | Age Band | Model / SHAP / FFA / Consensus | DTW | Notebook 4 Review |
+|--------|----------|----------------------------------|-----|-------------------|
+| `falls` | 65–74 | ✅ Scenario artifacts synced to S3 | Runs from notebook 4 when Step 4 `model_events.parquet` is present | ✅ Ready |
+| `falls` | 75–84 | ✅ Scenario artifacts synced to S3 | Runs from notebook 4 when Step 4 `model_events.parquet` is present | ✅ Ready |
+| `ed` | 65–74 | ✅ Scenario artifacts synced to S3 | Runs from notebook 4 when Step 4 `model_events.parquet` is present | ✅ Ready |
+| `ed` | 75–84 | ✅ Scenario artifacts synced to S3 | Runs from notebook 4 when Step 4 `model_events.parquet` is present | ✅ Ready |
 
 ### Key Configuration
 
@@ -189,10 +197,10 @@ The Results notebook also persists review tables and figures under `10_analysis_
 
 ---
 
-## Research Questions (DTW / FP-Growth)
+## Research Questions (DTW / FFA Interaction Analysis)
 
 1. **What temporal medication sequences (DTW clusters) are most predictive of fall events?**
-2. **Which drug-drug interaction patterns (FP-Growth rules) co-occur in high-fall-risk patients?**
+2. **Which drug-drug interaction patterns (FFA interaction/scenario factors) co-occur in high-fall-risk patients?**
 3. **What medication and event patterns precede a fall ED visit vs. non-fall ED visit?**
 4. **Do CPIC pharmacogenomic actionability levels modulate fall risk independent of polypharmacy burden?**
 5. **Does the temporal gap between a high-risk medication prescription and a fall follow a predictable pattern (DTW alignment)?**
