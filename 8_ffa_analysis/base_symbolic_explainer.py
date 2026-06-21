@@ -87,9 +87,20 @@ def _explain_instance_worker(task: Tuple[int, List[float], int, Dict, Optional[D
     if instance.ndim != 1:
         raise ValueError(f"Expected 1D array, got {instance.ndim}D array with shape {instance.shape}, instance_values type: {type(instance_values)}")
     
-    # Validate length (should match number of features, typically 137)
-    if len(instance) < 100:  # Sanity check - should have many features
-        raise ValueError(f"Instance array too short: {len(instance)} elements, expected ~137. First few: {instance[:5]}")
+    expected_features = explainer_state.get("n_features")
+    if expected_features is None and feature_names:
+        expected_features = len(feature_names)
+    if expected_features is not None and len(instance) != expected_features:
+        raise ValueError(
+            f"Instance array length mismatch: {len(instance)} elements, expected {expected_features}. "
+            f"First few: {instance[:5]}"
+        )
+    max_rule_feature_idx = max((cond[0] for cond in id_condition_map.values()), default=-1)
+    if len(instance) <= max_rule_feature_idx:
+        raise ValueError(
+            f"Instance array has {len(instance)} elements, but rules reference feature index "
+            f"{max_rule_feature_idx}. First few: {instance[:5]}"
+        )
     
     # Get rule indices for this class (cached)
     if predicted_class not in _class_rule_indices:
@@ -1070,7 +1081,8 @@ class BaseSymbolicExplainer(ABC):
             'feature_names': self.feature_names,
             '_class_rule_indices': self._class_rule_indices,
             'shap_importance_map': self.shap_importance_map,
-            'rule_frequencies': self.rule_frequencies  # NEW: Include rule frequencies for Set 5
+            'rule_frequencies': self.rule_frequencies,  # NEW: Include rule frequencies for Set 5
+            'n_features': len(self.feature_names) if self.feature_names else None,
         }
         
         # Create tasks
@@ -1090,9 +1102,10 @@ class BaseSymbolicExplainer(ABC):
                 x_1d = x
             
             # Validate length - get expected feature count from explainer if available
-            expected_features = getattr(explainer_state, 'n_features', None)
-            if expected_features is None and hasattr(explainer_state, 'feature_names'):
-                expected_features = len(explainer_state.feature_names) if explainer_state.feature_names else None
+            expected_features = explainer_state.get('n_features')
+            if expected_features is None:
+                feature_names = explainer_state.get('feature_names')
+                expected_features = len(feature_names) if feature_names else None
             
             # If we have expected features, validate match
             if expected_features and len(x_1d) != expected_features:
