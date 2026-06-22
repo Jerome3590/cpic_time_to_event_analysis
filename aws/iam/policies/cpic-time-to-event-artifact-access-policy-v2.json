@@ -27,6 +27,7 @@
       "Condition": {
         "StringLike": {
           "s3:prefix": [
+            "",
             "gold",
             "gold/",
             "gold/cpic_time_to_event",
@@ -53,6 +54,7 @@
       "Condition": {
         "StringLike": {
           "s3:prefix": [
+            "",
             "notebooks",
             "notebooks/",
             "notebooks/cpic-time-to-event-analysis",
@@ -85,6 +87,7 @@
       "Condition": {
         "StringLike": {
           "s3:prefix": [
+            "",
             "cpic_time_to_event_analysis",
             "cpic_time_to_event_analysis/",
             "cpic_time_to_event_analysis/*",

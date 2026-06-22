@@ -88,3 +88,4 @@ python aws/iam/scripts/provision_iam_user.py --execute --sender verified-sender@
 - In execute mode, the generated password is held in memory and emailed once.
 - The user is forced to reset the password on first sign-in.
 - If an IAM login profile already exists, the script rotates the temporary password and keeps password reset required.
+- See `LESSONS_LEARNED.md` before creating S3-scoped policies; S3 console access usually requires both bucket discovery and root-prefix `ListBucket` permissions.

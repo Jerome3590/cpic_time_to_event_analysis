@@ -12,6 +12,7 @@
 - **AWS account:** `535362115856`
 - **IAM user created:** Yes - `arn:aws:iam::535362115856:user/srhashimi2`
 - **Scoped IAM policy created:** Yes - `arn:aws:iam::535362115856:policy/CpicTimeToEventArtifactAccess`
+- **Scoped IAM policy default version:** `v2` as of 2026-06-22T15:39Z
 - **Policy attached to user:** Yes
 - **Console login profile created:** Yes
 - **Password reset required:** Yes
@@ -38,6 +39,8 @@ Verification commands succeeded:
 - `aws iam list-attached-user-policies --user-name srhashimi2`
 - `aws iam get-login-profile --user-name srhashimi2`
 - `aws iam get-policy --policy-arn arn:aws:iam::535362115856:policy/CpicTimeToEventArtifactAccess`
+- `aws iam simulate-principal-policy ... --action-names s3:ListAllMyBuckets`
+- `aws iam simulate-principal-policy ... --action-names s3:ListBucket --resource-arns arn:aws:s3:::pgxdatalake`
 
 ## Next Live Action Required
 
@@ -49,6 +52,8 @@ Ask `srhashimi2@vcu.edu` to confirm receipt and complete first-login password re
 - [x] Confirm login profile exists: `aws iam get-login-profile --user-name srhashimi2`
 - [x] Confirm `CpicTimeToEventArtifactAccess` policy exists
 - [x] Confirm policy attached to `srhashimi2`
+- [x] Confirm `s3:ListAllMyBuckets` is allowed
+- [x] Confirm `s3:ListBucket` is allowed for `pgxdatalake` root and `gold/cpic_time_to_event`
 - [x] Confirm SES send succeeded
 - [ ] Confirm recipient received temporary password
 - [ ] Confirm first login/password reset completed
