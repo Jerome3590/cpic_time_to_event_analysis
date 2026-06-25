@@ -1,0 +1,20 @@
+{
+  "consensus_features": [
+    "item_drug_AMOXICILLIN",
+    "item_drug_AZITHROMYCIN",
+    "item_drug_CARVEDILOL",
+    "item_drug_CEPHALEXIN",
+    "item_drug_HYDROCHLOROTHIAZIDE",
+    "item_drug_LISINOPRIL",
+    "item_drug_LORAZEPAM",
+    "item_drug_OMEPRAZOLE",
+    "item_drug_SIMVASTATIN",
+    "pgx_num_drugs"
+  ],
+  "shap_only": [],
+  "ffa_only": [],
+  "consensus_count": 10,
+  "shap_count": 10,
+  "ffa_count": 10,
+  "consensus_rate": 0.5
+}

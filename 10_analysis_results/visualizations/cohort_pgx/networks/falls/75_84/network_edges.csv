@@ -1,0 +1,47 @@
+source,target,relation,weight,mentions,evidence,seed_edge,feature_importance,rank,source_feature,cohort,age_band,density_bin
+ABCB1,triphosphate,metabolizes,0.1,1,,False,,,,,,
+ABCB1,cassette,metabolizes,0.2,2,,False,,,,,,
+ABCB1,SIMVASTATIN,feature_importance_drug_gene,0.05,,Top consensus drug feature rank 5; combined importance 0.0474,True,0.0473723713856008,5,item_drug_SIMVASTATIN,falls,75-84,all
+ABCB1,CETP,co_metabolizes,1.0,,,False,,,,,,
+ABCB1,CYP3A4,co_metabolizes,1.0,,,False,,,,,,
+ABCB1,CYP3A5,co_metabolizes,1.0,,,False,,,,,,
+ABCB1,HMGCR,co_metabolizes,1.0,,,False,,,,,,
+ABCB1,SLCO1B1,co_metabolizes,1.0,,,False,,,,,,
+ABCB1,LPA,co_metabolizes,1.0,,,False,,,,,,
+ADD1,FUROSEMIDE,feature_importance_drug_gene,0.0791326075838837,,Top consensus drug feature rank 3; combined importance 0.0791,True,0.0791326075838837,3,item_drug_FUROSEMIDE,falls,75-84,all
+CETP,SIMVASTATIN,feature_importance_drug_gene,0.05,,Top consensus drug feature rank 5; combined importance 0.0474,True,0.0473723713856008,5,item_drug_SIMVASTATIN,falls,75-84,all
+CETP,CYP3A4,co_metabolizes,1.0,,,False,,,,,,
+CETP,CYP3A5,co_metabolizes,1.0,,,False,,,,,,
+CETP,HMGCR,co_metabolizes,1.0,,,False,,,,,,
+CETP,SLCO1B1,co_metabolizes,1.0,,,False,,,,,,
+CETP,LPA,co_metabolizes,1.0,,,False,,,,,,
+CYP3A4,inducers,metabolizes,0.2,2,,False,,,,,,
+CYP3A4,inhibitors,metabolizes,0.2,2,,False,,,,,,
+CYP3A4,quetiapine,metabolizes,0.1,1,,False,,,,,,
+CYP3A4,SIMVASTATIN,feature_importance_drug_gene,0.05,,Top consensus drug feature rank 5; combined importance 0.0474,True,0.0473723713856008,5,item_drug_SIMVASTATIN,falls,75-84,all
+CYP3A4,CYP3A5,co_metabolizes,1.0,,,False,,,,,,
+CYP3A4,HMGCR,co_metabolizes,1.0,,,False,,,,,,
+CYP3A4,SLCO1B1,co_metabolizes,1.0,,,False,,,,,,
+CYP3A4,LPA,co_metabolizes,1.0,,,False,,,,,,
+CYP3A5,assignments,metabolizes,0.1,1,,False,,,,,,
+CYP3A5,tacrolimus,metabolizes,0.1,1,,False,,,,,,
+CYP3A5,SIMVASTATIN,feature_importance_drug_gene,0.05,,Top consensus drug feature rank 5; combined importance 0.0474,True,0.0473723713856008,5,item_drug_SIMVASTATIN,falls,75-84,all
+CYP3A5,HMGCR,co_metabolizes,1.0,,,False,,,,,,
+CYP3A5,SLCO1B1,co_metabolizes,2.0,,,False,,,,,,
+CYP3A5,LPA,co_metabolizes,1.0,,,False,,,,,,
+assignments,SLCO1B1,metabolizes,0.1,1,,False,,,,,,
+HMGCR,enzyme,metabolizes,0.2,2,,False,,,,,,
+HMGCR,SIMVASTATIN,feature_importance_drug_gene,0.05,,Top consensus drug feature rank 5; combined importance 0.0474,True,0.0473723713856008,5,item_drug_SIMVASTATIN,falls,75-84,all
+HMGCR,SLCO1B1,co_metabolizes,1.0,,,False,,,,,,
+HMGCR,LPA,co_metabolizes,1.0,,,False,,,,,,
+LPA,lipoprotein,metabolizes,0.1,1,,False,,,,,,
+LPA,SIMVASTATIN,feature_importance_drug_gene,0.05,,Top consensus drug feature rank 5; combined importance 0.0474,True,0.0473723713856008,5,item_drug_SIMVASTATIN,falls,75-84,all
+LPA,SLCO1B1,co_metabolizes,1.0,,,False,,,,,,
+NEDD4L,HYDROCHLOROTHIAZIDE,feature_importance_drug_gene,0.05,,Top consensus drug feature rank 6; combined importance 0.0416,True,0.0416143285241111,6,item_drug_HYDROCHLOROTHIAZIDE,falls,75-84,all
+NEDD4L,YEATS4,co_metabolizes,1.0,,,False,,,,,,
+NEDD4L,PRKCA,co_metabolizes,1.0,,,False,,,,,,
+PRKCA,HYDROCHLOROTHIAZIDE,feature_importance_drug_gene,0.05,,Top consensus drug feature rank 6; combined importance 0.0416,True,0.0416143285241111,6,item_drug_HYDROCHLOROTHIAZIDE,falls,75-84,all
+PRKCA,YEATS4,co_metabolizes,1.0,,,False,,,,,,
+SLCO1B1,rosuvastatin,metabolizes,0.1,1,,False,,,,,,
+SLCO1B1,SIMVASTATIN,feature_importance_drug_gene,0.05,,Top consensus drug feature rank 5; combined importance 0.0474,True,0.0473723713856008,5,item_drug_SIMVASTATIN,falls,75-84,all
+YEATS4,HYDROCHLOROTHIAZIDE,feature_importance_drug_gene,0.05,,Top consensus drug feature rank 6; combined importance 0.0416,True,0.0416143285241111,6,item_drug_HYDROCHLOROTHIAZIDE,falls,75-84,all

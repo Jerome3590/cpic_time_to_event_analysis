@@ -1,0 +1,30 @@
+{
+  "consensus_features": [
+    "item_drug_ALLOPURINOL",
+    "item_drug_ALPRAZOLAM",
+    "item_drug_AMOXICILLIN",
+    "item_drug_ATENOLOL",
+    "item_drug_AZITHROMYCIN",
+    "item_drug_CARVEDILOL",
+    "item_drug_CRESTOR",
+    "item_drug_FUROSEMIDE",
+    "item_drug_HYDROCHLOROTHIAZIDE",
+    "item_drug_LISINOPRIL",
+    "item_drug_LORAZEPAM",
+    "item_drug_MELOXICAM",
+    "item_drug_METRONIDAZOLE",
+    "item_drug_NAPROXEN",
+    "item_drug_OFLOXACIN",
+    "item_drug_OMEPRAZOLE",
+    "item_drug_PREDNISONE",
+    "item_drug_SIMVASTATIN",
+    "item_drug_SYNTHROID",
+    "pgx_num_drugs"
+  ],
+  "shap_only": [],
+  "ffa_only": [],
+  "consensus_count": 20,
+  "shap_count": 20,
+  "ffa_count": 20,
+  "consensus_rate": 1.0
+}

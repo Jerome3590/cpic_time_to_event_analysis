@@ -1,0 +1,40 @@
+{
+  "gene_tiers": {
+    "ABCB1": "Tier 1",
+    "ADD1": "Undefined",
+    "ADRA2C": "Undefined",
+    "ADRB1": "Tier 1",
+    "ADRB2": "Tier 1",
+    "CES1": "Undefined",
+    "CETP": "Undefined",
+    "CYP2C19": "Tier 1",
+    "CYP2C8": "Tier 1",
+    "CYP2C9": "Tier 1",
+    "CYP2D6": "Tier 1",
+    "CYP3A4": "Tier 1",
+    "CYP3A5": "Tier 1",
+    "G6PD": "Tier 1",
+    "GRK4": "Undefined",
+    "GRK5": "Undefined",
+    "HLA-A": "Undefined",
+    "HLA-B": "Tier 1",
+    "HLA-C": "Undefined",
+    "HMGCR": "Tier 2",
+    "LPA": "Undefined",
+    "NEDD4L": "Undefined",
+    "PRKCA": "Undefined",
+    "PTGFR": "Undefined",
+    "SLCO1B1": "Tier 1",
+    "YEATS4": "Undefined"
+  },
+  "cpic_genes": [
+    "G6PD",
+    "HLA-A",
+    "HLA-B",
+    "CYP2C19",
+    "SLCO1B1",
+    "CYP2D6",
+    "CYP2C9",
+    "CYP3A5"
+  ]
+}

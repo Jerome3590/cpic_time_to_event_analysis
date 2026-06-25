@@ -1,0 +1,19 @@
+{
+  "gene_tiers": {
+    "ABCB1": "Tier 1",
+    "ADD1": "Undefined",
+    "CETP": "Undefined",
+    "CYP3A4": "Tier 1",
+    "CYP3A5": "Tier 1",
+    "HMGCR": "Tier 2",
+    "LPA": "Undefined",
+    "NEDD4L": "Undefined",
+    "PRKCA": "Undefined",
+    "SLCO1B1": "Tier 1",
+    "YEATS4": "Undefined"
+  },
+  "cpic_genes": [
+    "CYP3A5",
+    "SLCO1B1"
+  ]
+}

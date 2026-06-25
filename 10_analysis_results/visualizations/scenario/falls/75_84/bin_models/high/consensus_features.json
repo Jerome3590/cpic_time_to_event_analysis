@@ -1,0 +1,33 @@
+{
+  "consensus_features": [
+    "item_cpt_71010",
+    "item_cpt_71020",
+    "item_cpt_83036",
+    "item_cpt_83735",
+    "item_cpt_87086",
+    "item_cpt_96372",
+    "item_cpt_96375",
+    "item_cpt_97162",
+    "item_cpt_99204",
+    "item_cpt_99283",
+    "item_cpt_99308",
+    "item_drug_GABAPENTIN",
+    "item_icd_I4891",
+    "item_icd_L570",
+    "item_icd_R0602",
+    "item_icd_R0789",
+    "item_icd_R0989",
+    "item_icd_Z23",
+    "pgx_num_drugs"
+  ],
+  "shap_only": [
+    "item_icd_R05"
+  ],
+  "ffa_only": [
+    "item_cpt_81001"
+  ],
+  "consensus_count": 19,
+  "shap_count": 20,
+  "ffa_count": 20,
+  "consensus_rate": 0.95
+}

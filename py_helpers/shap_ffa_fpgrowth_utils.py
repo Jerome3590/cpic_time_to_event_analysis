@@ -325,28 +325,107 @@ def get_shap_ffa_important_codes(
     Single source: 10_analysis_results/visualizations/scenario/{cohort}/{age_band}/bin_models/{bin}.
     No fallback to Step 3b feature importance or all events.
     """
-    merged = _load_consensus_feature_importance(cohort, age_band, project_root, bin_name=None)
-    if merged.empty:
+    ranked = get_shap_ffa_important_code_importance(
+        cohort=cohort,
+        age_band=age_band,
+        item_type=item_type,
+        top_n=top_n,
+        project_root=project_root,
+        bin_name=None,
+    )
+    if ranked.empty:
         return set()
+    codes = set(ranked["code"].dropna().astype(str))
+    if item_type == "drug_name":
+        return codes
+    if item_type == "icd_code":
+        return codes
+    if item_type == "cpt_code":
+        return codes
+    if item_type == "medical_code":
+        return codes
+    return set()
+
+
+def get_shap_ffa_important_code_importance(
+    cohort: str,
+    age_band: str,
+    item_type: str,
+    top_n: int = 500,
+    project_root: Optional[Path] = None,
+    bin_name: Optional[str] = None,
+) -> pd.DataFrame:
+    """
+    Return ranked Consensus Filter codes with importance metadata.
+
+    Unlike ``get_shap_ffa_important_codes``, this preserves feature importance,
+    rank, source feature, and optional density-bin context so downstream graph
+    builders can weight edges by the same SHAP/FFA evidence used for filtering.
+    """
+    item_type_to_code_type = {
+        "drug_name": "drug",
+        "icd_code": "icd",
+        "cpt_code": "cpt",
+        "medical_code": None,
+    }
+    wanted_code_type = item_type_to_code_type.get(item_type)
+    if item_type not in item_type_to_code_type:
+        return pd.DataFrame(
+            columns=["feature", "code_type", "code", "importance", "rank", "bin"]
+        )
+
+    merged = _load_consensus_feature_importance(
+        cohort, age_band, project_root, bin_name=bin_name
+    )
+    if merged.empty:
+        return pd.DataFrame(
+            columns=["feature", "code_type", "code", "importance", "rank", "bin"]
+        )
     if "importance" not in merged.columns:
         merged["importance"] = 1.0
-    merged = merged.groupby("feature", as_index=False)["importance"].max()
-    merged = merged.sort_values("importance", ascending=False).head(top_n)
-    # Map to code_type and code
-    code_sets = {"drug": set(), "icd": set(), "cpt": set()}
-    for feat in merged["feature"].astype(str):
-        code_type, code = _parse_feature_name(feat)
-        if code and code_type in code_sets:
-            code_sets[code_type].add(code)
-    if item_type == "drug_name":
-        return code_sets["drug"]
-    if item_type == "icd_code":
-        return code_sets["icd"]
-    if item_type == "cpt_code":
-        return code_sets["cpt"]
-    if item_type == "medical_code":
-        return code_sets["drug"] | code_sets["icd"] | code_sets["cpt"]
-    return set()
+    merged["importance"] = pd.to_numeric(merged["importance"], errors="coerce").fillna(0.0)
+    merged = merged.sort_values(["importance", "feature"], ascending=[False, True])
+
+    rows = []
+    for _, row in merged.iterrows():
+        feature = str(row.get("feature", "")).strip()
+        code_type, code = _parse_feature_name(feature)
+        if not code:
+            continue
+        if wanted_code_type is not None and code_type != wanted_code_type:
+            continue
+        if wanted_code_type is None and code_type not in {"drug", "icd", "cpt"}:
+            continue
+        rows.append(
+            {
+                "feature": feature,
+                "code_type": code_type,
+                "code": code,
+                "importance": float(row.get("importance", 0.0)),
+                "bin": bin_name or "all",
+            }
+        )
+
+    if not rows:
+        return pd.DataFrame(
+            columns=["feature", "code_type", "code", "importance", "rank", "bin"]
+        )
+
+    out = pd.DataFrame(rows)
+    out = out.sort_values(["importance", "code"], ascending=[False, True])
+    out = (
+        out.groupby(["code_type", "code"], as_index=False)
+        .agg(
+            feature=("feature", "first"),
+            importance=("importance", "max"),
+            bin=("bin", "first"),
+        )
+        .sort_values(["importance", "code"], ascending=[False, True])
+    )
+    if top_n and top_n > 0:
+        out = out.head(top_n).copy()
+    out["rank"] = range(1, len(out) + 1)
+    return out[["feature", "code_type", "code", "importance", "rank", "bin"]]
 
 
 def get_shap_ffa_allowed_codes_combined(

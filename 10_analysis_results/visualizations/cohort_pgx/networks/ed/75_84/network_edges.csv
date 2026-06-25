@@ -1,0 +1,82 @@
+source,target,relation,weight,mentions,evidence,seed_edge,feature_importance,rank,source_feature,cohort,age_band,density_bin
+ABCB1,triphosphate,metabolizes,0.1,1,,False,,,,,,
+ABCB1,cassette,metabolizes,0.2,2,,False,,,,,,
+ABCB1,SIMVASTATIN,feature_importance_drug_gene,0.0628544048775277,,Top consensus drug feature rank 7; combined importance 0.0629,True,0.0628544048775277,7,item_drug_SIMVASTATIN,ed,75-84,all
+ABCB1,HMGCR,co_metabolizes,1.0,,,False,,,,,,
+ABCB1,CETP,co_metabolizes,1.0,,,False,,,,,,
+ABCB1,SLCO1B1,co_metabolizes,1.0,,,False,,,,,,
+ABCB1,CYP3A4,co_metabolizes,1.0,,,False,,,,,,
+ABCB1,CYP3A5,co_metabolizes,1.0,,,False,,,,,,
+ABCB1,LPA,co_metabolizes,1.0,,,False,,,,,,
+ADRA2C,CARVEDILOL,feature_importance_drug_gene,0.07040110649759,,Top consensus drug feature rank 5; combined importance 0.0704,True,0.07040110649759,5,item_drug_CARVEDILOL,ed,75-84,all
+ADRA2C,ATENOLOL,feature_importance_drug_gene,0.05,,Top consensus drug feature rank 12; combined importance 0.0050,True,0.0049709752911674,12,item_drug_ATENOLOL,ed,75-84,all
+ADRA2C,GRK4,co_metabolizes,2.0,,,False,,,,,,
+ADRA2C,GRK5,co_metabolizes,2.0,,,False,,,,,,
+ADRA2C,ADRB2,co_metabolizes,1.0,,,False,,,,,,
+ADRA2C,ADRB1,co_metabolizes,2.0,,,False,,,,,,
+ADRA2C,CYP2D6,co_metabolizes,1.0,,,False,,,,,,
+ADRB1,CARVEDILOL,feature_importance_drug_gene,0.07040110649759,,Top consensus drug feature rank 5; combined importance 0.0704,True,0.07040110649759,5,item_drug_CARVEDILOL,ed,75-84,all
+ADRB1,ATENOLOL,feature_importance_drug_gene,0.05,,Top consensus drug feature rank 12; combined importance 0.0050,True,0.0049709752911674,12,item_drug_ATENOLOL,ed,75-84,all
+ADRB1,GRK4,co_metabolizes,2.0,,,False,,,,,,
+ADRB1,GRK5,co_metabolizes,2.0,,,False,,,,,,
+ADRB1,ADRB2,co_metabolizes,1.0,,,False,,,,,,
+ADRB1,CYP2D6,co_metabolizes,1.0,,,False,,,,,,
+ADRB2,receptor,metabolizes,0.2,2,,False,,,,,,
+ADRB2,CARVEDILOL,feature_importance_drug_gene,0.07040110649759,,Top consensus drug feature rank 5; combined importance 0.0704,True,0.07040110649759,5,item_drug_CARVEDILOL,ed,75-84,all
+ADRB2,GRK4,co_metabolizes,1.0,,,False,,,,,,
+ADRB2,GRK5,co_metabolizes,1.0,,,False,,,,,,
+ADRB2,CYP2D6,co_metabolizes,1.0,,,False,,,,,,
+CETP,SIMVASTATIN,feature_importance_drug_gene,0.0628544048775277,,Top consensus drug feature rank 7; combined importance 0.0629,True,0.0628544048775277,7,item_drug_SIMVASTATIN,ed,75-84,all
+CETP,HMGCR,co_metabolizes,1.0,,,False,,,,,,
+CETP,SLCO1B1,co_metabolizes,1.0,,,False,,,,,,
+CETP,CYP3A4,co_metabolizes,1.0,,,False,,,,,,
+CETP,CYP3A5,co_metabolizes,1.0,,,False,,,,,,
+CETP,LPA,co_metabolizes,1.0,,,False,,,,,,
+CYP2C19,voriconazole,metabolizes,0.1,1,,False,,,,,,
+CYP2C19,assignments,metabolizes,0.1,1,,False,,,,,,
+CYP2C19,OMEPRAZOLE,feature_importance_drug_gene,0.05,,Top consensus drug feature rank 9; combined importance 0.0440,True,0.0439853916043712,9,item_drug_OMEPRAZOLE,ed,75-84,all
+CYP2C19,SLCO1B1,co_metabolizes,1.0,,,False,,,,,,
+CYP2C19,CYP2D6,co_metabolizes,1.0,,,False,,,,,,
+CYP2C19,CYP3A5,co_metabolizes,1.0,,,False,,,,,,
+assignments,CYP2D6,metabolizes,0.1,1,,False,,,,,,
+assignments,CYP3A5,metabolizes,0.1,1,,False,,,,,,
+assignments,SLCO1B1,metabolizes,0.1,1,,False,,,,,,
+CYP2D6,CARVEDILOL,feature_importance_drug_gene,0.07040110649759,,Top consensus drug feature rank 5; combined importance 0.0704,True,0.07040110649759,5,item_drug_CARVEDILOL,ed,75-84,all
+CYP2D6,GRK4,co_metabolizes,1.0,,,False,,,,,,
+CYP2D6,GRK5,co_metabolizes,1.0,,,False,,,,,,
+CYP2D6,SLCO1B1,co_metabolizes,1.0,,,False,,,,,,
+CYP2D6,CYP3A5,co_metabolizes,1.0,,,False,,,,,,
+CYP3A4,inducers,metabolizes,0.2,2,,False,,,,,,
+CYP3A4,quetiapine,metabolizes,0.1,1,,False,,,,,,
+CYP3A4,inhibitors,metabolizes,0.2,2,,False,,,,,,
+CYP3A4,SIMVASTATIN,feature_importance_drug_gene,0.0628544048775277,,Top consensus drug feature rank 7; combined importance 0.0629,True,0.0628544048775277,7,item_drug_SIMVASTATIN,ed,75-84,all
+CYP3A4,HMGCR,co_metabolizes,1.0,,,False,,,,,,
+CYP3A4,SLCO1B1,co_metabolizes,1.0,,,False,,,,,,
+CYP3A4,CYP3A5,co_metabolizes,1.0,,,False,,,,,,
+CYP3A4,LPA,co_metabolizes,1.0,,,False,,,,,,
+CYP3A5,tacrolimus,metabolizes,0.1,1,,False,,,,,,
+CYP3A5,SIMVASTATIN,feature_importance_drug_gene,0.0628544048775277,,Top consensus drug feature rank 7; combined importance 0.0629,True,0.0628544048775277,7,item_drug_SIMVASTATIN,ed,75-84,all
+CYP3A5,HMGCR,co_metabolizes,1.0,,,False,,,,,,
+CYP3A5,SLCO1B1,co_metabolizes,2.0,,,False,,,,,,
+CYP3A5,LPA,co_metabolizes,1.0,,,False,,,,,,
+GRK4,CARVEDILOL,feature_importance_drug_gene,0.07040110649759,,Top consensus drug feature rank 5; combined importance 0.0704,True,0.07040110649759,5,item_drug_CARVEDILOL,ed,75-84,all
+GRK4,ATENOLOL,feature_importance_drug_gene,0.05,,Top consensus drug feature rank 12; combined importance 0.0050,True,0.0049709752911674,12,item_drug_ATENOLOL,ed,75-84,all
+GRK4,GRK5,co_metabolizes,2.0,,,False,,,,,,
+GRK5,CARVEDILOL,feature_importance_drug_gene,0.07040110649759,,Top consensus drug feature rank 5; combined importance 0.0704,True,0.07040110649759,5,item_drug_CARVEDILOL,ed,75-84,all
+GRK5,ATENOLOL,feature_importance_drug_gene,0.05,,Top consensus drug feature rank 12; combined importance 0.0050,True,0.0049709752911674,12,item_drug_ATENOLOL,ed,75-84,all
+HMGCR,enzyme,metabolizes,0.2,2,,False,,,,,,
+HMGCR,SIMVASTATIN,feature_importance_drug_gene,0.0628544048775277,,Top consensus drug feature rank 7; combined importance 0.0629,True,0.0628544048775277,7,item_drug_SIMVASTATIN,ed,75-84,all
+HMGCR,SLCO1B1,co_metabolizes,1.0,,,False,,,,,,
+HMGCR,LPA,co_metabolizes,1.0,,,False,,,,,,
+LPA,lipoprotein,metabolizes,0.1,1,,False,,,,,,
+LPA,SIMVASTATIN,feature_importance_drug_gene,0.0628544048775277,,Top consensus drug feature rank 7; combined importance 0.0629,True,0.0628544048775277,7,item_drug_SIMVASTATIN,ed,75-84,all
+LPA,SLCO1B1,co_metabolizes,1.0,,,False,,,,,,
+NEDD4L,HYDROCHLOROTHIAZIDE,feature_importance_drug_gene,0.1094721622284044,,Top consensus drug feature rank 3; combined importance 0.1095,True,0.1094721622284044,3,item_drug_HYDROCHLOROTHIAZIDE,ed,75-84,all
+NEDD4L,PRKCA,co_metabolizes,1.0,,,False,,,,,,
+NEDD4L,YEATS4,co_metabolizes,1.0,,,False,,,,,,
+PRKCA,HYDROCHLOROTHIAZIDE,feature_importance_drug_gene,0.1094721622284044,,Top consensus drug feature rank 3; combined importance 0.1095,True,0.1094721622284044,3,item_drug_HYDROCHLOROTHIAZIDE,ed,75-84,all
+PRKCA,YEATS4,co_metabolizes,1.0,,,False,,,,,,
+PTGFR,LATANOPROST,feature_importance_drug_gene,0.05,,Top consensus drug feature rank 11; combined importance 0.0105,True,0.0105274325215499,11,item_drug_LATANOPROST,ed,75-84,all
+SLCO1B1,rosuvastatin,metabolizes,0.1,1,,False,,,,,,
+SLCO1B1,SIMVASTATIN,feature_importance_drug_gene,0.0628544048775277,,Top consensus drug feature rank 7; combined importance 0.0629,True,0.0628544048775277,7,item_drug_SIMVASTATIN,ed,75-84,all
+YEATS4,HYDROCHLOROTHIAZIDE,feature_importance_drug_gene,0.1094721622284044,,Top consensus drug feature rank 3; combined importance 0.1095,True,0.1094721622284044,3,item_drug_HYDROCHLOROTHIAZIDE,ed,75-84,all

@@ -1,0 +1,23 @@
+{
+  "consensus_features": [
+    "item_drug_AMOXICILLIN",
+    "item_drug_ATENOLOL",
+    "item_drug_AZITHROMYCIN",
+    "item_drug_CARVEDILOL",
+    "item_drug_CEPHALEXIN",
+    "item_drug_ELIQUIS",
+    "item_drug_HYDROCHLOROTHIAZIDE",
+    "item_drug_LATANOPROST",
+    "item_drug_LISINOPRIL",
+    "item_drug_LORAZEPAM",
+    "item_drug_OMEPRAZOLE",
+    "item_drug_SIMVASTATIN",
+    "pgx_num_drugs"
+  ],
+  "shap_only": [],
+  "ffa_only": [],
+  "consensus_count": 13,
+  "shap_count": 13,
+  "ffa_count": 13,
+  "consensus_rate": 0.65
+}

@@ -1,0 +1,30 @@
+{
+  "consensus_features": [
+    "item_cpt_71010",
+    "item_cpt_71020",
+    "item_cpt_71045",
+    "item_cpt_73030",
+    "item_cpt_80048",
+    "item_cpt_80061",
+    "item_cpt_83735",
+    "item_cpt_92014",
+    "item_cpt_92015",
+    "item_cpt_97001",
+    "item_cpt_97116",
+    "item_cpt_99203",
+    "item_cpt_99283",
+    "item_drug_FUROSEMIDE",
+    "item_drug_GABAPENTIN",
+    "item_drug_PREDNISONE",
+    "item_icd_I10",
+    "item_icd_R0602",
+    "item_icd_Z23",
+    "pgx_num_drugs"
+  ],
+  "shap_only": [],
+  "ffa_only": [],
+  "consensus_count": 20,
+  "shap_count": 20,
+  "ffa_count": 20,
+  "consensus_rate": 1.0
+}

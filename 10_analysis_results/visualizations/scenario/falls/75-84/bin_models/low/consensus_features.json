@@ -1,0 +1,35 @@
+{
+  "consensus_features": [
+    "item_cpt_70450",
+    "item_cpt_71010",
+    "item_cpt_80061",
+    "item_cpt_82306",
+    "item_cpt_83036",
+    "item_cpt_85025",
+    "item_cpt_85610",
+    "item_cpt_90662",
+    "item_cpt_97110",
+    "item_cpt_99203",
+    "item_cpt_99213",
+    "item_cpt_99214",
+    "item_cpt_99215",
+    "item_drug_HYDROCHLOROTHIAZIDE",
+    "item_drug_LISINOPRIL",
+    "item_drug_SIMVASTATIN",
+    "pgx_num_drugs"
+  ],
+  "shap_only": [
+    "item_cpt_85027",
+    "item_cpt_93010",
+    "item_drug_GABAPENTIN"
+  ],
+  "ffa_only": [
+    "item_cpt_36415",
+    "item_cpt_80053",
+    "item_icd_I10"
+  ],
+  "consensus_count": 17,
+  "shap_count": 20,
+  "ffa_count": 20,
+  "consensus_rate": 0.85
+}

@@ -1,0 +1,3167 @@
+[
+  {
+    "gene_symbol": "ABCB1",
+    "gene_id": "PA267",
+    "gene_name": "ATP binding cassette subfamily B member 1",
+    "chromosome": "chr7",
+    "chromosome_location": "q21.12-q21.12",
+    "vip_id": "PA166170352",
+    "vip_url": "https://www.clinpgx.org/vip/PA166170352/overview",
+    "vip_tier": "Tier 1",
+    "cpic_gene": false,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "<p>ABCB1, also known as multi-drug resistance protein 1 (MDRP1), is one of forty-nine putative members in the superfamily of human adenosine triphosphate (ATP)-binding cassette (ABC) transporters that encode transporter and channel proteins that function as efflux pumps.</p>\n",
+    "vip_summary_text": "ABCB1, also known as multi-drug resistance protein 1 (MDRP1), is one of forty-nine putative members in the superfamily of human adenosine triphosphate (ATP)-binding cassette (ABC) transporters that encode transporter and channel proteins that function as efflux pumps.",
+    "vip_summary_id": "1448996401",
+    "vip_summary_present": true,
+    "vip_summary_schema_valid": true,
+    "vip_summary_missing_reason": "",
+    "citation": {
+      "id": 7142249,
+      "title": "Very important pharmacogene summary: ABCB1 (MDR1, P-glycoprotein).",
+      "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3098758",
+      "authors": [
+        "Hodges Laura M",
+        "Markova Svetlana M",
+        "Chinn Leslie W",
+        "Gow Jason M",
+        "Kroetz Deanna L",
+        "Klein Teri E",
+        "Altman Russ B"
+      ],
+      "crossReferences": [
+        {
+          "id": 1449247407,
+          "resource": "PubMed Central",
+          "resourceId": "PMC3098758",
+          "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3098758"
+        },
+        {
+          "id": 570301858,
+          "resource": "PubMed",
+          "resourceId": "20216335",
+          "_url": "https://www.ncbi.nlm.nih.gov/pubmed/20216335"
+        },
+        {
+          "id": 1449247408,
+          "resource": "DOI",
+          "resourceId": "10.1097/FPC.0b013e3283385a1c",
+          "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e3283385a1c"
+        }
+      ],
+      "day": -1,
+      "journal": "Pharmacogenetics and genomics",
+      "month": 3,
+      "objCls": "Literature",
+      "page": "152-61",
+      "pediatric": false,
+      "pgkbPublication": true,
+      "pubDate": "2011-03-01T00:00:00-08:00",
+      "pubmedMeshTerms": [],
+      "terms": [
+        {
+          "id": 1454108640,
+          "resource": "ClinPGx Tags",
+          "term": "PharmGKB",
+          "termId": "pgkbTags:1454108640"
+        },
+        {
+          "id": 1451577482,
+          "resource": "PGx Paper Types",
+          "term": "Review",
+          "termId": "pgxPaperTypes:1451577482"
+        }
+      ],
+      "type": "Literature",
+      "volume": "21",
+      "year": 2011
+    },
+    "citation_text": "Very important pharmacogene summary: ABCB1 (MDR1, P-glycoprotein). Hodges Laura M, Markova Svetlana M, Chinn Leslie W et al. Pharmacogenetics and genomics 2011",
+    "allele_file": "",
+    "allele_type": "None",
+    "allele_function_source": "",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 87503863,
+    "chr_stop_b38": 87713323,
+    "strand": "minus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA267",
+      "symbol": "ABCB1",
+      "name": "ATP binding cassette subfamily B member 1",
+      "alleleType": "None",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "q21.12",
+      "cbStop": "q21.12",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA534",
+        "name": "chr7"
+      },
+      "chrStartPosB37": 87133179,
+      "chrStartPosB38": 87503863,
+      "chrStopPosB37": 87342639,
+      "chrStopPosB38": 87713323,
+      "cpicGene": false,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": false,
+      "strand": "minus",
+      "vipCitation": {
+        "id": 7142249,
+        "title": "Very important pharmacogene summary: ABCB1 (MDR1, P-glycoprotein).",
+        "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3098758",
+        "authors": [
+          "Hodges Laura M",
+          "Markova Svetlana M",
+          "Chinn Leslie W",
+          "Gow Jason M",
+          "Kroetz Deanna L",
+          "Klein Teri E",
+          "Altman Russ B"
+        ],
+        "crossReferences": [
+          {
+            "id": 1449247407,
+            "resource": "PubMed Central",
+            "resourceId": "PMC3098758",
+            "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3098758"
+          },
+          {
+            "id": 570301858,
+            "resource": "PubMed",
+            "resourceId": "20216335",
+            "_url": "https://www.ncbi.nlm.nih.gov/pubmed/20216335"
+          },
+          {
+            "id": 1449247408,
+            "resource": "DOI",
+            "resourceId": "10.1097/FPC.0b013e3283385a1c",
+            "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e3283385a1c"
+          }
+        ],
+        "day": -1,
+        "journal": "Pharmacogenetics and genomics",
+        "month": 3,
+        "objCls": "Literature",
+        "page": "152-61",
+        "pediatric": false,
+        "pgkbPublication": true,
+        "pubDate": "2011-03-01T00:00:00-08:00",
+        "pubmedMeshTerms": [],
+        "terms": [
+          {
+            "id": 1454108640,
+            "resource": "ClinPGx Tags",
+            "term": "PharmGKB",
+            "termId": "pgkbTags:1454108640"
+          },
+          {
+            "id": 1451577482,
+            "resource": "PGx Paper Types",
+            "term": "Review",
+            "termId": "pgxPaperTypes:1451577482"
+          }
+        ],
+        "type": "Literature",
+        "volume": "21",
+        "year": 2011
+      },
+      "vipId": "PA166170352",
+      "vipSummary": {
+        "id": 1448996401,
+        "html": "<p>ABCB1, also known as multi-drug resistance protein 1 (MDRP1), is one of forty-nine putative members in the superfamily of human adenosine triphosphate (ATP)-binding cassette (ABC) transporters that encode transporter and channel proteins that function as efflux pumps.</p>\n"
+      },
+      "vipTier": "Tier 1"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "ADD1",
+    "gene_id": "PA31",
+    "gene_name": "adducin 1",
+    "chromosome": "chr4",
+    "chromosome_location": "p16.3-p16.3",
+    "vip_id": "",
+    "vip_url": "",
+    "vip_tier": "Undefined",
+    "cpic_gene": false,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "",
+    "vip_summary_text": "",
+    "vip_summary_id": "",
+    "vip_summary_present": false,
+    "vip_summary_schema_valid": false,
+    "vip_summary_missing_reason": "vipSummary field absent from PharmGKB gene response",
+    "citation": null,
+    "citation_text": "",
+    "allele_file": "",
+    "allele_type": "None",
+    "allele_function_source": "",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 2843732,
+    "chr_stop_b38": 2930076,
+    "strand": "plus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA31",
+      "symbol": "ADD1",
+      "name": "adducin 1",
+      "alleleType": "None",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "p16.3",
+      "cbStop": "p16.3",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA529",
+        "name": "chr4"
+      },
+      "chrStartPosB37": 2845454,
+      "chrStartPosB38": 2843732,
+      "chrStopPosB37": 2931803,
+      "chrStopPosB38": 2930076,
+      "cpicGene": false,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": false,
+      "strand": "plus",
+      "vipTier": "Undefined"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "ADRA2C",
+    "gene_id": "PA37",
+    "gene_name": "adrenoceptor alpha 2C",
+    "chromosome": "chr4",
+    "chromosome_location": "p16.3-p16.3",
+    "vip_id": "",
+    "vip_url": "",
+    "vip_tier": "Undefined",
+    "cpic_gene": false,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "",
+    "vip_summary_text": "",
+    "vip_summary_id": "",
+    "vip_summary_present": false,
+    "vip_summary_schema_valid": false,
+    "vip_summary_missing_reason": "vipSummary field absent from PharmGKB gene response",
+    "citation": null,
+    "citation_text": "",
+    "allele_file": "",
+    "allele_type": "None",
+    "allele_function_source": "",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 3766569,
+    "chr_stop_b38": 3768526,
+    "strand": "plus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA37",
+      "symbol": "ADRA2C",
+      "name": "adrenoceptor alpha 2C",
+      "alleleType": "None",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "p16.3",
+      "cbStop": "p16.3",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA529",
+        "name": "chr4"
+      },
+      "chrStartPosB37": 3768296,
+      "chrStartPosB38": 3766569,
+      "chrStopPosB37": 3770253,
+      "chrStopPosB38": 3768526,
+      "cpicGene": false,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": false,
+      "strand": "plus",
+      "vipTier": "Undefined"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "ADRB1",
+    "gene_id": "PA38",
+    "gene_name": "adrenoceptor beta 1",
+    "chromosome": "chr10",
+    "chromosome_location": "q25.3-q25.3",
+    "vip_id": "PA166170369",
+    "vip_url": "https://www.clinpgx.org/vip/PA166170369/overview",
+    "vip_tier": "Tier 1",
+    "cpic_gene": false,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "<p>ADRB1 is a G-protein-coupled receptor expressed in cardiac tissue.</p>\n",
+    "vip_summary_text": "ADRB1 is a G-protein-coupled receptor expressed in cardiac tissue.",
+    "vip_summary_id": "1448996778",
+    "vip_summary_present": true,
+    "vip_summary_schema_valid": true,
+    "vip_summary_missing_reason": "",
+    "citation": {
+      "id": 15168367,
+      "title": "PharmGKB VIP Summary: ADRB1",
+      "_sameAs": "https://api.pharmgkb.org/v1/download/file/attachment/ADRB1_VIP_Summary.pdf",
+      "crossReferences": [
+        {
+          "id": 1452646245,
+          "resource": "URL",
+          "resourceId": "https://api.pharmgkb.org/v1/download/file/attachment/ADRB1_VIP_Summary.pdf",
+          "_url": "https://api.pharmgkb.org/v1/download/file/attachment/ADRB1_VIP_Summary.pdf"
+        }
+      ],
+      "day": -1,
+      "month": -1,
+      "notes": "This document contains text that was found on the PharmGKB VIP page for ADRB1 prior to Oct 2024.",
+      "objCls": "Literature",
+      "pediatric": false,
+      "pgkbPublication": false,
+      "pubmedMeshTerms": [],
+      "terms": [
+        {
+          "id": 1452267780,
+          "resource": "ClinPGx Tags",
+          "term": "Has PGx",
+          "termId": "pgkbTags:1452267780"
+        }
+      ],
+      "type": "Literature",
+      "year": -1
+    },
+    "citation_text": "PharmGKB VIP Summary: ADRB1  et al.  -1",
+    "allele_file": "",
+    "allele_type": "None",
+    "allele_function_source": "",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 114044047,
+    "chr_stop_b38": 114046908,
+    "strand": "plus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA38",
+      "symbol": "ADRB1",
+      "name": "adrenoceptor beta 1",
+      "alleleType": "None",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "q25.3",
+      "cbStop": "q25.3",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA504",
+        "name": "chr10"
+      },
+      "chrStartPosB37": 115803806,
+      "chrStartPosB38": 114044047,
+      "chrStopPosB37": 115806667,
+      "chrStopPosB38": 114046908,
+      "cpicGene": false,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": false,
+      "strand": "plus",
+      "vipCitation": {
+        "id": 15168367,
+        "title": "PharmGKB VIP Summary: ADRB1",
+        "_sameAs": "https://api.pharmgkb.org/v1/download/file/attachment/ADRB1_VIP_Summary.pdf",
+        "crossReferences": [
+          {
+            "id": 1452646245,
+            "resource": "URL",
+            "resourceId": "https://api.pharmgkb.org/v1/download/file/attachment/ADRB1_VIP_Summary.pdf",
+            "_url": "https://api.pharmgkb.org/v1/download/file/attachment/ADRB1_VIP_Summary.pdf"
+          }
+        ],
+        "day": -1,
+        "month": -1,
+        "notes": "This document contains text that was found on the PharmGKB VIP page for ADRB1 prior to Oct 2024.",
+        "objCls": "Literature",
+        "pediatric": false,
+        "pgkbPublication": false,
+        "pubmedMeshTerms": [],
+        "terms": [
+          {
+            "id": 1452267780,
+            "resource": "ClinPGx Tags",
+            "term": "Has PGx",
+            "termId": "pgkbTags:1452267780"
+          }
+        ],
+        "type": "Literature",
+        "year": -1
+      },
+      "vipId": "PA166170369",
+      "vipSummary": {
+        "id": 1448996778,
+        "html": "<p>ADRB1 is a G-protein-coupled receptor expressed in cardiac tissue.</p>\n"
+      },
+      "vipTier": "Tier 1"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "ADRB2",
+    "gene_id": "PA39",
+    "gene_name": "adrenoceptor beta 2",
+    "chromosome": "chr5",
+    "chromosome_location": "q32-q32",
+    "vip_id": "PA166165410",
+    "vip_url": "https://www.clinpgx.org/vip/PA166165410/overview",
+    "vip_tier": "Tier 1",
+    "cpic_gene": false,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "<p>ADRB2 encodes the beta-2-adrenergic receptor (beta2-AR), a G-protein-coupled adrenergic receptor that plays important roles in the regulation of the cardiac, pulmonary, vascular, endocrine and central nervous systems. Beta2-AR is the target of clinically important drugs for asthma and cardiovascular conditions including hypertension and congestive heart failure.</p>\n",
+    "vip_summary_text": "ADRB2 encodes the beta-2-adrenergic receptor (beta2-AR), a G-protein-coupled adrenergic receptor that plays important roles in the regulation of the cardiac, pulmonary, vascular, endocrine and central nervous systems. Beta2-AR is the target of clinically important drugs for asthma and cardiovascular conditions including hypertension and congestive heart failure.",
+    "vip_summary_id": "1448637564",
+    "vip_summary_present": true,
+    "vip_summary_schema_valid": true,
+    "vip_summary_missing_reason": "",
+    "citation": {
+      "id": 7198448,
+      "title": "Very important pharmacogene summary ADRB2.",
+      "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3098753",
+      "authors": [
+        "Litonjua Augusto A",
+        "Gong Li",
+        "Duan Qing Ling",
+        "Shin Jaekyu",
+        "Moore Mariellen J",
+        "Weiss Scott T",
+        "Johnson Julie A",
+        "Klein Teri E",
+        "Altman Russ B"
+      ],
+      "crossReferences": [
+        {
+          "id": 1449247561,
+          "resource": "PubMed Central",
+          "resourceId": "PMC3098753",
+          "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3098753"
+        },
+        {
+          "id": 569549694,
+          "resource": "PubMed",
+          "resourceId": "19927042",
+          "_url": "https://www.ncbi.nlm.nih.gov/pubmed/19927042"
+        },
+        {
+          "id": 1449247562,
+          "resource": "DOI",
+          "resourceId": "10.1097/FPC.0b013e328333dae6",
+          "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e328333dae6"
+        }
+      ],
+      "day": -1,
+      "journal": "Pharmacogenetics and genomics",
+      "month": 1,
+      "objCls": "Literature",
+      "page": "64-9",
+      "pediatric": false,
+      "pgkbPublication": true,
+      "pubDate": "2010-01-01T00:00:00-08:00",
+      "pubmedMeshTerms": [],
+      "terms": [
+        {
+          "id": 1454108640,
+          "resource": "ClinPGx Tags",
+          "term": "PharmGKB",
+          "termId": "pgkbTags:1454108640"
+        },
+        {
+          "id": 1451577482,
+          "resource": "PGx Paper Types",
+          "term": "Review",
+          "termId": "pgxPaperTypes:1451577482"
+        }
+      ],
+      "type": "Literature",
+      "volume": "20",
+      "year": 2010
+    },
+    "citation_text": "Very important pharmacogene summary ADRB2. Litonjua Augusto A, Gong Li, Duan Qing Ling et al. Pharmacogenetics and genomics 2010",
+    "allele_file": "",
+    "allele_type": "None",
+    "allele_function_source": "",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 148826593,
+    "chr_stop_b38": 148828634,
+    "strand": "plus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA39",
+      "symbol": "ADRB2",
+      "name": "adrenoceptor beta 2",
+      "alleleType": "None",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "q32",
+      "cbStop": "q32",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA531",
+        "name": "chr5"
+      },
+      "chrStartPosB37": 148206156,
+      "chrStartPosB38": 148826593,
+      "chrStopPosB37": 148254628,
+      "chrStopPosB38": 148828634,
+      "cpicGene": false,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": false,
+      "strand": "plus",
+      "vipCitation": {
+        "id": 7198448,
+        "title": "Very important pharmacogene summary ADRB2.",
+        "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3098753",
+        "authors": [
+          "Litonjua Augusto A",
+          "Gong Li",
+          "Duan Qing Ling",
+          "Shin Jaekyu",
+          "Moore Mariellen J",
+          "Weiss Scott T",
+          "Johnson Julie A",
+          "Klein Teri E",
+          "Altman Russ B"
+        ],
+        "crossReferences": [
+          {
+            "id": 1449247561,
+            "resource": "PubMed Central",
+            "resourceId": "PMC3098753",
+            "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3098753"
+          },
+          {
+            "id": 569549694,
+            "resource": "PubMed",
+            "resourceId": "19927042",
+            "_url": "https://www.ncbi.nlm.nih.gov/pubmed/19927042"
+          },
+          {
+            "id": 1449247562,
+            "resource": "DOI",
+            "resourceId": "10.1097/FPC.0b013e328333dae6",
+            "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e328333dae6"
+          }
+        ],
+        "day": -1,
+        "journal": "Pharmacogenetics and genomics",
+        "month": 1,
+        "objCls": "Literature",
+        "page": "64-9",
+        "pediatric": false,
+        "pgkbPublication": true,
+        "pubDate": "2010-01-01T00:00:00-08:00",
+        "pubmedMeshTerms": [],
+        "terms": [
+          {
+            "id": 1454108640,
+            "resource": "ClinPGx Tags",
+            "term": "PharmGKB",
+            "termId": "pgkbTags:1454108640"
+          },
+          {
+            "id": 1451577482,
+            "resource": "PGx Paper Types",
+            "term": "Review",
+            "termId": "pgxPaperTypes:1451577482"
+          }
+        ],
+        "type": "Literature",
+        "volume": "20",
+        "year": 2010
+      },
+      "vipId": "PA166165410",
+      "vipSummary": {
+        "id": 1448637564,
+        "html": "<p>ADRB2 encodes the beta-2-adrenergic receptor (beta2-AR), a G-protein-coupled adrenergic receptor that plays important roles in the regulation of the cardiac, pulmonary, vascular, endocrine and central nervous systems. Beta2-AR is the target of clinically important drugs for asthma and cardiovascular conditions including hypertension and congestive heart failure.</p>\n"
+      },
+      "vipTier": "Tier 1"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "CES1",
+    "gene_id": "PA107",
+    "gene_name": "carboxylesterase 1",
+    "chromosome": "chr16",
+    "chromosome_location": "q22.2-q12.2",
+    "vip_id": "",
+    "vip_url": "",
+    "vip_tier": "Undefined",
+    "cpic_gene": false,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "",
+    "vip_summary_text": "",
+    "vip_summary_id": "",
+    "vip_summary_present": false,
+    "vip_summary_schema_valid": false,
+    "vip_summary_missing_reason": "vipSummary field absent from PharmGKB gene response",
+    "citation": null,
+    "citation_text": "",
+    "allele_file": "",
+    "allele_type": "None",
+    "allele_function_source": "",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 55802851,
+    "chr_stop_b38": 55833186,
+    "strand": "minus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA107",
+      "symbol": "CES1",
+      "name": "carboxylesterase 1",
+      "alleleType": "None",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "q22.2",
+      "cbStop": "q12.2",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA515",
+        "name": "chr16"
+      },
+      "chrStartPosB37": 55836763,
+      "chrStartPosB38": 55802851,
+      "chrStopPosB37": 55867098,
+      "chrStopPosB38": 55833186,
+      "cpicGene": false,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": false,
+      "strand": "minus",
+      "vipTier": "Undefined"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "CETP",
+    "gene_id": "PA108",
+    "gene_name": "cholesteryl ester transfer protein",
+    "chromosome": "chr16",
+    "chromosome_location": "q21-q13",
+    "vip_id": "",
+    "vip_url": "",
+    "vip_tier": "Undefined",
+    "cpic_gene": false,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "",
+    "vip_summary_text": "",
+    "vip_summary_id": "",
+    "vip_summary_present": false,
+    "vip_summary_schema_valid": false,
+    "vip_summary_missing_reason": "vipSummary field absent from PharmGKB gene response",
+    "citation": null,
+    "citation_text": "",
+    "allele_file": "",
+    "allele_type": "None",
+    "allele_function_source": "",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 56961923,
+    "chr_stop_b38": 56983844,
+    "strand": "plus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA108",
+      "symbol": "CETP",
+      "name": "cholesteryl ester transfer protein",
+      "alleleType": "None",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "q21",
+      "cbStop": "q13",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA515",
+        "name": "chr16"
+      },
+      "chrStartPosB37": 56995835,
+      "chrStartPosB38": 56961923,
+      "chrStopPosB37": 57017757,
+      "chrStopPosB38": 56983844,
+      "cpicGene": false,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": false,
+      "strand": "plus",
+      "vipTier": "Undefined"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "CYP2C19",
+    "gene_id": "PA124",
+    "gene_name": "cytochrome P450 family 2 subfamily C member 19",
+    "chromosome": "chr10",
+    "chromosome_location": "q23.33-q23.33",
+    "vip_id": "PA166169770",
+    "vip_url": "https://www.clinpgx.org/vip/PA166169770/overview",
+    "vip_tier": "Tier 1",
+    "cpic_gene": true,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": true,
+    "pharmvar_gene": true,
+    "vip_summary_html": "<p>CYP2C19 is one of the key pharmacogenes involved in implementation of pharmacogenomics.</p>\n<ul>\n<li>It is involved in guidelines for antidepressants, <a href=\"/chemical/PA449053/guidelineAnnotation/PA166104948\">clopidogrel</a> and <a href=\"/chemical/PA10233/guidelineAnnotation/PA166161537\">voriconazole</a> (<a href=\"/gene/PA124/prescribingInfo\">go to list of all guidelines with CYP2C19</a>).</li>\n<li>the nomenclature has been set by <a rel=\"noopener noreferrer\" href=\"https://www.pharmvar.org/gene/CYP2C19\" target=\"_blank\">PharmVar</a>, note that the reference sequence for CYP2C19 on hg38 is equivalent to <a href=\"/haplotype/PA166218473\">CYP2C19*38</a> not <a href=\"/haplotype/PA165980634\">CYP2C19*1</a>.</li>\n<li>the AMP tier 1 alleles are <a href=\"/haplotype/PA165980635\">CYP2C19*2</a>, <a href=\"/haplotype/PA165980636\">CYP2C19*3</a> and <a href=\"/haplotype/PA165816533\">CYP2C19*17</a> <a href=\"/ampAllelesToTest\">see all alleles on the AMP recommended to test list</a></li>\n<li>key variant pages are <a href=\"/variant/PA166154053\">rs4244285</a>(part of *2),  <a href=\"/variant/PA166154070\">rs4986893</a>(part of *3) and <a href=\"/variant/PA166154147\">rs12248560</a>(part of *17)</li>\n<li>See the <a href=\"/page/cyp2c19RefMaterials\">Gene-specific Information Tables</a> for Allele Definitions (for which variants comprise which star alleles), Allele function assignments (normal function, no function, decreased or increased function etc) and Diplotype-Phenotype Table (for how the alleles combine to form metabolizer phenotypes for PM, NM, UM)</li>\n</ul>\n",
+    "vip_summary_text": "CYP2C19 is one of the key pharmacogenes involved in implementation of pharmacogenomics. It is involved in guidelines for antidepressants, clopidogrel and voriconazole ( go to list of all guidelines with CYP2C19 ). the nomenclature has been set by PharmVar , note that the reference sequence for CYP2C19 on hg38 is equivalent to CYP2C19*38 not CYP2C19*1 . the AMP tier 1 alleles are CYP2C19*2 , CYP2C19*3 and CYP2C19*17 see all alleles on the AMP recommended to test list key variant pages are rs4244285 (part of *2), rs4986893 (part of *3) and rs12248560 (part of *17) See the Gene-specific Information Tables for Allele Definitions (for which variants comprise which star alleles), Allele function assignments (normal function, no function, decreased or increased function etc) and Diplotype-Phenotype Table (for how the alleles combine to form metabolizer phenotypes for PM, NM, UM)",
+    "vip_summary_id": "1448744769",
+    "vip_summary_present": true,
+    "vip_summary_schema_valid": true,
+    "vip_summary_missing_reason": "",
+    "citation": {
+      "id": 14171708,
+      "title": "PharmGKB summary: very important pharmacogene information for cytochrome P450, family 2, subfamily C, polypeptide 19.",
+      "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3349992",
+      "authors": [
+        "Scott Stuart A",
+        "Sangkuhl Katrin",
+        "Shuldiner Alan R",
+        "Hulot Jean-Sébastien",
+        "Thorn Caroline F",
+        "Altman Russ B",
+        "Klein Teri E"
+      ],
+      "crossReferences": [
+        {
+          "id": 1449263318,
+          "resource": "PubMed Central",
+          "resourceId": "PMC3349992",
+          "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3349992"
+        },
+        {
+          "id": 827823934,
+          "resource": "PubMed",
+          "resourceId": "22027650",
+          "_url": "https://www.ncbi.nlm.nih.gov/pubmed/22027650"
+        },
+        {
+          "id": 1449263319,
+          "resource": "DOI",
+          "resourceId": "10.1097/FPC.0b013e32834d4962",
+          "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e32834d4962"
+        }
+      ],
+      "day": -1,
+      "journal": "Pharmacogenetics and genomics",
+      "month": 2,
+      "objCls": "Literature",
+      "page": "159-65",
+      "pediatric": false,
+      "pgkbPublication": true,
+      "pubDate": "2012-02-01T00:00:00-08:00",
+      "pubmedMeshTerms": [],
+      "terms": [
+        {
+          "id": 1454108640,
+          "resource": "ClinPGx Tags",
+          "term": "PharmGKB",
+          "termId": "pgkbTags:1454108640"
+        },
+        {
+          "id": 1451577482,
+          "resource": "PGx Paper Types",
+          "term": "Review",
+          "termId": "pgxPaperTypes:1451577482"
+        },
+        {
+          "id": 1451577562,
+          "resource": "PGx Paper Types",
+          "term": "Allele Function",
+          "termId": "pgxPaperTypes:1451577562"
+        }
+      ],
+      "type": "Literature",
+      "volume": "22",
+      "year": 2012
+    },
+    "citation_text": "PharmGKB summary: very important pharmacogene information for cytochrome P450, family 2, subfamily C, polypeptide 19. Scott Stuart A, Sangkuhl Katrin, Shuldiner Alan R et al. Pharmacogenetics and genomics 2012",
+    "allele_file": "CYP2C19_allele_definition_table.xlsx",
+    "allele_type": "Named Alleles",
+    "allele_function_source": "CPIC",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 94762681,
+    "chr_stop_b38": 94853205,
+    "strand": "plus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA124",
+      "symbol": "CYP2C19",
+      "name": "cytochrome P450 family 2 subfamily C member 19",
+      "alleleFile": "CYP2C19_allele_definition_table.xlsx",
+      "alleleFunctionSource": "CPIC",
+      "alleleType": "Named Alleles",
+      "amp": true,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "q23.33",
+      "cbStop": "q23.33",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA504",
+        "name": "chr10"
+      },
+      "chrStartPosB37": 96522463,
+      "chrStartPosB38": 94762681,
+      "chrStopPosB37": 96612671,
+      "chrStopPosB38": 94853205,
+      "cpicGene": true,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": true,
+      "strand": "plus",
+      "vipCitation": {
+        "id": 14171708,
+        "title": "PharmGKB summary: very important pharmacogene information for cytochrome P450, family 2, subfamily C, polypeptide 19.",
+        "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3349992",
+        "authors": [
+          "Scott Stuart A",
+          "Sangkuhl Katrin",
+          "Shuldiner Alan R",
+          "Hulot Jean-Sébastien",
+          "Thorn Caroline F",
+          "Altman Russ B",
+          "Klein Teri E"
+        ],
+        "crossReferences": [
+          {
+            "id": 1449263318,
+            "resource": "PubMed Central",
+            "resourceId": "PMC3349992",
+            "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3349992"
+          },
+          {
+            "id": 827823934,
+            "resource": "PubMed",
+            "resourceId": "22027650",
+            "_url": "https://www.ncbi.nlm.nih.gov/pubmed/22027650"
+          },
+          {
+            "id": 1449263319,
+            "resource": "DOI",
+            "resourceId": "10.1097/FPC.0b013e32834d4962",
+            "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e32834d4962"
+          }
+        ],
+        "day": -1,
+        "journal": "Pharmacogenetics and genomics",
+        "month": 2,
+        "objCls": "Literature",
+        "page": "159-65",
+        "pediatric": false,
+        "pgkbPublication": true,
+        "pubDate": "2012-02-01T00:00:00-08:00",
+        "pubmedMeshTerms": [],
+        "terms": [
+          {
+            "id": 1454108640,
+            "resource": "ClinPGx Tags",
+            "term": "PharmGKB",
+            "termId": "pgkbTags:1454108640"
+          },
+          {
+            "id": 1451577482,
+            "resource": "PGx Paper Types",
+            "term": "Review",
+            "termId": "pgxPaperTypes:1451577482"
+          },
+          {
+            "id": 1451577562,
+            "resource": "PGx Paper Types",
+            "term": "Allele Function",
+            "termId": "pgxPaperTypes:1451577562"
+          }
+        ],
+        "type": "Literature",
+        "volume": "22",
+        "year": 2012
+      },
+      "vipId": "PA166169770",
+      "vipSummary": {
+        "id": 1448744769,
+        "html": "<p>CYP2C19 is one of the key pharmacogenes involved in implementation of pharmacogenomics.</p>\n<ul>\n<li>It is involved in guidelines for antidepressants, <a href=\"/chemical/PA449053/guidelineAnnotation/PA166104948\">clopidogrel</a> and <a href=\"/chemical/PA10233/guidelineAnnotation/PA166161537\">voriconazole</a> (<a href=\"/gene/PA124/prescribingInfo\">go to list of all guidelines with CYP2C19</a>).</li>\n<li>the nomenclature has been set by <a rel=\"noopener noreferrer\" href=\"https://www.pharmvar.org/gene/CYP2C19\" target=\"_blank\">PharmVar</a>, note that the reference sequence for CYP2C19 on hg38 is equivalent to <a href=\"/haplotype/PA166218473\">CYP2C19*38</a> not <a href=\"/haplotype/PA165980634\">CYP2C19*1</a>.</li>\n<li>the AMP tier 1 alleles are <a href=\"/haplotype/PA165980635\">CYP2C19*2</a>, <a href=\"/haplotype/PA165980636\">CYP2C19*3</a> and <a href=\"/haplotype/PA165816533\">CYP2C19*17</a> <a href=\"/ampAllelesToTest\">see all alleles on the AMP recommended to test list</a></li>\n<li>key variant pages are <a href=\"/variant/PA166154053\">rs4244285</a>(part of *2),  <a href=\"/variant/PA166154070\">rs4986893</a>(part of *3) and <a href=\"/variant/PA166154147\">rs12248560</a>(part of *17)</li>\n<li>See the <a href=\"/page/cyp2c19RefMaterials\">Gene-specific Information Tables</a> for Allele Definitions (for which variants comprise which star alleles), Allele function assignments (normal function, no function, decreased or increased function etc) and Diplotype-Phenotype Table (for how the alleles combine to form metabolizer phenotypes for PM, NM, UM)</li>\n</ul>\n"
+      },
+      "vipTier": "Tier 1"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "CYP2C8",
+    "gene_id": "PA125",
+    "gene_name": "cytochrome P450 family 2 subfamily C member 8",
+    "chromosome": "chr10",
+    "chromosome_location": "q23.33-q23.33",
+    "vip_id": "PA166169454",
+    "vip_url": "https://www.clinpgx.org/vip/PA166169454/overview",
+    "vip_tier": "Tier 1",
+    "cpic_gene": false,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": true,
+    "vip_summary_html": "<p>CYP2C8 is a phase I metabolizing enzyme that plays an integral role in the biotransformation of structurally diverse xenobiotics and endogenous compounds.</p>\n",
+    "vip_summary_text": "CYP2C8 is a phase I metabolizing enzyme that plays an integral role in the biotransformation of structurally diverse xenobiotics and endogenous compounds.",
+    "vip_summary_id": "1448639364",
+    "vip_summary_present": true,
+    "vip_summary_schema_valid": true,
+    "vip_summary_missing_reason": "",
+    "citation": {
+      "id": 15061850,
+      "title": "PharmGKB summary: very important pharmacogene information for cytochrome P450, family 2, subfamily C, polypeptide 8.",
+      "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4038626",
+      "authors": [
+        "Aquilante Christina L",
+        "Niemi Mikko",
+        "Gong Li",
+        "Altman Russ B",
+        "Klein Teri E"
+      ],
+      "crossReferences": [
+        {
+          "id": 1449277315,
+          "resource": "PubMed Central",
+          "resourceId": "PMC4038626",
+          "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4038626"
+        },
+        {
+          "id": 1449277314,
+          "resource": "PubMed",
+          "resourceId": "23962911",
+          "_url": "https://www.ncbi.nlm.nih.gov/pubmed/23962911"
+        },
+        {
+          "id": 1449277316,
+          "resource": "DOI",
+          "resourceId": "10.1097/FPC.0b013e3283653b27",
+          "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e3283653b27"
+        }
+      ],
+      "day": -1,
+      "journal": "Pharmacogenetics and genomics",
+      "month": 12,
+      "objCls": "Literature",
+      "page": "721-8",
+      "pediatric": false,
+      "pgkbPublication": true,
+      "pubDate": "2013-12-01T00:00:00-08:00",
+      "pubmedMeshTerms": [],
+      "terms": [
+        {
+          "id": 1454108640,
+          "resource": "ClinPGx Tags",
+          "term": "PharmGKB",
+          "termId": "pgkbTags:1454108640"
+        },
+        {
+          "id": 1451577482,
+          "resource": "PGx Paper Types",
+          "term": "Review",
+          "termId": "pgxPaperTypes:1451577482"
+        }
+      ],
+      "type": "Literature",
+      "volume": "23",
+      "year": 2013
+    },
+    "citation_text": "PharmGKB summary: very important pharmacogene information for cytochrome P450, family 2, subfamily C, polypeptide 8. Aquilante Christina L, Niemi Mikko, Gong Li et al. Pharmacogenetics and genomics 2013",
+    "allele_file": "",
+    "allele_type": "Named Alleles",
+    "allele_function_source": "",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 95036772,
+    "chr_stop_b38": 95069512,
+    "strand": "minus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA125",
+      "symbol": "CYP2C8",
+      "name": "cytochrome P450 family 2 subfamily C member 8",
+      "alleleType": "Named Alleles",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "q23.33",
+      "cbStop": "q23.33",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA504",
+        "name": "chr10"
+      },
+      "chrStartPosB37": 96796529,
+      "chrStartPosB38": 95036772,
+      "chrStopPosB37": 96829255,
+      "chrStopPosB38": 95069512,
+      "cpicGene": false,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": true,
+      "strand": "minus",
+      "vipCitation": {
+        "id": 15061850,
+        "title": "PharmGKB summary: very important pharmacogene information for cytochrome P450, family 2, subfamily C, polypeptide 8.",
+        "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4038626",
+        "authors": [
+          "Aquilante Christina L",
+          "Niemi Mikko",
+          "Gong Li",
+          "Altman Russ B",
+          "Klein Teri E"
+        ],
+        "crossReferences": [
+          {
+            "id": 1449277315,
+            "resource": "PubMed Central",
+            "resourceId": "PMC4038626",
+            "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4038626"
+          },
+          {
+            "id": 1449277314,
+            "resource": "PubMed",
+            "resourceId": "23962911",
+            "_url": "https://www.ncbi.nlm.nih.gov/pubmed/23962911"
+          },
+          {
+            "id": 1449277316,
+            "resource": "DOI",
+            "resourceId": "10.1097/FPC.0b013e3283653b27",
+            "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e3283653b27"
+          }
+        ],
+        "day": -1,
+        "journal": "Pharmacogenetics and genomics",
+        "month": 12,
+        "objCls": "Literature",
+        "page": "721-8",
+        "pediatric": false,
+        "pgkbPublication": true,
+        "pubDate": "2013-12-01T00:00:00-08:00",
+        "pubmedMeshTerms": [],
+        "terms": [
+          {
+            "id": 1454108640,
+            "resource": "ClinPGx Tags",
+            "term": "PharmGKB",
+            "termId": "pgkbTags:1454108640"
+          },
+          {
+            "id": 1451577482,
+            "resource": "PGx Paper Types",
+            "term": "Review",
+            "termId": "pgxPaperTypes:1451577482"
+          }
+        ],
+        "type": "Literature",
+        "volume": "23",
+        "year": 2013
+      },
+      "vipId": "PA166169454",
+      "vipSummary": {
+        "id": 1448639364,
+        "html": "<p>CYP2C8 is a phase I metabolizing enzyme that plays an integral role in the biotransformation of structurally diverse xenobiotics and endogenous compounds.</p>\n"
+      },
+      "vipTier": "Tier 1"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "CYP2C9",
+    "gene_id": "PA126",
+    "gene_name": "cytochrome P450 family 2 subfamily C member 9",
+    "chromosome": "chr10",
+    "chromosome_location": "q23.33-q23.33",
+    "vip_id": "PA166169913",
+    "vip_url": "https://www.clinpgx.org/vip/PA166169913/overview",
+    "vip_tier": "Tier 1",
+    "cpic_gene": true,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": true,
+    "pharmvar_gene": true,
+    "vip_summary_html": "<p>CYP2C9 is one of the key pharmacogenes involved in implementation of pharmacogenomics.</p>\n<ul>\n<li>It is involved in guidelines for <a href=\"/guidelineAnnotation/PA166104949\">warfarin</a>, <a href=\"/guidelineAnnotation/PA166122806\">phenytoin</a> and <a href=\"/guidelineAnnotation/PA166191841\">NSAIDs</a>, (<a href=\"/gene/PA126/prescribingInfo\">go to list of all guidelines with CYP2C9</a>).</li>\n<li>the nomenclature has been set by <a rel=\"noopener noreferrer\" href=\"https://www.pharmvar.org/gene/CYP2C9\" target=\"_blank\">PharmVar</a></li>\n<li>the AMP tier 1 alleles are <a href=\"/haplotype/PA165816543\">CYP2C9*2</a>, <a href=\"/haplotype/PA165816544\">CYP2C9*3</a>, <a href=\"/haplotype/PA165816546\">CYP2C9*5</a>, <a href=\"/haplotype/PA165816547\">CYP2C9*6</a>, <a href=\"/haplotype/PA165816549\">CYP2C9*8</a>, and <a href=\"/haplotype/PA165816552\">CYP2C9*11</a>, <a href=\"/ampAllelesToTest\">see all alleles on the AMP recommended to test list</a></li>\n<li>key variant pages include <a href=\"/variant/PA166153972\">rs1799853</a> and <a href=\"/variant/PA166153959\">rs1057910</a></li>\n<li>See the <a href=\"/page/cyp2c9RefMaterials\">Gene-specific Information Tables</a> for Allele Definitions (for which variants comprise which star alleles), Allele function assignments (normal function, no function, decreased or increased function etc) and Diplotype-Phenotype Table (for how the alleles combine to form metabolizer phenotypes for PM, NM, UM)</li>\n</ul>\n",
+    "vip_summary_text": "CYP2C9 is one of the key pharmacogenes involved in implementation of pharmacogenomics. It is involved in guidelines for warfarin , phenytoin and NSAIDs , ( go to list of all guidelines with CYP2C9 ). the nomenclature has been set by PharmVar the AMP tier 1 alleles are CYP2C9*2 , CYP2C9*3 , CYP2C9*5 , CYP2C9*6 , CYP2C9*8 , and CYP2C9*11 , see all alleles on the AMP recommended to test list key variant pages include rs1799853 and rs1057910 See the Gene-specific Information Tables for Allele Definitions (for which variants comprise which star alleles), Allele function assignments (normal function, no function, decreased or increased function etc) and Diplotype-Phenotype Table (for how the alleles combine to form metabolizer phenotypes for PM, NM, UM)",
+    "vip_summary_id": "1448821553",
+    "vip_summary_present": true,
+    "vip_summary_schema_valid": true,
+    "vip_summary_missing_reason": "",
+    "citation": {
+      "id": 7160454,
+      "title": "Cytochrome P450 2C9-CYP2C9.",
+      "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3201766",
+      "authors": [
+        "Van Booven Derek",
+        "Marsh Sharon",
+        "McLeod Howard",
+        "Carrillo Michelle Whirl",
+        "Sangkuhl Katrin",
+        "Klein Teri E",
+        "Altman Russ B"
+      ],
+      "crossReferences": [
+        {
+          "id": 1449247468,
+          "resource": "PubMed Central",
+          "resourceId": "PMC3201766",
+          "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3201766"
+        },
+        {
+          "id": 569773167,
+          "resource": "PubMed",
+          "resourceId": "20150829",
+          "_url": "https://www.ncbi.nlm.nih.gov/pubmed/20150829"
+        },
+        {
+          "id": 1449247469,
+          "resource": "DOI",
+          "resourceId": "10.1097/FPC.0b013e3283349e84",
+          "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e3283349e84"
+        }
+      ],
+      "day": -1,
+      "journal": "Pharmacogenetics and genomics",
+      "month": 4,
+      "objCls": "Literature",
+      "page": "277-81",
+      "pediatric": false,
+      "pgkbPublication": true,
+      "pubDate": "2010-04-01T00:00:00-07:00",
+      "pubmedMeshTerms": [],
+      "terms": [
+        {
+          "id": 1454108640,
+          "resource": "ClinPGx Tags",
+          "term": "PharmGKB",
+          "termId": "pgkbTags:1454108640"
+        },
+        {
+          "id": 1451577482,
+          "resource": "PGx Paper Types",
+          "term": "Review",
+          "termId": "pgxPaperTypes:1451577482"
+        },
+        {
+          "id": 1451577562,
+          "resource": "PGx Paper Types",
+          "term": "Allele Function",
+          "termId": "pgxPaperTypes:1451577562"
+        }
+      ],
+      "type": "Literature",
+      "volume": "20",
+      "year": 2010
+    },
+    "citation_text": "Cytochrome P450 2C9-CYP2C9. Van Booven Derek, Marsh Sharon, McLeod Howard et al. Pharmacogenetics and genomics 2010",
+    "allele_file": "CYP2C9_allele_definition_table.xlsx",
+    "allele_type": "Named Alleles",
+    "allele_function_source": "CPIC",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 94905867,
+    "chr_stop_b38": 94989395,
+    "strand": "plus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA126",
+      "symbol": "CYP2C9",
+      "name": "cytochrome P450 family 2 subfamily C member 9",
+      "alleleFile": "CYP2C9_allele_definition_table.xlsx",
+      "alleleFunctionSource": "CPIC",
+      "alleleType": "Named Alleles",
+      "amp": true,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "q23.33",
+      "cbStop": "q23.33",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA504",
+        "name": "chr10"
+      },
+      "chrStartPosB37": 96698350,
+      "chrStartPosB38": 94905867,
+      "chrStopPosB37": 96749486,
+      "chrStopPosB38": 94989395,
+      "cpicGene": true,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": true,
+      "strand": "plus",
+      "vipCitation": {
+        "id": 7160454,
+        "title": "Cytochrome P450 2C9-CYP2C9.",
+        "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3201766",
+        "authors": [
+          "Van Booven Derek",
+          "Marsh Sharon",
+          "McLeod Howard",
+          "Carrillo Michelle Whirl",
+          "Sangkuhl Katrin",
+          "Klein Teri E",
+          "Altman Russ B"
+        ],
+        "crossReferences": [
+          {
+            "id": 1449247468,
+            "resource": "PubMed Central",
+            "resourceId": "PMC3201766",
+            "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3201766"
+          },
+          {
+            "id": 569773167,
+            "resource": "PubMed",
+            "resourceId": "20150829",
+            "_url": "https://www.ncbi.nlm.nih.gov/pubmed/20150829"
+          },
+          {
+            "id": 1449247469,
+            "resource": "DOI",
+            "resourceId": "10.1097/FPC.0b013e3283349e84",
+            "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e3283349e84"
+          }
+        ],
+        "day": -1,
+        "journal": "Pharmacogenetics and genomics",
+        "month": 4,
+        "objCls": "Literature",
+        "page": "277-81",
+        "pediatric": false,
+        "pgkbPublication": true,
+        "pubDate": "2010-04-01T00:00:00-07:00",
+        "pubmedMeshTerms": [],
+        "terms": [
+          {
+            "id": 1454108640,
+            "resource": "ClinPGx Tags",
+            "term": "PharmGKB",
+            "termId": "pgkbTags:1454108640"
+          },
+          {
+            "id": 1451577482,
+            "resource": "PGx Paper Types",
+            "term": "Review",
+            "termId": "pgxPaperTypes:1451577482"
+          },
+          {
+            "id": 1451577562,
+            "resource": "PGx Paper Types",
+            "term": "Allele Function",
+            "termId": "pgxPaperTypes:1451577562"
+          }
+        ],
+        "type": "Literature",
+        "volume": "20",
+        "year": 2010
+      },
+      "vipId": "PA166169913",
+      "vipSummary": {
+        "id": 1448821553,
+        "html": "<p>CYP2C9 is one of the key pharmacogenes involved in implementation of pharmacogenomics.</p>\n<ul>\n<li>It is involved in guidelines for <a href=\"/guidelineAnnotation/PA166104949\">warfarin</a>, <a href=\"/guidelineAnnotation/PA166122806\">phenytoin</a> and <a href=\"/guidelineAnnotation/PA166191841\">NSAIDs</a>, (<a href=\"/gene/PA126/prescribingInfo\">go to list of all guidelines with CYP2C9</a>).</li>\n<li>the nomenclature has been set by <a rel=\"noopener noreferrer\" href=\"https://www.pharmvar.org/gene/CYP2C9\" target=\"_blank\">PharmVar</a></li>\n<li>the AMP tier 1 alleles are <a href=\"/haplotype/PA165816543\">CYP2C9*2</a>, <a href=\"/haplotype/PA165816544\">CYP2C9*3</a>, <a href=\"/haplotype/PA165816546\">CYP2C9*5</a>, <a href=\"/haplotype/PA165816547\">CYP2C9*6</a>, <a href=\"/haplotype/PA165816549\">CYP2C9*8</a>, and <a href=\"/haplotype/PA165816552\">CYP2C9*11</a>, <a href=\"/ampAllelesToTest\">see all alleles on the AMP recommended to test list</a></li>\n<li>key variant pages include <a href=\"/variant/PA166153972\">rs1799853</a> and <a href=\"/variant/PA166153959\">rs1057910</a></li>\n<li>See the <a href=\"/page/cyp2c9RefMaterials\">Gene-specific Information Tables</a> for Allele Definitions (for which variants comprise which star alleles), Allele function assignments (normal function, no function, decreased or increased function etc) and Diplotype-Phenotype Table (for how the alleles combine to form metabolizer phenotypes for PM, NM, UM)</li>\n</ul>\n"
+      },
+      "vipTier": "Tier 1"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "CYP2D6",
+    "gene_id": "PA128",
+    "gene_name": "cytochrome P450 family 2 subfamily D member 6",
+    "chromosome": "chr22",
+    "chromosome_location": "q13.1-q13.2",
+    "vip_id": "PA166170264",
+    "vip_url": "https://www.clinpgx.org/vip/PA166170264/overview",
+    "vip_tier": "Tier 1",
+    "cpic_gene": true,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": true,
+    "pharmvar_gene": true,
+    "vip_summary_html": "<p>CYP2D6 is one of the key pharmacogenes involved in implementation of pharmacogenomics. It is highly polymorphic and involved in the metabolism of up to 25% of the drugs that are in common use in the clinic.</p>\n<ul>\n<li>It is involved in guidelines for <a href=\"/guidelineAnnotation/PA166104996\">codeine</a> and other opioids, antidepressants, and tamoxifen <a href=\"/gene/PA128/prescribingInfo#guideline-annotations\">go to list of all guidelines with CYP2D6</a>.</li>\n<li>the nomenclature has been set by <a rel=\"noopener noreferrer\" href=\"https://www.pharmvar.org/gene/CYP2D6\" target=\"_blank\">PharmVar</a>.</li>\n<li>the AMP tier 1 alleles are <a href=\"/haplotype/PA165816577\">CYP2D6*2</a>, <a href=\"/haplotype/PA165816578\">CYP2D6*3</a>, <a href=\"/haplotype/PA165816579\">CYP2D6*4</a>, <a href=\"/haplotype/PA165948092\">CYP2D6*5</a>, <a href=\"/haplotype/PA165816581\">CYP2D6*6</a>, <a href=\"/haplotype/PA165948317\">CYP2D6*9</a>, <a href=\"/haplotype/PA165816582\">CYP2D6*10</a>, <a href=\"/haplotype/PA165816583\">CYP2D6*17</a>, <a href=\"/haplotype/PA165948318\">CYP2D6*29</a>, <a href=\"/haplotype/PA165816584\">CYP2D6*41</a>, CYP2D6 duplications and other copy number variants <a href=\"/ampAllelesToTest\">see all alleles on the AMP recommended to test list</a>.</li>\n<li>See the <a href=\"/page/cyp2d6RefMaterials\">Gene-specific Information Tables</a> for Allele Definitions (for which variants comprise which star alleles), Allele function assignments (normal function, no function, decreased or increased function etc) and Diplotype-Phenotype Table (for how the alleles combine to form metabolizer phenotypes for PM, NM, UM).</li>\n<li>CYP2D6 is the most studied CYP for phenoconversion, where a drug-drug interaction mimics a metabolizer phenotype. <a href=\"/chemical/PA450801\">paroxetine</a>, <a href=\"/chemical/PA449673\">fluoxetine</a> and <a href=\"/chemical/PA448687\">bupropion</a> are strong inhibitors of CYP2D6 as per <a rel=\"noopener noreferrer\" href=\"https://drug-interactions.medicine.iu.edu/MainTable.aspx\" target=\"_blank\">Flockhart Table</a>.</li>\n</ul>\n",
+    "vip_summary_text": "CYP2D6 is one of the key pharmacogenes involved in implementation of pharmacogenomics. It is highly polymorphic and involved in the metabolism of up to 25% of the drugs that are in common use in the clinic. It is involved in guidelines for codeine and other opioids, antidepressants, and tamoxifen go to list of all guidelines with CYP2D6 . the nomenclature has been set by PharmVar . the AMP tier 1 alleles are CYP2D6*2 , CYP2D6*3 , CYP2D6*4 , CYP2D6*5 , CYP2D6*6 , CYP2D6*9 , CYP2D6*10 , CYP2D6*17 , CYP2D6*29 , CYP2D6*41 , CYP2D6 duplications and other copy number variants see all alleles on the AMP recommended to test list . See the Gene-specific Information Tables for Allele Definitions (for which variants comprise which star alleles), Allele function assignments (normal function, no function, decreased or increased function etc) and Diplotype-Phenotype Table (for how the alleles combine to form metabolizer phenotypes for PM, NM, UM). CYP2D6 is the most studied CYP for phenoconversion, where a drug-drug interaction mimics a metabolizer phenotype. paroxetine , fluoxetine and bupropion are strong inhibitors of CYP2D6 as per Flockhart Table .",
+    "vip_summary_id": "1448995144",
+    "vip_summary_present": true,
+    "vip_summary_schema_valid": true,
+    "vip_summary_missing_reason": "",
+    "citation": {
+      "id": 7144344,
+      "title": "Cytochrome P450 2D6.",
+      "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4373606",
+      "authors": [
+        "Owen Ryan P",
+        "Sangkuhl Katrin",
+        "Klein Teri E",
+        "Altman Russ B"
+      ],
+      "crossReferences": [
+        {
+          "id": 1449247412,
+          "resource": "PubMed Central",
+          "resourceId": "PMC4373606",
+          "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4373606"
+        },
+        {
+          "id": 562114580,
+          "resource": "PubMed",
+          "resourceId": "19512959",
+          "_url": "https://www.ncbi.nlm.nih.gov/pubmed/19512959"
+        },
+        {
+          "id": 1449247413,
+          "resource": "DOI",
+          "resourceId": "10.1097/FPC.0b013e32832e0e97",
+          "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e32832e0e97"
+        }
+      ],
+      "day": -1,
+      "journal": "Pharmacogenetics and genomics",
+      "month": 7,
+      "objCls": "Literature",
+      "page": "559-62",
+      "pediatric": false,
+      "pgkbPublication": true,
+      "pubDate": "2009-07-01T00:00:00-07:00",
+      "pubmedMeshTerms": [],
+      "terms": [
+        {
+          "id": 1454108640,
+          "resource": "ClinPGx Tags",
+          "term": "PharmGKB",
+          "termId": "pgkbTags:1454108640"
+        },
+        {
+          "id": 1451577482,
+          "resource": "PGx Paper Types",
+          "term": "Review",
+          "termId": "pgxPaperTypes:1451577482"
+        }
+      ],
+      "type": "Literature",
+      "volume": "19",
+      "year": 2009
+    },
+    "citation_text": "Cytochrome P450 2D6. Owen Ryan P, Sangkuhl Katrin, Klein Teri E et al. Pharmacogenetics and genomics 2009",
+    "allele_file": "CYP2D6_allele_definition_table.xlsx",
+    "allele_type": "Named Alleles",
+    "allele_function_source": "CPIC",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 42125531,
+    "chr_stop_b38": 42130881,
+    "strand": "minus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA128",
+      "symbol": "CYP2D6",
+      "name": "cytochrome P450 family 2 subfamily D member 6",
+      "alleleFile": "CYP2D6_allele_definition_table.xlsx",
+      "alleleFunctionSource": "CPIC",
+      "alleleType": "Named Alleles",
+      "amp": true,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "q13.1",
+      "cbStop": "q13.2",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA525",
+        "name": "chr22"
+      },
+      "chrStartPosB37": 42522501,
+      "chrStartPosB38": 42125531,
+      "chrStopPosB37": 42526883,
+      "chrStopPosB38": 42130881,
+      "cpicGene": true,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": true,
+      "strand": "minus",
+      "vipCitation": {
+        "id": 7144344,
+        "title": "Cytochrome P450 2D6.",
+        "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4373606",
+        "authors": [
+          "Owen Ryan P",
+          "Sangkuhl Katrin",
+          "Klein Teri E",
+          "Altman Russ B"
+        ],
+        "crossReferences": [
+          {
+            "id": 1449247412,
+            "resource": "PubMed Central",
+            "resourceId": "PMC4373606",
+            "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4373606"
+          },
+          {
+            "id": 562114580,
+            "resource": "PubMed",
+            "resourceId": "19512959",
+            "_url": "https://www.ncbi.nlm.nih.gov/pubmed/19512959"
+          },
+          {
+            "id": 1449247413,
+            "resource": "DOI",
+            "resourceId": "10.1097/FPC.0b013e32832e0e97",
+            "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e32832e0e97"
+          }
+        ],
+        "day": -1,
+        "journal": "Pharmacogenetics and genomics",
+        "month": 7,
+        "objCls": "Literature",
+        "page": "559-62",
+        "pediatric": false,
+        "pgkbPublication": true,
+        "pubDate": "2009-07-01T00:00:00-07:00",
+        "pubmedMeshTerms": [],
+        "terms": [
+          {
+            "id": 1454108640,
+            "resource": "ClinPGx Tags",
+            "term": "PharmGKB",
+            "termId": "pgkbTags:1454108640"
+          },
+          {
+            "id": 1451577482,
+            "resource": "PGx Paper Types",
+            "term": "Review",
+            "termId": "pgxPaperTypes:1451577482"
+          }
+        ],
+        "type": "Literature",
+        "volume": "19",
+        "year": 2009
+      },
+      "vipId": "PA166170264",
+      "vipSummary": {
+        "id": 1448995144,
+        "html": "<p>CYP2D6 is one of the key pharmacogenes involved in implementation of pharmacogenomics. It is highly polymorphic and involved in the metabolism of up to 25% of the drugs that are in common use in the clinic.</p>\n<ul>\n<li>It is involved in guidelines for <a href=\"/guidelineAnnotation/PA166104996\">codeine</a> and other opioids, antidepressants, and tamoxifen <a href=\"/gene/PA128/prescribingInfo#guideline-annotations\">go to list of all guidelines with CYP2D6</a>.</li>\n<li>the nomenclature has been set by <a rel=\"noopener noreferrer\" href=\"https://www.pharmvar.org/gene/CYP2D6\" target=\"_blank\">PharmVar</a>.</li>\n<li>the AMP tier 1 alleles are <a href=\"/haplotype/PA165816577\">CYP2D6*2</a>, <a href=\"/haplotype/PA165816578\">CYP2D6*3</a>, <a href=\"/haplotype/PA165816579\">CYP2D6*4</a>, <a href=\"/haplotype/PA165948092\">CYP2D6*5</a>, <a href=\"/haplotype/PA165816581\">CYP2D6*6</a>, <a href=\"/haplotype/PA165948317\">CYP2D6*9</a>, <a href=\"/haplotype/PA165816582\">CYP2D6*10</a>, <a href=\"/haplotype/PA165816583\">CYP2D6*17</a>, <a href=\"/haplotype/PA165948318\">CYP2D6*29</a>, <a href=\"/haplotype/PA165816584\">CYP2D6*41</a>, CYP2D6 duplications and other copy number variants <a href=\"/ampAllelesToTest\">see all alleles on the AMP recommended to test list</a>.</li>\n<li>See the <a href=\"/page/cyp2d6RefMaterials\">Gene-specific Information Tables</a> for Allele Definitions (for which variants comprise which star alleles), Allele function assignments (normal function, no function, decreased or increased function etc) and Diplotype-Phenotype Table (for how the alleles combine to form metabolizer phenotypes for PM, NM, UM).</li>\n<li>CYP2D6 is the most studied CYP for phenoconversion, where a drug-drug interaction mimics a metabolizer phenotype. <a href=\"/chemical/PA450801\">paroxetine</a>, <a href=\"/chemical/PA449673\">fluoxetine</a> and <a href=\"/chemical/PA448687\">bupropion</a> are strong inhibitors of CYP2D6 as per <a rel=\"noopener noreferrer\" href=\"https://drug-interactions.medicine.iu.edu/MainTable.aspx\" target=\"_blank\">Flockhart Table</a>.</li>\n</ul>\n"
+      },
+      "vipTier": "Tier 1"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "CYP3A4",
+    "gene_id": "PA130",
+    "gene_name": "cytochrome P450 family 3 subfamily A member 4",
+    "chromosome": "chr7",
+    "chromosome_location": "q22.1-q22.1",
+    "vip_id": "PA166169915",
+    "vip_url": "https://www.clinpgx.org/vip/PA166169915/overview",
+    "vip_tier": "Tier 1",
+    "cpic_gene": false,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": true,
+    "pharmvar_gene": true,
+    "vip_summary_html": "<p>CYP3A4 is one of the key pharmacogenes involved in implementation of pharmacogenomics.</p>\n<ul>\n<li>It is involved in guidelines for quetiapine (<a href=\"/gene/PA131/prescribingInfo\">go to list of all guidelines with CYP3A4</a>).</li>\n<li>the nomenclature has been set by <a rel=\"noopener noreferrer\" href=\"https://www.pharmvar.org/gene/CYP3A4\" target=\"_blank\">PharmVar</a></li>\n<li>the AMP tier 1 allele is <a href=\"/haplotype/PA166048680\">CYP3A4*22</a> and tier 2 allele is <a href=\"/haplotype/PA165819244\">CYP3A4*20</a> <a href=\"/page/ampAllelesToTest\">see all alleles on the AMP recommended to test list</a>.</li>\n<li>key variant pages are <a href=\"/variant/PA166157487\">rs35599367</a> (defining for *22) and <a href=\"/variant/PA166157502\">rs67666821</a> (defining for *20).</li>\n<li>it is involved in many <a href=\"/gene/PA130/labelAnnotation\">drug label annotations</a> with a larger number of cautions for drug-drug interactions with CYP3A4 inhibitors (such as <a href=\"/chemical/PA450146\">ketoconazole</a>) and inducers (such as <a href=\"/chemical/PA448785\">carbamazepine</a>), see the <a rel=\"noopener noreferrer\" href=\"https://drug-interactions.medicine.iu.edu/MainTable.aspx\" target=\"_blank\">Flockhart table</a> for more CYP3A4 inhibitors, inducers and substrates.</li>\n</ul>\n",
+    "vip_summary_text": "CYP3A4 is one of the key pharmacogenes involved in implementation of pharmacogenomics. It is involved in guidelines for quetiapine ( go to list of all guidelines with CYP3A4 ). the nomenclature has been set by PharmVar the AMP tier 1 allele is CYP3A4*22 and tier 2 allele is CYP3A4*20 see all alleles on the AMP recommended to test list . key variant pages are rs35599367 (defining for *22) and rs67666821 (defining for *20). it is involved in many drug label annotations with a larger number of cautions for drug-drug interactions with CYP3A4 inhibitors (such as ketoconazole ) and inducers (such as carbamazepine ), see the Flockhart table for more CYP3A4 inhibitors, inducers and substrates.",
+    "vip_summary_id": "1448821611",
+    "vip_summary_present": true,
+    "vip_summary_schema_valid": true,
+    "vip_summary_missing_reason": "",
+    "citation": {
+      "id": 15168379,
+      "title": "PharmGKB VIP Summary: CYP3A4",
+      "_sameAs": "https://api.pharmgkb.org/v1/download/file/attachment/CYP3A4_VIP_Summary.pdf",
+      "crossReferences": [
+        {
+          "id": 1452646257,
+          "resource": "URL",
+          "resourceId": "https://api.pharmgkb.org/v1/download/file/attachment/CYP3A4_VIP_Summary.pdf",
+          "_url": "https://api.pharmgkb.org/v1/download/file/attachment/CYP3A4_VIP_Summary.pdf"
+        }
+      ],
+      "day": -1,
+      "month": -1,
+      "notes": "This document contains text that was found on the PharmGKB VIP page for CYP3A4 prior to Oct 2024.",
+      "objCls": "Literature",
+      "pediatric": false,
+      "pgkbPublication": false,
+      "pubmedMeshTerms": [],
+      "terms": [
+        {
+          "id": 1452267780,
+          "resource": "ClinPGx Tags",
+          "term": "Has PGx",
+          "termId": "pgkbTags:1452267780"
+        }
+      ],
+      "type": "Literature",
+      "year": -1
+    },
+    "citation_text": "PharmGKB VIP Summary: CYP3A4  et al.  -1",
+    "allele_file": "",
+    "allele_type": "Named Alleles",
+    "allele_function_source": "ClinPGx",
+    "build_version": "GRCh38",
+    "chr_start_b38": 99756967,
+    "chr_stop_b38": 99784184,
+    "strand": "minus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA130",
+      "symbol": "CYP3A4",
+      "name": "cytochrome P450 family 3 subfamily A member 4",
+      "alleleFunctionSource": "ClinPGx",
+      "alleleType": "Named Alleles",
+      "amp": true,
+      "buildVersion": "GRCh38",
+      "cbStart": "q22.1",
+      "cbStop": "q22.1",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA534",
+        "name": "chr7"
+      },
+      "chrStartPosB37": 99354590,
+      "chrStartPosB38": 99756967,
+      "chrStopPosB37": 99381807,
+      "chrStopPosB38": 99784184,
+      "cpicGene": false,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": true,
+      "strand": "minus",
+      "vipCitation": {
+        "id": 15168379,
+        "title": "PharmGKB VIP Summary: CYP3A4",
+        "_sameAs": "https://api.pharmgkb.org/v1/download/file/attachment/CYP3A4_VIP_Summary.pdf",
+        "crossReferences": [
+          {
+            "id": 1452646257,
+            "resource": "URL",
+            "resourceId": "https://api.pharmgkb.org/v1/download/file/attachment/CYP3A4_VIP_Summary.pdf",
+            "_url": "https://api.pharmgkb.org/v1/download/file/attachment/CYP3A4_VIP_Summary.pdf"
+          }
+        ],
+        "day": -1,
+        "month": -1,
+        "notes": "This document contains text that was found on the PharmGKB VIP page for CYP3A4 prior to Oct 2024.",
+        "objCls": "Literature",
+        "pediatric": false,
+        "pgkbPublication": false,
+        "pubmedMeshTerms": [],
+        "terms": [
+          {
+            "id": 1452267780,
+            "resource": "ClinPGx Tags",
+            "term": "Has PGx",
+            "termId": "pgkbTags:1452267780"
+          }
+        ],
+        "type": "Literature",
+        "year": -1
+      },
+      "vipId": "PA166169915",
+      "vipSummary": {
+        "id": 1448821611,
+        "html": "<p>CYP3A4 is one of the key pharmacogenes involved in implementation of pharmacogenomics.</p>\n<ul>\n<li>It is involved in guidelines for quetiapine (<a href=\"/gene/PA131/prescribingInfo\">go to list of all guidelines with CYP3A4</a>).</li>\n<li>the nomenclature has been set by <a rel=\"noopener noreferrer\" href=\"https://www.pharmvar.org/gene/CYP3A4\" target=\"_blank\">PharmVar</a></li>\n<li>the AMP tier 1 allele is <a href=\"/haplotype/PA166048680\">CYP3A4*22</a> and tier 2 allele is <a href=\"/haplotype/PA165819244\">CYP3A4*20</a> <a href=\"/page/ampAllelesToTest\">see all alleles on the AMP recommended to test list</a>.</li>\n<li>key variant pages are <a href=\"/variant/PA166157487\">rs35599367</a> (defining for *22) and <a href=\"/variant/PA166157502\">rs67666821</a> (defining for *20).</li>\n<li>it is involved in many <a href=\"/gene/PA130/labelAnnotation\">drug label annotations</a> with a larger number of cautions for drug-drug interactions with CYP3A4 inhibitors (such as <a href=\"/chemical/PA450146\">ketoconazole</a>) and inducers (such as <a href=\"/chemical/PA448785\">carbamazepine</a>), see the <a rel=\"noopener noreferrer\" href=\"https://drug-interactions.medicine.iu.edu/MainTable.aspx\" target=\"_blank\">Flockhart table</a> for more CYP3A4 inhibitors, inducers and substrates.</li>\n</ul>\n"
+      },
+      "vipTier": "Tier 1"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "CYP3A5",
+    "gene_id": "PA131",
+    "gene_name": "cytochrome P450 family 3 subfamily A member 5",
+    "chromosome": "chr7",
+    "chromosome_location": "q22.1-q22.1",
+    "vip_id": "PA166170041",
+    "vip_url": "https://www.clinpgx.org/vip/PA166170041/overview",
+    "vip_tier": "Tier 1",
+    "cpic_gene": true,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": true,
+    "pharmvar_gene": true,
+    "vip_summary_html": "<p>CYP3A5 is one of the key pharmacogenes involved in implementation of pharmacogenomics.</p>\n<ul>\n<li>It is involved in guidelines for tacrolimus (<a href=\"/gene/PA131/prescribingInfo\">go to list of all guidelines with CYP3A5</a>).</li>\n<li>the nomenclature has been set by <a rel=\"noopener noreferrer\" href=\"https://www.pharmvar.org/gene/CYP3A5\" target=\"_blank\">PharmVar</a></li>\n<li>the AMP tier 1 alleles are <a href=\"/haplotype/PA166128219\">CYP3A5*3</a>, <a href=\"/haplotype/PA166128233\">CYP3A5*6</a>, and <a href=\"/haplotype/PA166128234\">CYP3A5*7</a> <a href=\"/page/ampAllelesToTest\">see all alleles on the AMP recommended to test list</a>.</li>\n<li>key variant pages are <a href=\"/variant/PA166157267\">rs776746</a> (defining for CYP3A5*3), <a href=\"/variant/PA166157441\">rs10264272</a> (defining for CYP3A5*6), <a href=\"/variant/PA166157490\">rs41303343</a> (defining for CYP3A5*7).</li>\n<li>See the <a href=\"/page/cyp3a5RefMaterials\">Gene-specific Information Tables</a> for Allele Definitions (for which variants comprise which star alleles), Allele function assignments (normal function, no function, decreased or increased function etc) and Diplotype-Phenotype Table (for how the alleles combine to form metabolizer phenotypes for PM, NM, UM).</li>\n</ul>\n",
+    "vip_summary_text": "CYP3A5 is one of the key pharmacogenes involved in implementation of pharmacogenomics. It is involved in guidelines for tacrolimus ( go to list of all guidelines with CYP3A5 ). the nomenclature has been set by PharmVar the AMP tier 1 alleles are CYP3A5*3 , CYP3A5*6 , and CYP3A5*7 see all alleles on the AMP recommended to test list . key variant pages are rs776746 (defining for CYP3A5*3), rs10264272 (defining for CYP3A5*6), rs41303343 (defining for CYP3A5*7). See the Gene-specific Information Tables for Allele Definitions (for which variants comprise which star alleles), Allele function assignments (normal function, no function, decreased or increased function etc) and Diplotype-Phenotype Table (for how the alleles combine to form metabolizer phenotypes for PM, NM, UM).",
+    "vip_summary_id": "1448926791",
+    "vip_summary_present": true,
+    "vip_summary_schema_valid": true,
+    "vip_summary_missing_reason": "",
+    "citation": {
+      "id": 15019033,
+      "title": "PharmGKB summary: very important pharmacogene information for CYP3A5.",
+      "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3738061",
+      "authors": [
+        "Lamba Jatinder",
+        "Hebert Joan M",
+        "Schuetz Erin G",
+        "Klein Teri E",
+        "Altman Russ B"
+      ],
+      "crossReferences": [
+        {
+          "id": 1449268493,
+          "resource": "PubMed Central",
+          "resourceId": "PMC3738061",
+          "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3738061"
+        },
+        {
+          "id": 1449268492,
+          "resource": "PubMed",
+          "resourceId": "22407409",
+          "_url": "https://www.ncbi.nlm.nih.gov/pubmed/22407409"
+        },
+        {
+          "id": 1449268494,
+          "resource": "DOI",
+          "resourceId": "10.1097/FPC.0b013e328351d47f",
+          "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e328351d47f"
+        }
+      ],
+      "day": -1,
+      "journal": "Pharmacogenetics and genomics",
+      "month": 7,
+      "objCls": "Literature",
+      "page": "555-8",
+      "pediatric": false,
+      "pgkbPublication": true,
+      "pubDate": "2012-07-01T00:00:00-07:00",
+      "pubmedMeshTerms": [],
+      "terms": [
+        {
+          "id": 1454108640,
+          "resource": "ClinPGx Tags",
+          "term": "PharmGKB",
+          "termId": "pgkbTags:1454108640"
+        },
+        {
+          "id": 1451577482,
+          "resource": "PGx Paper Types",
+          "term": "Review",
+          "termId": "pgxPaperTypes:1451577482"
+        }
+      ],
+      "type": "Literature",
+      "volume": "22",
+      "year": 2012
+    },
+    "citation_text": "PharmGKB summary: very important pharmacogene information for CYP3A5. Lamba Jatinder, Hebert Joan M, Schuetz Erin G et al. Pharmacogenetics and genomics 2012",
+    "allele_file": "CYP3A5_allele_definition_table.xlsx",
+    "allele_type": "Named Alleles",
+    "allele_function_source": "CPIC",
+    "build_version": "GRCh38",
+    "chr_start_b38": 99648194,
+    "chr_stop_b38": 99679996,
+    "strand": "minus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA131",
+      "symbol": "CYP3A5",
+      "name": "cytochrome P450 family 3 subfamily A member 5",
+      "alleleFile": "CYP3A5_allele_definition_table.xlsx",
+      "alleleFunctionSource": "CPIC",
+      "alleleType": "Named Alleles",
+      "amp": true,
+      "buildVersion": "GRCh38",
+      "cbStart": "q22.1",
+      "cbStop": "q22.1",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA534",
+        "name": "chr7"
+      },
+      "chrStartPosB37": 99245817,
+      "chrStartPosB38": 99648194,
+      "chrStopPosB37": 99277619,
+      "chrStopPosB38": 99679996,
+      "cpicGene": true,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": true,
+      "strand": "minus",
+      "vipCitation": {
+        "id": 15019033,
+        "title": "PharmGKB summary: very important pharmacogene information for CYP3A5.",
+        "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3738061",
+        "authors": [
+          "Lamba Jatinder",
+          "Hebert Joan M",
+          "Schuetz Erin G",
+          "Klein Teri E",
+          "Altman Russ B"
+        ],
+        "crossReferences": [
+          {
+            "id": 1449268493,
+            "resource": "PubMed Central",
+            "resourceId": "PMC3738061",
+            "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3738061"
+          },
+          {
+            "id": 1449268492,
+            "resource": "PubMed",
+            "resourceId": "22407409",
+            "_url": "https://www.ncbi.nlm.nih.gov/pubmed/22407409"
+          },
+          {
+            "id": 1449268494,
+            "resource": "DOI",
+            "resourceId": "10.1097/FPC.0b013e328351d47f",
+            "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e328351d47f"
+          }
+        ],
+        "day": -1,
+        "journal": "Pharmacogenetics and genomics",
+        "month": 7,
+        "objCls": "Literature",
+        "page": "555-8",
+        "pediatric": false,
+        "pgkbPublication": true,
+        "pubDate": "2012-07-01T00:00:00-07:00",
+        "pubmedMeshTerms": [],
+        "terms": [
+          {
+            "id": 1454108640,
+            "resource": "ClinPGx Tags",
+            "term": "PharmGKB",
+            "termId": "pgkbTags:1454108640"
+          },
+          {
+            "id": 1451577482,
+            "resource": "PGx Paper Types",
+            "term": "Review",
+            "termId": "pgxPaperTypes:1451577482"
+          }
+        ],
+        "type": "Literature",
+        "volume": "22",
+        "year": 2012
+      },
+      "vipId": "PA166170041",
+      "vipSummary": {
+        "id": 1448926791,
+        "html": "<p>CYP3A5 is one of the key pharmacogenes involved in implementation of pharmacogenomics.</p>\n<ul>\n<li>It is involved in guidelines for tacrolimus (<a href=\"/gene/PA131/prescribingInfo\">go to list of all guidelines with CYP3A5</a>).</li>\n<li>the nomenclature has been set by <a rel=\"noopener noreferrer\" href=\"https://www.pharmvar.org/gene/CYP3A5\" target=\"_blank\">PharmVar</a></li>\n<li>the AMP tier 1 alleles are <a href=\"/haplotype/PA166128219\">CYP3A5*3</a>, <a href=\"/haplotype/PA166128233\">CYP3A5*6</a>, and <a href=\"/haplotype/PA166128234\">CYP3A5*7</a> <a href=\"/page/ampAllelesToTest\">see all alleles on the AMP recommended to test list</a>.</li>\n<li>key variant pages are <a href=\"/variant/PA166157267\">rs776746</a> (defining for CYP3A5*3), <a href=\"/variant/PA166157441\">rs10264272</a> (defining for CYP3A5*6), <a href=\"/variant/PA166157490\">rs41303343</a> (defining for CYP3A5*7).</li>\n<li>See the <a href=\"/page/cyp3a5RefMaterials\">Gene-specific Information Tables</a> for Allele Definitions (for which variants comprise which star alleles), Allele function assignments (normal function, no function, decreased or increased function etc) and Diplotype-Phenotype Table (for how the alleles combine to form metabolizer phenotypes for PM, NM, UM).</li>\n</ul>\n"
+      },
+      "vipTier": "Tier 1"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "G6PD",
+    "gene_id": "PA28469",
+    "gene_name": "glucose-6-phosphate dehydrogenase",
+    "chromosome": "chrX",
+    "chromosome_location": "q28-q28",
+    "vip_id": "PA166169539",
+    "vip_url": "https://www.clinpgx.org/vip/PA166169539/overview",
+    "vip_tier": "Tier 1",
+    "cpic_gene": true,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "<p>Glucose-6-phosphate dehydrogenase (G6PD) mediates the production of NADPH and Ribose-5-phosphate and is one of the first genes found to be associated with variable drug response.  Individuals with G6PD deficiency may have increased risks of adverse reactions to many drugs including primaquine, chloroquine, dapsone, rasburicase, avandaryl tablets (glimepiride + rosiglitazone maleate) and glucovance tablets (metformin + glibenclamide).</p>\n",
+    "vip_summary_text": "Glucose-6-phosphate dehydrogenase (G6PD) mediates the production of NADPH and Ribose-5-phosphate and is one of the first genes found to be associated with variable drug response.  Individuals with G6PD deficiency may have increased risks of adverse reactions to many drugs including primaquine, chloroquine, dapsone, rasburicase, avandaryl tablets (glimepiride + rosiglitazone maleate) and glucovance tablets (metformin + glibenclamide).",
+    "vip_summary_id": "1448640942",
+    "vip_summary_present": true,
+    "vip_summary_schema_valid": true,
+    "vip_summary_missing_reason": "",
+    "citation": {
+      "id": 14835947,
+      "title": "PharmGKB summary: very important pharmacogene information for G6PD.",
+      "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3382019",
+      "authors": [
+        "McDonagh Ellen M",
+        "Thorn Caroline F",
+        "Bautista José M",
+        "Youngster Ilan",
+        "Altman Russ B",
+        "Klein Teri E"
+      ],
+      "crossReferences": [
+        {
+          "id": 1449266755,
+          "resource": "PubMed Central",
+          "resourceId": "PMC3382019",
+          "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3382019"
+        },
+        {
+          "id": 827816024,
+          "resource": "PubMed",
+          "resourceId": "22237549",
+          "_url": "https://www.ncbi.nlm.nih.gov/pubmed/22237549"
+        },
+        {
+          "id": 1449266756,
+          "resource": "DOI",
+          "resourceId": "10.1097/FPC.0b013e32834eb313",
+          "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e32834eb313"
+        }
+      ],
+      "day": -1,
+      "journal": "Pharmacogenetics and genomics",
+      "month": 3,
+      "objCls": "Literature",
+      "page": "219-28",
+      "pediatric": false,
+      "pgkbPublication": true,
+      "pubDate": "2012-03-01T00:00:00-08:00",
+      "pubmedMeshTerms": [],
+      "terms": [
+        {
+          "id": 1454108640,
+          "resource": "ClinPGx Tags",
+          "term": "PharmGKB",
+          "termId": "pgkbTags:1454108640"
+        },
+        {
+          "id": 1451577482,
+          "resource": "PGx Paper Types",
+          "term": "Review",
+          "termId": "pgxPaperTypes:1451577482"
+        }
+      ],
+      "type": "Literature",
+      "volume": "22",
+      "year": 2012
+    },
+    "citation_text": "PharmGKB summary: very important pharmacogene information for G6PD. McDonagh Ellen M, Thorn Caroline F, Bautista José M et al. Pharmacogenetics and genomics 2012",
+    "allele_file": "G6PD_allele_definition_table.xlsx",
+    "allele_type": "Named Variants",
+    "allele_function_source": "CPIC",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 154531390,
+    "chr_stop_b38": 154547586,
+    "strand": "minus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA28469",
+      "symbol": "G6PD",
+      "name": "glucose-6-phosphate dehydrogenase",
+      "alleleFile": "G6PD_allele_definition_table.xlsx",
+      "alleleFunctionSource": "CPIC",
+      "alleleType": "Named Variants",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "q28",
+      "cbStop": "q28",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA542",
+        "name": "chrX"
+      },
+      "chrStartPosB37": 153759606,
+      "chrStartPosB38": 154531390,
+      "chrStopPosB37": 153775796,
+      "chrStopPosB38": 154547586,
+      "cpicGene": true,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": false,
+      "strand": "minus",
+      "vipCitation": {
+        "id": 14835947,
+        "title": "PharmGKB summary: very important pharmacogene information for G6PD.",
+        "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3382019",
+        "authors": [
+          "McDonagh Ellen M",
+          "Thorn Caroline F",
+          "Bautista José M",
+          "Youngster Ilan",
+          "Altman Russ B",
+          "Klein Teri E"
+        ],
+        "crossReferences": [
+          {
+            "id": 1449266755,
+            "resource": "PubMed Central",
+            "resourceId": "PMC3382019",
+            "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3382019"
+          },
+          {
+            "id": 827816024,
+            "resource": "PubMed",
+            "resourceId": "22237549",
+            "_url": "https://www.ncbi.nlm.nih.gov/pubmed/22237549"
+          },
+          {
+            "id": 1449266756,
+            "resource": "DOI",
+            "resourceId": "10.1097/FPC.0b013e32834eb313",
+            "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e32834eb313"
+          }
+        ],
+        "day": -1,
+        "journal": "Pharmacogenetics and genomics",
+        "month": 3,
+        "objCls": "Literature",
+        "page": "219-28",
+        "pediatric": false,
+        "pgkbPublication": true,
+        "pubDate": "2012-03-01T00:00:00-08:00",
+        "pubmedMeshTerms": [],
+        "terms": [
+          {
+            "id": 1454108640,
+            "resource": "ClinPGx Tags",
+            "term": "PharmGKB",
+            "termId": "pgkbTags:1454108640"
+          },
+          {
+            "id": 1451577482,
+            "resource": "PGx Paper Types",
+            "term": "Review",
+            "termId": "pgxPaperTypes:1451577482"
+          }
+        ],
+        "type": "Literature",
+        "volume": "22",
+        "year": 2012
+      },
+      "vipId": "PA166169539",
+      "vipSummary": {
+        "id": 1448640942,
+        "html": "<p>Glucose-6-phosphate dehydrogenase (G6PD) mediates the production of NADPH and Ribose-5-phosphate and is one of the first genes found to be associated with variable drug response.  Individuals with G6PD deficiency may have increased risks of adverse reactions to many drugs including primaquine, chloroquine, dapsone, rasburicase, avandaryl tablets (glimepiride + rosiglitazone maleate) and glucovance tablets (metformin + glibenclamide).</p>\n"
+      },
+      "vipTier": "Tier 1"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "GRK4",
+    "gene_id": "PA28941",
+    "gene_name": "G protein-coupled receptor kinase 4",
+    "chromosome": "chr4",
+    "chromosome_location": "p16.3-p16.3",
+    "vip_id": "",
+    "vip_url": "",
+    "vip_tier": "Undefined",
+    "cpic_gene": false,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "",
+    "vip_summary_text": "",
+    "vip_summary_id": "",
+    "vip_summary_present": false,
+    "vip_summary_schema_valid": false,
+    "vip_summary_missing_reason": "vipSummary field absent from PharmGKB gene response",
+    "citation": null,
+    "citation_text": "",
+    "allele_file": "",
+    "allele_type": "None",
+    "allele_function_source": "",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 2963504,
+    "chr_stop_b38": 3040760,
+    "strand": "plus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA28941",
+      "symbol": "GRK4",
+      "name": "G protein-coupled receptor kinase 4",
+      "alleleType": "None",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "p16.3",
+      "cbStop": "p16.3",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA529",
+        "name": "chr4"
+      },
+      "chrStartPosB37": 2965232,
+      "chrStartPosB38": 2963504,
+      "chrStopPosB37": 3042474,
+      "chrStopPosB38": 3040760,
+      "cpicGene": false,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": false,
+      "strand": "plus",
+      "vipTier": "Undefined"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "GRK5",
+    "gene_id": "PA180",
+    "gene_name": "G protein-coupled receptor kinase 5",
+    "chromosome": "chr10",
+    "chromosome_location": "q26.11-q26.11",
+    "vip_id": "",
+    "vip_url": "",
+    "vip_tier": "Undefined",
+    "cpic_gene": false,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "",
+    "vip_summary_text": "",
+    "vip_summary_id": "",
+    "vip_summary_present": false,
+    "vip_summary_schema_valid": false,
+    "vip_summary_missing_reason": "vipSummary field absent from PharmGKB gene response",
+    "citation": null,
+    "citation_text": "",
+    "allele_file": "",
+    "allele_type": "None",
+    "allele_function_source": "",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 119207685,
+    "chr_stop_b38": 119455619,
+    "strand": "plus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA180",
+      "symbol": "GRK5",
+      "name": "G protein-coupled receptor kinase 5",
+      "alleleType": "None",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "q26.11",
+      "cbStop": "q26.11",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA504",
+        "name": "chr10"
+      },
+      "chrStartPosB37": 120967197,
+      "chrStartPosB38": 119207685,
+      "chrStopPosB37": 121215131,
+      "chrStopPosB38": 119455619,
+      "cpicGene": false,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": false,
+      "strand": "plus",
+      "vipTier": "Undefined"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "HLA-A",
+    "gene_id": "PA35055",
+    "gene_name": "major histocompatibility complex, class I, A",
+    "chromosome": "chr6",
+    "chromosome_location": "p22.1-p22.1",
+    "vip_id": "",
+    "vip_url": "",
+    "vip_tier": "Undefined",
+    "cpic_gene": true,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "",
+    "vip_summary_text": "",
+    "vip_summary_id": "",
+    "vip_summary_present": false,
+    "vip_summary_schema_valid": false,
+    "vip_summary_missing_reason": "vipSummary field absent from PharmGKB gene response",
+    "citation": null,
+    "citation_text": "",
+    "allele_file": "",
+    "allele_type": "Named Alleles",
+    "allele_function_source": "CPIC",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 29942470,
+    "chr_stop_b38": 29945884,
+    "strand": "plus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA35055",
+      "symbol": "HLA-A",
+      "name": "major histocompatibility complex, class I, A",
+      "alleleFunctionSource": "CPIC",
+      "alleleType": "Named Alleles",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "p22.1",
+      "cbStop": "p22.1",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA532",
+        "name": "chr6"
+      },
+      "chrStartPosB37": 29910247,
+      "chrStartPosB38": 29942470,
+      "chrStopPosB37": 29913661,
+      "chrStopPosB38": 29945884,
+      "cpicGene": true,
+      "hasNonStandardHaplotypes": true,
+      "hideHaplotypes": true,
+      "pharmVarGene": false,
+      "strand": "plus",
+      "vipTier": "Undefined"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "HLA-B",
+    "gene_id": "PA35056",
+    "gene_name": "major histocompatibility complex, class I, B",
+    "chromosome": "chr6",
+    "chromosome_location": "p21.33-p21.33",
+    "vip_id": "PA166165405",
+    "vip_url": "https://www.clinpgx.org/vip/PA166165405/overview",
+    "vip_tier": "Tier 1",
+    "cpic_gene": true,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "<p>HLA-B is one of the key pharmacogenes involved in implementation of pharmacogenomics.</p>\n<ul>\n<li>It is involved in guidelines for <a href=\"/guidelineAnnotation/PA166104997\">abacavir</a>, <a href=\"/guidelineAnnotation/PA166105003\">allopurinol</a>, and anti-epileptic drugs; <a href=\"/gene/PA35056/prescribingInfo\">go to list of all guidelines with HLA-B</a>.</li>\n<li>the nomenclature has been set by the <a rel=\"noopener noreferrer\" href=\"https://hla.alleles.org/nomenclature/index.html\" target=\"_blank\">WHO Nomenclature Committee for Factors of the HLA System</a>.</li>\n<li>key alleles include <a href=\"/haplotype/PA165954769\">HLA-B*15:02</a>, <a href=\"/haplotype/PA165987830\">HLA-B*57:01</a>, and <a href=\"/haplotype/PA165987831\">HLA-B*58:01</a>.</li>\n<li>See the <a href=\"/page/hlabRefMaterials\">Gene-specific Information Tables</a> for Allele Definitions (for which variants comprise which star alleles), Allele function assignments (normal function, no function, decreased or increased function etc) and Diplotype-Phenotype Table (for how the alleles combine to form metabolizer phenotypes for PM, NM, UM).</li>\n</ul>\n",
+    "vip_summary_text": "HLA-B is one of the key pharmacogenes involved in implementation of pharmacogenomics. It is involved in guidelines for abacavir , allopurinol , and anti-epileptic drugs; go to list of all guidelines with HLA-B . the nomenclature has been set by the WHO Nomenclature Committee for Factors of the HLA System . key alleles include HLA-B*15:02 , HLA-B*57:01 , and HLA-B*58:01 . See the Gene-specific Information Tables for Allele Definitions (for which variants comprise which star alleles), Allele function assignments (normal function, no function, decreased or increased function etc) and Diplotype-Phenotype Table (for how the alleles combine to form metabolizer phenotypes for PM, NM, UM).",
+    "vip_summary_id": "1448637276",
+    "vip_summary_present": true,
+    "vip_summary_schema_valid": true,
+    "vip_summary_missing_reason": "",
+    "citation": {
+      "id": 15085354,
+      "title": "PharmGKB summary: very important pharmacogene information for human leukocyte antigen B.",
+      "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4356642",
+      "authors": [
+        "Barbarino Julia M",
+        "Kroetz Deanna L",
+        "Klein Teri E",
+        "Altman Russ B"
+      ],
+      "crossReferences": [
+        {
+          "id": 1449295067,
+          "resource": "PubMed Central",
+          "resourceId": "PMC4356642",
+          "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4356642"
+        },
+        {
+          "id": 1449295066,
+          "resource": "PubMed",
+          "resourceId": "25647431",
+          "_url": "https://www.ncbi.nlm.nih.gov/pubmed/25647431"
+        },
+        {
+          "id": 1449295068,
+          "resource": "DOI",
+          "resourceId": "10.1097/FPC.0000000000000118",
+          "_url": "http://dx.doi.org/10.1097%2FFPC.0000000000000118"
+        }
+      ],
+      "day": -1,
+      "journal": "Pharmacogenetics and genomics",
+      "month": 4,
+      "objCls": "Literature",
+      "page": "205-21",
+      "pediatric": false,
+      "pgkbPublication": true,
+      "pubDate": "2015-04-01T00:00:00-07:00",
+      "pubmedMeshTerms": [],
+      "terms": [
+        {
+          "id": 1454108640,
+          "resource": "ClinPGx Tags",
+          "term": "PharmGKB",
+          "termId": "pgkbTags:1454108640"
+        },
+        {
+          "id": 1451577482,
+          "resource": "PGx Paper Types",
+          "term": "Review",
+          "termId": "pgxPaperTypes:1451577482"
+        }
+      ],
+      "type": "Literature",
+      "volume": "25",
+      "year": 2015
+    },
+    "citation_text": "PharmGKB summary: very important pharmacogene information for human leukocyte antigen B. Barbarino Julia M, Kroetz Deanna L, Klein Teri E et al. Pharmacogenetics and genomics 2015",
+    "allele_file": "",
+    "allele_type": "Named Alleles",
+    "allele_function_source": "CPIC",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 31353866,
+    "chr_stop_b38": 31357245,
+    "strand": "minus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA35056",
+      "symbol": "HLA-B",
+      "name": "major histocompatibility complex, class I, B",
+      "alleleFunctionSource": "CPIC",
+      "alleleType": "Named Alleles",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "p21.33",
+      "cbStop": "p21.33",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA532",
+        "name": "chr6"
+      },
+      "chrStartPosB37": 31321649,
+      "chrStartPosB38": 31353866,
+      "chrStopPosB37": 31324989,
+      "chrStopPosB38": 31357245,
+      "cpicGene": true,
+      "hasNonStandardHaplotypes": true,
+      "hideHaplotypes": true,
+      "pharmVarGene": false,
+      "strand": "minus",
+      "vipCitation": {
+        "id": 15085354,
+        "title": "PharmGKB summary: very important pharmacogene information for human leukocyte antigen B.",
+        "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4356642",
+        "authors": [
+          "Barbarino Julia M",
+          "Kroetz Deanna L",
+          "Klein Teri E",
+          "Altman Russ B"
+        ],
+        "crossReferences": [
+          {
+            "id": 1449295067,
+            "resource": "PubMed Central",
+            "resourceId": "PMC4356642",
+            "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4356642"
+          },
+          {
+            "id": 1449295066,
+            "resource": "PubMed",
+            "resourceId": "25647431",
+            "_url": "https://www.ncbi.nlm.nih.gov/pubmed/25647431"
+          },
+          {
+            "id": 1449295068,
+            "resource": "DOI",
+            "resourceId": "10.1097/FPC.0000000000000118",
+            "_url": "http://dx.doi.org/10.1097%2FFPC.0000000000000118"
+          }
+        ],
+        "day": -1,
+        "journal": "Pharmacogenetics and genomics",
+        "month": 4,
+        "objCls": "Literature",
+        "page": "205-21",
+        "pediatric": false,
+        "pgkbPublication": true,
+        "pubDate": "2015-04-01T00:00:00-07:00",
+        "pubmedMeshTerms": [],
+        "terms": [
+          {
+            "id": 1454108640,
+            "resource": "ClinPGx Tags",
+            "term": "PharmGKB",
+            "termId": "pgkbTags:1454108640"
+          },
+          {
+            "id": 1451577482,
+            "resource": "PGx Paper Types",
+            "term": "Review",
+            "termId": "pgxPaperTypes:1451577482"
+          }
+        ],
+        "type": "Literature",
+        "volume": "25",
+        "year": 2015
+      },
+      "vipId": "PA166165405",
+      "vipSummary": {
+        "id": 1448637276,
+        "html": "<p>HLA-B is one of the key pharmacogenes involved in implementation of pharmacogenomics.</p>\n<ul>\n<li>It is involved in guidelines for <a href=\"/guidelineAnnotation/PA166104997\">abacavir</a>, <a href=\"/guidelineAnnotation/PA166105003\">allopurinol</a>, and anti-epileptic drugs; <a href=\"/gene/PA35056/prescribingInfo\">go to list of all guidelines with HLA-B</a>.</li>\n<li>the nomenclature has been set by the <a rel=\"noopener noreferrer\" href=\"https://hla.alleles.org/nomenclature/index.html\" target=\"_blank\">WHO Nomenclature Committee for Factors of the HLA System</a>.</li>\n<li>key alleles include <a href=\"/haplotype/PA165954769\">HLA-B*15:02</a>, <a href=\"/haplotype/PA165987830\">HLA-B*57:01</a>, and <a href=\"/haplotype/PA165987831\">HLA-B*58:01</a>.</li>\n<li>See the <a href=\"/page/hlabRefMaterials\">Gene-specific Information Tables</a> for Allele Definitions (for which variants comprise which star alleles), Allele function assignments (normal function, no function, decreased or increased function etc) and Diplotype-Phenotype Table (for how the alleles combine to form metabolizer phenotypes for PM, NM, UM).</li>\n</ul>\n"
+      },
+      "vipTier": "Tier 1"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "HLA-C",
+    "gene_id": "PA35057",
+    "gene_name": "major histocompatibility complex, class I, C",
+    "chromosome": "chr6",
+    "chromosome_location": "p21.33-p21.33",
+    "vip_id": "",
+    "vip_url": "",
+    "vip_tier": "Undefined",
+    "cpic_gene": false,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "",
+    "vip_summary_text": "",
+    "vip_summary_id": "",
+    "vip_summary_present": false,
+    "vip_summary_schema_valid": false,
+    "vip_summary_missing_reason": "vipSummary field absent from PharmGKB gene response",
+    "citation": null,
+    "citation_text": "",
+    "allele_file": "",
+    "allele_type": "Named Alleles",
+    "allele_function_source": "",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 31268749,
+    "chr_stop_b38": 31272136,
+    "strand": "minus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA35057",
+      "symbol": "HLA-C",
+      "name": "major histocompatibility complex, class I, C",
+      "alleleType": "Named Alleles",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "p21.33",
+      "cbStop": "p21.33",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA532",
+        "name": "chr6"
+      },
+      "chrStartPosB37": 31236526,
+      "chrStartPosB38": 31268749,
+      "chrStopPosB37": 31239913,
+      "chrStopPosB38": 31272136,
+      "cpicGene": false,
+      "hasNonStandardHaplotypes": true,
+      "hideHaplotypes": false,
+      "pharmVarGene": false,
+      "strand": "minus",
+      "vipTier": "Undefined"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "HMGCR",
+    "gene_id": "PA189",
+    "gene_name": "3-hydroxy-3-methylglutaryl-CoA reductase",
+    "chromosome": "chr5",
+    "chromosome_location": "q13.3-q13.3",
+    "vip_id": "PA166169439",
+    "vip_url": "https://www.clinpgx.org/vip/PA166169439/overview",
+    "vip_tier": "Tier 2",
+    "cpic_gene": false,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "<p>The 3-hydroxy-3-methylglutaryl coenzyme A (HMG-CoA) reductase enzyme (EC 1.1.1.88) catalyzes the NADP-dependent conversion of HMG-CoA to mevalonate in the rate-limiting step of cholesterol biosynthesis, and is the target of the statin family of cholesterol lowering drugs.</p>\n",
+    "vip_summary_text": "The 3-hydroxy-3-methylglutaryl coenzyme A (HMG-CoA) reductase enzyme (EC 1.1.1.88) catalyzes the NADP-dependent conversion of HMG-CoA to mevalonate in the rate-limiting step of cholesterol biosynthesis, and is the target of the statin family of cholesterol lowering drugs.",
+    "vip_summary_id": "1448638925",
+    "vip_summary_present": true,
+    "vip_summary_schema_valid": true,
+    "vip_summary_missing_reason": "",
+    "citation": {
+      "id": 7166657,
+      "title": "PharmGKB: very important pharmacogene--HMGCR.",
+      "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3098759",
+      "authors": [
+        "Medina Marisa Wong",
+        "Sangkuhl Katrin",
+        "Klein Teri E",
+        "Altman Russ B"
+      ],
+      "crossReferences": [
+        {
+          "id": 1449247494,
+          "resource": "PubMed Central",
+          "resourceId": "PMC3098759",
+          "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3098759"
+        },
+        {
+          "id": 569684077,
+          "resource": "PubMed",
+          "resourceId": "20084049",
+          "_url": "https://www.ncbi.nlm.nih.gov/pubmed/20084049"
+        },
+        {
+          "id": 1449247495,
+          "resource": "DOI",
+          "resourceId": "10.1097/FPC.0b013e328336c81b",
+          "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e328336c81b"
+        }
+      ],
+      "day": -1,
+      "journal": "Pharmacogenetics and genomics",
+      "month": 2,
+      "objCls": "Literature",
+      "page": "98-101",
+      "pediatric": false,
+      "pgkbPublication": true,
+      "pubDate": "2011-02-01T00:00:00-08:00",
+      "pubmedMeshTerms": [],
+      "terms": [
+        {
+          "id": 1454108640,
+          "resource": "ClinPGx Tags",
+          "term": "PharmGKB",
+          "termId": "pgkbTags:1454108640"
+        },
+        {
+          "id": 1451577482,
+          "resource": "PGx Paper Types",
+          "term": "Review",
+          "termId": "pgxPaperTypes:1451577482"
+        }
+      ],
+      "type": "Literature",
+      "volume": "21",
+      "year": 2011
+    },
+    "citation_text": "PharmGKB: very important pharmacogene--HMGCR. Medina Marisa Wong, Sangkuhl Katrin, Klein Teri E et al. Pharmacogenetics and genomics 2011",
+    "allele_file": "",
+    "allele_type": "None",
+    "allele_function_source": "",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 75336334,
+    "chr_stop_b38": 75362101,
+    "strand": "plus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA189",
+      "symbol": "HMGCR",
+      "name": "3-hydroxy-3-methylglutaryl-CoA reductase",
+      "alleleType": "None",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "q13.3",
+      "cbStop": "q13.3",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA531",
+        "name": "chr5"
+      },
+      "chrStartPosB37": 74632159,
+      "chrStartPosB38": 75336334,
+      "chrStopPosB37": 74657926,
+      "chrStopPosB38": 75362101,
+      "cpicGene": false,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": false,
+      "strand": "plus",
+      "vipCitation": {
+        "id": 7166657,
+        "title": "PharmGKB: very important pharmacogene--HMGCR.",
+        "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3098759",
+        "authors": [
+          "Medina Marisa Wong",
+          "Sangkuhl Katrin",
+          "Klein Teri E",
+          "Altman Russ B"
+        ],
+        "crossReferences": [
+          {
+            "id": 1449247494,
+            "resource": "PubMed Central",
+            "resourceId": "PMC3098759",
+            "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3098759"
+          },
+          {
+            "id": 569684077,
+            "resource": "PubMed",
+            "resourceId": "20084049",
+            "_url": "https://www.ncbi.nlm.nih.gov/pubmed/20084049"
+          },
+          {
+            "id": 1449247495,
+            "resource": "DOI",
+            "resourceId": "10.1097/FPC.0b013e328336c81b",
+            "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e328336c81b"
+          }
+        ],
+        "day": -1,
+        "journal": "Pharmacogenetics and genomics",
+        "month": 2,
+        "objCls": "Literature",
+        "page": "98-101",
+        "pediatric": false,
+        "pgkbPublication": true,
+        "pubDate": "2011-02-01T00:00:00-08:00",
+        "pubmedMeshTerms": [],
+        "terms": [
+          {
+            "id": 1454108640,
+            "resource": "ClinPGx Tags",
+            "term": "PharmGKB",
+            "termId": "pgkbTags:1454108640"
+          },
+          {
+            "id": 1451577482,
+            "resource": "PGx Paper Types",
+            "term": "Review",
+            "termId": "pgxPaperTypes:1451577482"
+          }
+        ],
+        "type": "Literature",
+        "volume": "21",
+        "year": 2011
+      },
+      "vipId": "PA166169439",
+      "vipSummary": {
+        "id": 1448638925,
+        "html": "<p>The 3-hydroxy-3-methylglutaryl coenzyme A (HMG-CoA) reductase enzyme (EC 1.1.1.88) catalyzes the NADP-dependent conversion of HMG-CoA to mevalonate in the rate-limiting step of cholesterol biosynthesis, and is the target of the statin family of cholesterol lowering drugs.</p>\n"
+      },
+      "vipTier": "Tier 2"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "LPA",
+    "gene_id": "PA30432",
+    "gene_name": "lipoprotein(a)",
+    "chromosome": "chr6",
+    "chromosome_location": "q26-q26",
+    "vip_id": "",
+    "vip_url": "",
+    "vip_tier": "Undefined",
+    "cpic_gene": false,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "",
+    "vip_summary_text": "",
+    "vip_summary_id": "",
+    "vip_summary_present": false,
+    "vip_summary_schema_valid": false,
+    "vip_summary_missing_reason": "vipSummary field absent from PharmGKB gene response",
+    "citation": null,
+    "citation_text": "",
+    "allele_file": "",
+    "allele_type": "None",
+    "allele_function_source": "",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 160531483,
+    "chr_stop_b38": 160666375,
+    "strand": "minus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA30432",
+      "symbol": "LPA",
+      "name": "lipoprotein(a)",
+      "alleleType": "None",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "q26",
+      "cbStop": "q26",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA532",
+        "name": "chr6"
+      },
+      "chrStartPosB37": 160952506,
+      "chrStartPosB38": 160531483,
+      "chrStopPosB37": 161097478,
+      "chrStopPosB38": 160666375,
+      "cpicGene": false,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": false,
+      "strand": "minus",
+      "vipTier": "Undefined"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "NEDD4L",
+    "gene_id": "PA31534",
+    "gene_name": "NEDD4 like E3 ubiquitin protein ligase",
+    "chromosome": "chr18",
+    "chromosome_location": "q21.31-q21.31",
+    "vip_id": "",
+    "vip_url": "",
+    "vip_tier": "Undefined",
+    "cpic_gene": false,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "",
+    "vip_summary_text": "",
+    "vip_summary_id": "",
+    "vip_summary_present": false,
+    "vip_summary_schema_valid": false,
+    "vip_summary_missing_reason": "vipSummary field absent from PharmGKB gene response",
+    "citation": null,
+    "citation_text": "",
+    "allele_file": "",
+    "allele_type": "None",
+    "allele_function_source": "",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 58044362,
+    "chr_stop_b38": 58401540,
+    "strand": "plus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA31534",
+      "symbol": "NEDD4L",
+      "name": "NEDD4 like E3 ubiquitin protein ligase",
+      "alleleType": "None",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "q21.31",
+      "cbStop": "q21.31",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA519",
+        "name": "chr18"
+      },
+      "chrStartPosB37": 55711580,
+      "chrStartPosB38": 58044362,
+      "chrStopPosB37": 56068772,
+      "chrStopPosB38": 58401540,
+      "cpicGene": false,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": false,
+      "strand": "plus",
+      "vipTier": "Undefined"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "PRKCA",
+    "gene_id": "PA33759",
+    "gene_name": "protein kinase C alpha",
+    "chromosome": "chr17",
+    "chromosome_location": "q22-q23.2",
+    "vip_id": "",
+    "vip_url": "",
+    "vip_tier": "Undefined",
+    "cpic_gene": false,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "",
+    "vip_summary_text": "",
+    "vip_summary_id": "",
+    "vip_summary_present": false,
+    "vip_summary_schema_valid": false,
+    "vip_summary_missing_reason": "vipSummary field absent from PharmGKB gene response",
+    "citation": null,
+    "citation_text": "",
+    "allele_file": "",
+    "allele_type": "None",
+    "allele_function_source": "",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 66302640,
+    "chr_stop_b38": 66810744,
+    "strand": "plus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA33759",
+      "symbol": "PRKCA",
+      "name": "protein kinase C alpha",
+      "alleleType": "None",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "q22",
+      "cbStop": "q23.2",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA517",
+        "name": "chr17"
+      },
+      "chrStartPosB37": 64298760,
+      "chrStartPosB38": 66302640,
+      "chrStopPosB37": 64806862,
+      "chrStopPosB38": 66810744,
+      "cpicGene": false,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": false,
+      "strand": "plus",
+      "vipTier": "Undefined"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "PTGFR",
+    "gene_id": "PA290",
+    "gene_name": "prostaglandin F receptor",
+    "chromosome": "chr1",
+    "chromosome_location": "p31.1-p31.1",
+    "vip_id": "",
+    "vip_url": "",
+    "vip_tier": "Undefined",
+    "cpic_gene": false,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "",
+    "vip_summary_text": "",
+    "vip_summary_id": "",
+    "vip_summary_present": false,
+    "vip_summary_schema_valid": false,
+    "vip_summary_missing_reason": "vipSummary field absent from PharmGKB gene response",
+    "citation": null,
+    "citation_text": "",
+    "allele_file": "",
+    "allele_type": "None",
+    "allele_function_source": "",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 78490974,
+    "chr_stop_b38": 78540701,
+    "strand": "plus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA290",
+      "symbol": "PTGFR",
+      "name": "prostaglandin F receptor",
+      "alleleType": "None",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "p31.1",
+      "cbStop": "p31.1",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA503",
+        "name": "chr1"
+      },
+      "chrStartPosB37": 78956728,
+      "chrStartPosB38": 78490974,
+      "chrStopPosB37": 79006386,
+      "chrStopPosB38": 78540701,
+      "cpicGene": false,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": false,
+      "strand": "plus",
+      "vipTier": "Undefined"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "SLCO1B1",
+    "gene_id": "PA134865839",
+    "gene_name": "solute carrier organic anion transporter family member 1B1",
+    "chromosome": "chr12",
+    "chromosome_location": "p12.2-p12.1",
+    "vip_id": "PA166169500",
+    "vip_url": "https://www.clinpgx.org/vip/PA166169500/overview",
+    "vip_tier": "Tier 1",
+    "cpic_gene": true,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": true,
+    "vip_summary_html": "<p>SLCO1B1 is one of the key pharmacogenes involved in implementation of pharmacogenomics. The gene encodes the OATP1B1 transporter.</p>\n<ul>\n<li>It is involved in guidelines for statins including CPIC guidelines for <a href=\"/guidelineAnnotation/PA166262221\">atorvastatin</a>, <a href=\"/guidelineAnnotation/PA166105005\">simvastatin</a>, and <a href=\"/guidelineAnnotation/PA166262321\">rosuvastatin</a> (<a href=\"/gene/PA134865839/prescribingInfo\">go to list of all guidelines with SLCO1B1</a>).</li>\n<li>the nomenclature has been set by <a rel=\"noopener noreferrer\" href=\"https://www.pharmvar.org/gene/SLCO1B1\" target=\"_blank\">PharmVar</a></li>\n<li>key variant pages are <a href=\"/variant/PA166154579\">rs4149056</a> also known as c.521T&gt;C (found in SLCO1B1*5 and SLCO1B1*15 and other alleles) and <a href=\"/variant/PA166154547\">rs2306283</a> (also known as c.388A&gt;G and part of *15).</li>\n<li>See the <a href=\"/page/slco1b1RefMaterials\">Gene-specific Information Tables</a> for Allele Definitions (for which variants comprise which star alleles), Allele function assignments (normal function, no function, decreased or increased function etc) and Diplotype-Phenotype Table (for how the alleles combine to form metabolizer phenotypes for PM, NM, UM).</li>\n</ul>\n",
+    "vip_summary_text": "SLCO1B1 is one of the key pharmacogenes involved in implementation of pharmacogenomics. The gene encodes the OATP1B1 transporter. It is involved in guidelines for statins including CPIC guidelines for atorvastatin , simvastatin , and rosuvastatin ( go to list of all guidelines with SLCO1B1 ). the nomenclature has been set by PharmVar key variant pages are rs4149056 also known as c.521T>C (found in SLCO1B1*5 and SLCO1B1*15 and other alleles) and rs2306283 (also known as c.388A>G and part of *15). See the Gene-specific Information Tables for Allele Definitions (for which variants comprise which star alleles), Allele function assignments (normal function, no function, decreased or increased function etc) and Diplotype-Phenotype Table (for how the alleles combine to form metabolizer phenotypes for PM, NM, UM).",
+    "vip_summary_id": "1448640151",
+    "vip_summary_present": true,
+    "vip_summary_schema_valid": true,
+    "vip_summary_missing_reason": "",
+    "citation": {
+      "id": 7160436,
+      "title": "PharmGKB very important pharmacogene: SLCO1B1.",
+      "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3086841",
+      "authors": [
+        "Oshiro Connie",
+        "Mangravite Lara",
+        "Klein Teri",
+        "Altman Russ"
+      ],
+      "crossReferences": [
+        {
+          "id": 1449247466,
+          "resource": "PubMed Central",
+          "resourceId": "PMC3086841",
+          "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3086841"
+        },
+        {
+          "id": 569554371,
+          "resource": "PubMed",
+          "resourceId": "19952871",
+          "_url": "https://www.ncbi.nlm.nih.gov/pubmed/19952871"
+        },
+        {
+          "id": 1449247467,
+          "resource": "DOI",
+          "resourceId": "10.1097/FPC.0b013e328333b99c",
+          "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e328333b99c"
+        }
+      ],
+      "day": -1,
+      "journal": "Pharmacogenetics and genomics",
+      "month": 3,
+      "objCls": "Literature",
+      "page": "211-6",
+      "pediatric": false,
+      "pgkbPublication": true,
+      "pubDate": "2010-03-01T00:00:00-08:00",
+      "pubmedMeshTerms": [],
+      "terms": [
+        {
+          "id": 1454108640,
+          "resource": "ClinPGx Tags",
+          "term": "PharmGKB",
+          "termId": "pgkbTags:1454108640"
+        },
+        {
+          "id": 1451577482,
+          "resource": "PGx Paper Types",
+          "term": "Review",
+          "termId": "pgxPaperTypes:1451577482"
+        }
+      ],
+      "type": "Literature",
+      "volume": "20",
+      "year": 2010
+    },
+    "citation_text": "PharmGKB very important pharmacogene: SLCO1B1. Oshiro Connie, Mangravite Lara, Klein Teri et al. Pharmacogenetics and genomics 2010",
+    "allele_file": "SLCO1B1_allele_definition_table.xlsx",
+    "allele_type": "Named Alleles",
+    "allele_function_source": "CPIC",
+    "build_version": "GRCh38",
+    "chr_start_b38": 21131194,
+    "chr_stop_b38": 21239796,
+    "strand": "plus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA134865839",
+      "symbol": "SLCO1B1",
+      "name": "solute carrier organic anion transporter family member 1B1",
+      "alleleFile": "SLCO1B1_allele_definition_table.xlsx",
+      "alleleFunctionSource": "CPIC",
+      "alleleType": "Named Alleles",
+      "amp": false,
+      "buildVersion": "GRCh38",
+      "cbStart": "p12.2",
+      "cbStop": "p12.1",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA508",
+        "name": "chr12"
+      },
+      "chrStartPosB37": 21284128,
+      "chrStartPosB38": 21131194,
+      "chrStopPosB37": 21392730,
+      "chrStopPosB38": 21239796,
+      "cpicGene": true,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": true,
+      "strand": "plus",
+      "vipCitation": {
+        "id": 7160436,
+        "title": "PharmGKB very important pharmacogene: SLCO1B1.",
+        "_sameAs": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3086841",
+        "authors": [
+          "Oshiro Connie",
+          "Mangravite Lara",
+          "Klein Teri",
+          "Altman Russ"
+        ],
+        "crossReferences": [
+          {
+            "id": 1449247466,
+            "resource": "PubMed Central",
+            "resourceId": "PMC3086841",
+            "_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3086841"
+          },
+          {
+            "id": 569554371,
+            "resource": "PubMed",
+            "resourceId": "19952871",
+            "_url": "https://www.ncbi.nlm.nih.gov/pubmed/19952871"
+          },
+          {
+            "id": 1449247467,
+            "resource": "DOI",
+            "resourceId": "10.1097/FPC.0b013e328333b99c",
+            "_url": "http://dx.doi.org/10.1097%2FFPC.0b013e328333b99c"
+          }
+        ],
+        "day": -1,
+        "journal": "Pharmacogenetics and genomics",
+        "month": 3,
+        "objCls": "Literature",
+        "page": "211-6",
+        "pediatric": false,
+        "pgkbPublication": true,
+        "pubDate": "2010-03-01T00:00:00-08:00",
+        "pubmedMeshTerms": [],
+        "terms": [
+          {
+            "id": 1454108640,
+            "resource": "ClinPGx Tags",
+            "term": "PharmGKB",
+            "termId": "pgkbTags:1454108640"
+          },
+          {
+            "id": 1451577482,
+            "resource": "PGx Paper Types",
+            "term": "Review",
+            "termId": "pgxPaperTypes:1451577482"
+          }
+        ],
+        "type": "Literature",
+        "volume": "20",
+        "year": 2010
+      },
+      "vipId": "PA166169500",
+      "vipSummary": {
+        "id": 1448640151,
+        "html": "<p>SLCO1B1 is one of the key pharmacogenes involved in implementation of pharmacogenomics. The gene encodes the OATP1B1 transporter.</p>\n<ul>\n<li>It is involved in guidelines for statins including CPIC guidelines for <a href=\"/guidelineAnnotation/PA166262221\">atorvastatin</a>, <a href=\"/guidelineAnnotation/PA166105005\">simvastatin</a>, and <a href=\"/guidelineAnnotation/PA166262321\">rosuvastatin</a> (<a href=\"/gene/PA134865839/prescribingInfo\">go to list of all guidelines with SLCO1B1</a>).</li>\n<li>the nomenclature has been set by <a rel=\"noopener noreferrer\" href=\"https://www.pharmvar.org/gene/SLCO1B1\" target=\"_blank\">PharmVar</a></li>\n<li>key variant pages are <a href=\"/variant/PA166154579\">rs4149056</a> also known as c.521T&gt;C (found in SLCO1B1*5 and SLCO1B1*15 and other alleles) and <a href=\"/variant/PA166154547\">rs2306283</a> (also known as c.388A&gt;G and part of *15).</li>\n<li>See the <a href=\"/page/slco1b1RefMaterials\">Gene-specific Information Tables</a> for Allele Definitions (for which variants comprise which star alleles), Allele function assignments (normal function, no function, decreased or increased function etc) and Diplotype-Phenotype Table (for how the alleles combine to form metabolizer phenotypes for PM, NM, UM).</li>\n</ul>\n"
+      },
+      "vipTier": "Tier 1"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  },
+  {
+    "gene_symbol": "YEATS4",
+    "gene_id": "PA134992686",
+    "gene_name": "YEATS domain containing 4",
+    "chromosome": "chr12",
+    "chromosome_location": "q15-q15",
+    "vip_id": "",
+    "vip_url": "",
+    "vip_tier": "Undefined",
+    "cpic_gene": false,
+    "has_cpic_dosing_guideline": false,
+    "amp_gene": false,
+    "pharmvar_gene": false,
+    "vip_summary_html": "",
+    "vip_summary_text": "",
+    "vip_summary_id": "",
+    "vip_summary_present": false,
+    "vip_summary_schema_valid": false,
+    "vip_summary_missing_reason": "vipSummary field absent from PharmGKB gene response",
+    "citation": null,
+    "citation_text": "",
+    "allele_file": "",
+    "allele_type": "None",
+    "allele_function_source": "",
+    "build_version": "GRCh38.p7",
+    "chr_start_b38": 69359705,
+    "chr_stop_b38": 69424838,
+    "strand": "plus",
+    "raw_gene_data": {
+      "objCls": "Gene",
+      "id": "PA134992686",
+      "symbol": "YEATS4",
+      "name": "YEATS domain containing 4",
+      "alleleType": "None",
+      "amp": false,
+      "buildVersion": "GRCh38.p7",
+      "cbStart": "q15",
+      "cbStop": "q15",
+      "chr": {
+        "objCls": "Chromosome",
+        "id": "PA508",
+        "name": "chr12"
+      },
+      "chrStartPosB37": 69753490,
+      "chrStartPosB38": 69359705,
+      "chrStopPosB37": 69784576,
+      "chrStopPosB38": 69424838,
+      "cpicGene": false,
+      "hasNonStandardHaplotypes": false,
+      "hideHaplotypes": false,
+      "pharmVarGene": false,
+      "strand": "plus",
+      "vipTier": "Undefined"
+    },
+    "vip_text": {
+      "overview": "",
+      "clinical_annotations": "",
+      "variant_annotations": "",
+      "drug_labels": "",
+      "full_text": "ClinPGx\nJavascript Is Disabled!\nClinPGx requires Javascript.\nHere are the\ninstructions on how to enable JavaScript in your web browser\n."
+    },
+    "vip_page_text_available": true,
+    "text_available": true
+  }
+]

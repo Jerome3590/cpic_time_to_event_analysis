@@ -1,0 +1,32 @@
+id,type,label,degree,seed_drug,seed_gene,feature_importance,rank,source_feature,cohort,age_band,density_bin,tier,cpic_gene,amp,url
+ABCB1,gene,ATP binding cassette subfamily B member 1,9,False,True,,,,,,,Tier 1,False,False,https://www.clinpgx.org/vip/PA166170352/overview
+cassette,drug,cassette,1,False,False,,,,,,,,,,
+triphosphate,drug,triphosphate,1,False,False,,,,,,,,,,
+ADD1,gene,adducin 1,1,False,True,,,,,,,Undefined,False,False,
+ADRA2C,gene,adrenoceptor alpha 2C,6,False,True,,,,,,,Undefined,False,False,
+ADRB1,gene,adrenoceptor beta 1,6,False,True,,,,,,,Tier 1,False,False,https://www.clinpgx.org/vip/PA166170369/overview
+ADRB2,gene,adrenoceptor beta 2,7,False,True,,,,,,,Tier 1,False,False,https://www.clinpgx.org/vip/PA166165410/overview
+receptor,drug,receptor,1,False,False,,,,,,,,,,
+CETP,gene,cholesteryl ester transfer protein,7,False,True,,,,,,,Undefined,False,False,
+CYP2C19,gene,cytochrome P450 family 2 subfamily C member 19,6,False,True,,,,,,,Tier 1,True,True,https://www.clinpgx.org/vip/PA166169770/overview
+assignments,drug,assignments,4,False,False,,,,,,,,,,
+voriconazole,drug,voriconazole,1,False,False,,,,,,,,,,
+CYP2D6,gene,cytochrome P450 family 2 subfamily D member 6,10,False,True,,,,,,,Tier 1,True,True,https://www.clinpgx.org/vip/PA166170264/overview
+CYP3A4,gene,cytochrome P450 family 3 subfamily A member 4,10,False,True,,,,,,,Tier 1,False,True,https://www.clinpgx.org/vip/PA166169915/overview
+inducers,drug,inducers,1,False,False,,,,,,,,,,
+inhibitors,drug,inhibitors,1,False,False,,,,,,,,,,
+quetiapine,drug,quetiapine,1,False,False,,,,,,,,,,
+CYP3A5,gene,cytochrome P450 family 3 subfamily A member 5,11,False,True,,,,,,,Tier 1,True,True,https://www.clinpgx.org/vip/PA166170041/overview
+tacrolimus,drug,tacrolimus,1,False,False,,,,,,,,,,
+GRK4,gene,G protein-coupled receptor kinase 4,6,False,True,,,,,,,Undefined,False,False,
+GRK5,gene,G protein-coupled receptor kinase 5,6,False,True,,,,,,,Undefined,False,False,
+HMGCR,gene,3-hydroxy-3-methylglutaryl-CoA reductase,8,False,True,,,,,,,Tier 2,False,False,https://www.clinpgx.org/vip/PA166169439/overview
+enzyme,drug,enzyme,1,False,False,,,,,,,,,,
+LPA,gene,lipoprotein(a),8,False,True,,,,,,,Undefined,False,False,
+lipoprotein,drug,lipoprotein,1,False,False,,,,,,,,,,
+SLCO1B1,gene,solute carrier organic anion transporter family member 1B1,11,False,True,,,,,,,Tier 1,True,False,https://www.clinpgx.org/vip/PA166169500/overview
+rosuvastatin,drug,rosuvastatin,1,False,False,,,,,,,,,,
+FUROSEMIDE,drug,FUROSEMIDE,1,True,False,0.176921088166812,1,item_drug_FUROSEMIDE,falls,65-74,all,,,,
+OMEPRAZOLE,drug,OMEPRAZOLE,1,True,False,0.1511059036724252,2,item_drug_OMEPRAZOLE,falls,65-74,all,,,,
+SIMVASTATIN,drug,SIMVASTATIN,7,True,False,0.139618148733837,3,item_drug_SIMVASTATIN,falls,65-74,all,,,,
+CARVEDILOL,drug,CARVEDILOL,6,True,False,0.0823636922613156,7,item_drug_CARVEDILOL,falls,65-74,all,,,,

@@ -1,0 +1,56 @@
+id,type,label,degree,seed_drug,seed_gene,feature_importance,rank,source_feature,cohort,age_band,density_bin,tier,cpic_gene,amp,url
+ABCB1,gene,ATP binding cassette subfamily B member 1,9,False,True,,,,,,,Tier 1,False,False,https://www.clinpgx.org/vip/PA166170352/overview
+cassette,drug,cassette,1,False,False,,,,,,,,,,
+triphosphate,drug,triphosphate,1,False,False,,,,,,,,,,
+ADD1,gene,adducin 1,1,False,True,,,,,,,Undefined,False,False,
+ADRA2C,gene,adrenoceptor alpha 2C,7,False,True,,,,,,,Undefined,False,False,
+ADRB1,gene,adrenoceptor beta 1,7,False,True,,,,,,,Tier 1,False,False,https://www.clinpgx.org/vip/PA166170369/overview
+ADRB2,gene,adrenoceptor beta 2,7,False,True,,,,,,,Tier 1,False,False,https://www.clinpgx.org/vip/PA166165410/overview
+receptor,drug,receptor,1,False,False,,,,,,,,,,
+CES1,gene,carboxylesterase 1,2,False,True,,,,,,,Undefined,False,False,
+CETP,gene,cholesteryl ester transfer protein,7,False,True,,,,,,,Undefined,False,False,
+CYP2C19,gene,cytochrome P450 family 2 subfamily C member 19,10,False,True,,,,,,,Tier 1,True,True,https://www.clinpgx.org/vip/PA166169770/overview
+assignments,drug,assignments,6,False,False,,,,,,,,,,
+voriconazole,drug,voriconazole,1,False,False,,,,,,,,,,
+CYP2C8,gene,cytochrome P450 family 2 subfamily C member 8,2,False,True,,,,,,,Tier 1,False,False,https://www.clinpgx.org/vip/PA166169454/overview
+CYP2C9,gene,cytochrome P450 family 2 subfamily C member 9,10,False,True,,,,,,,Tier 1,True,True,https://www.clinpgx.org/vip/PA166169913/overview
+CYP2D6,gene,cytochrome P450 family 2 subfamily D member 6,12,False,True,,,,,,,Tier 1,True,True,https://www.clinpgx.org/vip/PA166170264/overview
+CYP3A4,gene,cytochrome P450 family 3 subfamily A member 4,10,False,True,,,,,,,Tier 1,False,True,https://www.clinpgx.org/vip/PA166169915/overview
+inhibitors,drug,inhibitors,1,False,False,,,,,,,,,,
+quetiapine,drug,quetiapine,1,False,False,,,,,,,,,,
+inducers,drug,inducers,1,False,False,,,,,,,,,,
+CYP3A5,gene,cytochrome P450 family 3 subfamily A member 5,13,False,True,,,,,,,Tier 1,True,True,https://www.clinpgx.org/vip/PA166170041/overview
+tacrolimus,drug,tacrolimus,1,False,False,,,,,,,,,,
+G6PD,gene,glucose-6-phosphate dehydrogenase,5,False,True,,,,,,,Tier 1,True,False,https://www.clinpgx.org/vip/PA166169539/overview
+dehydrogenase,drug,dehydrogenase,1,False,False,,,,,,,,,,
+tablets,drug,tablets,1,False,False,,,,,,,,,,
+S Of Adverse,phenotype,S Of Adverse,1,False,False,,,,,,,,,,
+Deficiency May Have Increased,phenotype,Deficiency May Have Increased,1,False,False,,,,,,,,,,
+GRK4,gene,G protein-coupled receptor kinase 4,7,False,True,,,,,,,Undefined,False,False,
+GRK5,gene,G protein-coupled receptor kinase 5,7,False,True,,,,,,,Undefined,False,False,
+HLA-A,gene,"major histocompatibility complex, class I, A",3,False,True,,,,,,,Undefined,True,False,
+HLA-B,gene,"major histocompatibility complex, class I, B",9,False,True,,,,,,,Tier 1,True,False,https://www.clinpgx.org/vip/PA166165405/overview
+HLA-C,gene,"major histocompatibility complex, class I, C",3,False,True,,,,,,,Undefined,False,False,
+HMGCR,gene,3-hydroxy-3-methylglutaryl-CoA reductase,8,False,True,,,,,,,Tier 2,False,False,https://www.clinpgx.org/vip/PA166169439/overview
+enzyme,drug,enzyme,1,False,False,,,,,,,,,,
+LPA,gene,lipoprotein(a),8,False,True,,,,,,,Undefined,False,False,
+lipoprotein,drug,lipoprotein,1,False,False,,,,,,,,,,
+NEDD4L,gene,NEDD4 like E3 ubiquitin protein ligase,3,False,True,,,,,,,Undefined,False,False,
+PRKCA,gene,protein kinase C alpha,3,False,True,,,,,,,Undefined,False,False,
+PTGFR,gene,prostaglandin F receptor,1,False,True,,,,,,,Undefined,False,False,
+SLCO1B1,gene,solute carrier organic anion transporter family member 1B1,13,False,True,,,,,,,Tier 1,True,False,https://www.clinpgx.org/vip/PA166169500/overview
+rosuvastatin,drug,rosuvastatin,1,False,False,,,,,,,,,,
+YEATS4,gene,YEATS domain containing 4,3,False,True,,,,,,,Undefined,False,False,
+CARVEDILOL,drug,CARVEDILOL,6,True,False,0.3941002857391777,1,item_drug_CARVEDILOL,ed,65-74,all,,,,
+FUROSEMIDE,drug,FUROSEMIDE,1,True,False,0.1152159212045888,6,item_drug_FUROSEMIDE,ed,65-74,all,,,,
+SIMVASTATIN,drug,SIMVASTATIN,7,True,False,0.0576840694301267,8,item_drug_SIMVASTATIN,ed,65-74,all,,,,
+IBUPROFEN,drug,IBUPROFEN,2,True,False,0.0403084051909705,10,item_drug_IBUPROFEN,ed,65-74,all,,,,
+MELOXICAM,drug,MELOXICAM,1,True,False,0.0229784095416196,13,item_drug_MELOXICAM,ed,65-74,all,,,,
+ALLOPURINOL,drug,ALLOPURINOL,3,True,False,0.0210520503320137,14,item_drug_ALLOPURINOL,ed,65-74,all,,,,
+HYDROCHLOROTHIAZIDE,drug,HYDROCHLOROTHIAZIDE,3,True,False,0.0134934340370799,16,item_drug_HYDROCHLOROTHIAZIDE,ed,65-74,all,,,,
+OMEPRAZOLE,drug,OMEPRAZOLE,1,True,False,0.0134331774560239,17,item_drug_OMEPRAZOLE,ed,65-74,all,,,,
+LATANOPROST,drug,LATANOPROST,1,True,False,0.0112290876601472,18,item_drug_LATANOPROST,ed,65-74,all,,,,
+CLOPIDOGREL,drug,CLOPIDOGREL,2,True,False,0.0077854785147482,21,item_drug_CLOPIDOGREL,ed,65-74,all,,,,
+OFLOXACIN,drug,OFLOXACIN,1,True,False,0.0017422174199157,22,item_drug_OFLOXACIN,ed,65-74,all,,,,
+ATENOLOL,drug,ATENOLOL,4,True,False,0.0008534541696594,24,item_drug_ATENOLOL,ed,65-74,all,,,,
+NAPROXEN,drug,NAPROXEN,1,True,False,0.0004144450712703,25,item_drug_NAPROXEN,ed,65-74,all,,,,

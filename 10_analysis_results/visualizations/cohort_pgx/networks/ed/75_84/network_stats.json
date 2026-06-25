@@ -1,0 +1,18 @@
+{
+  "nodes_total": 36,
+  "edges_total": 81,
+  "genes": 18,
+  "drugs": 18,
+  "phenotypes": 0,
+  "cpic_genes": 4,
+  "drug_drug_interactions": 1,
+  "seed_drugs": 6,
+  "seed_drug_gene_edges": 22,
+  "density": 0.12857142857142856,
+  "avg_degree": 4.5,
+  "gene_tiers": {
+    "Undefined": 9,
+    "Tier 2": 1,
+    "Tier 1": 8
+  }
+}

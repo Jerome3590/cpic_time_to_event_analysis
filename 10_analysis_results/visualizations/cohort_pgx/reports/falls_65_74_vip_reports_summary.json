@@ -1,0 +1,33 @@
+{
+  "cohort": "falls",
+  "age_band": "65-74",
+  "genes_requested": 15,
+  "reports_fetched": 15,
+  "genes_with_vip_text": 15,
+  "genes_with_any_text": 15,
+  "genes_missing_vip_summary": 6,
+  "genes_with_valid_vip_summary_schema": 9,
+  "genes_with_vip_page_text": 15,
+  "seed_drugs": 7,
+  "seed_drug_gene_edges": 15,
+  "genes": [
+    "ABCB1",
+    "ADD1",
+    "ADRA2C",
+    "ADRB1",
+    "ADRB2",
+    "CETP",
+    "CYP2C19",
+    "CYP2D6",
+    "CYP3A4",
+    "CYP3A5",
+    "GRK4",
+    "GRK5",
+    "HMGCR",
+    "LPA",
+    "SLCO1B1"
+  ],
+  "output_file": "10_analysis_results\\visualizations\\cohort_pgx\\reports\\falls_65_74_vip_reports.json",
+  "seed_drug_features_file": "10_analysis_results\\visualizations\\cohort_pgx\\reports\\falls_65_74_seed_drug_features.csv",
+  "seed_drug_gene_edges_file": "10_analysis_results\\visualizations\\cohort_pgx\\reports\\falls_65_74_seed_drug_gene_edges.csv"
+}

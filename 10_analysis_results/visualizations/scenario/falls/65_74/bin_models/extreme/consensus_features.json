@@ -1,0 +1,37 @@
+{
+  "consensus_features": [
+    "item_cpt_70450",
+    "item_cpt_71020",
+    "item_cpt_84439",
+    "item_cpt_85610",
+    "item_cpt_88305",
+    "item_cpt_93000",
+    "item_cpt_93005",
+    "item_cpt_97110",
+    "item_cpt_99214",
+    "item_cpt_99215",
+    "item_cpt_99233",
+    "item_drug_GABAPENTIN",
+    "item_drug_PREDNISONE",
+    "item_icd_Z23",
+    "pgx_num_drugs"
+  ],
+  "shap_only": [
+    "item_cpt_81003",
+    "item_cpt_85027",
+    "item_cpt_87086",
+    "item_cpt_90471",
+    "item_cpt_96374"
+  ],
+  "ffa_only": [
+    "item_cpt_83036",
+    "item_cpt_84443",
+    "item_cpt_99213",
+    "item_drug_CARVEDILOL",
+    "item_icd_I10"
+  ],
+  "consensus_count": 15,
+  "shap_count": 20,
+  "ffa_count": 20,
+  "consensus_rate": 0.75
+}
