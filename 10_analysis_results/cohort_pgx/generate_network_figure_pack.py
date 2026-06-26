@@ -872,10 +872,13 @@ def load_time_windows(dtw_root: Path) -> pd.DataFrame:
     return df
 
 
-def make_time_to_event_panel(dtw_root: Path, out_dir: Path) -> pd.DataFrame:
-    time_df = load_time_windows(dtw_root)
-    time_df["panel"] = time_df["cohort"].map(COHORT_LABELS).fillna(time_df["cohort"]) + " " + time_df["age_band"].astype(str)
-    time_df["label"] = time_df["drug"].astype(str) + " (" + time_df["median_days_before_event"].astype(float).round(1).astype(str) + " d)"
+def write_time_to_event_figure(
+    time_df: pd.DataFrame,
+    out_dir: Path,
+    stem: str,
+    title: str,
+    subtitle: str,
+) -> None:
     fig = go.Figure()
     for _, row in time_df.iterrows():
         fig.add_trace(
@@ -901,19 +904,45 @@ def make_time_to_event_panel(dtw_root: Path, out_dir: Path) -> pd.DataFrame:
             )
         )
     fig.update_layout(
-        title=(
-            "Medication Lead-Time Before Event"
-            "<br><sup>Connects kinetics and kinetic pathways to dynamics: when a medication-review signal appears before ED/fall outcome.</sup>"
-        ),
+        title=title + f"<br><sup>{subtitle}</sup>",
         width=1100,
-        height=500,
+        height=max(420, 180 + (len(time_df) * 90)),
         xaxis=dict(title="Days before event", autorange="reversed"),
         yaxis=dict(title=""),
         plot_bgcolor="white",
         margin=dict(l=130, r=40, t=100, b=120),
     )
     add_context_annotation(fig, y=-0.25)
-    write_figure(fig, FigurePaths(out_dir / "pgx_time_to_event_panel.html", out_dir / "pgx_time_to_event_panel.png"), width=1200, height=650)
+    write_figure(
+        fig,
+        FigurePaths(out_dir / f"{stem}.html", out_dir / f"{stem}.png"),
+        width=1200,
+        height=max(560, 260 + (len(time_df) * 110)),
+    )
+
+
+def make_time_to_event_panel(dtw_root: Path, out_dir: Path) -> pd.DataFrame:
+    time_df = load_time_windows(dtw_root)
+    time_df["panel"] = time_df["cohort"].map(COHORT_LABELS).fillna(time_df["cohort"]) + " " + time_df["age_band"].astype(str)
+    time_df["label"] = time_df["drug"].astype(str) + " (" + time_df["median_days_before_event"].astype(float).round(1).astype(str) + " d)"
+    write_time_to_event_figure(
+        time_df=time_df,
+        out_dir=out_dir,
+        stem="pgx_time_to_event_panel",
+        title="Medication Lead-Time Before Event",
+        subtitle="Combined Falls and ED view: when a PGx medication-review signal appears before the outcome.",
+    )
+    for cohort, label in COHORT_LABELS.items():
+        cohort_df = time_df[time_df["cohort"].eq(cohort)].copy()
+        if cohort_df.empty:
+            continue
+        write_time_to_event_figure(
+            time_df=cohort_df,
+            out_dir=out_dir,
+            stem=f"pgx_time_to_event_{cohort}_panel",
+            title=f"{label} Medication Lead-Time Before Event",
+            subtitle=f"{label}-specific DTW timing summaries across age bands.",
+        )
     return time_df
 
 

@@ -190,7 +190,8 @@ in `10_analysis_results/network_analysis.md` and
 - `pgx_cluster_ego_networks.html/png` - therapeutic module ego networks.
 - `pgx_intervention_priority_heatmap.html/png` - priority score heatmap.
 - `pgx_pathway_context_panel.html/png` - dynamics, kinetics, allergic-response, signaling, and kinetic-pathway context.
-- `pgx_time_to_event_panel.html/png` - medication lead-time panel from local or S3 DTW cohort timing summaries.
+- `pgx_time_to_event_panel.html/png` - combined medication lead-time panel from local or S3 DTW cohort timing summaries.
+- `pgx_time_to_event_falls_panel.html/png` and `pgx_time_to_event_ed_panel.html/png` - cohort-specific Falls and ED lead-time panels.
 - `pgx_intervention_priority_scores.csv`, `pgx_pathway_context_edges.csv`, and `pgx_time_to_event_windows.csv` - source tables for derived visuals.
 
 **Usage**:

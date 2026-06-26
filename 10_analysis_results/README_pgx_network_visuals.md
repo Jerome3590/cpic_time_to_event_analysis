@@ -102,7 +102,8 @@ Generated outputs:
 - `pgx_cluster_ego_networks.html/png` - adrenergic, diuretic, lipid/statin, and related cluster panels.
 - `pgx_intervention_priority_heatmap.html/png` - score combining normalized importance, inverse rank, and Undefined-gene emphasis.
 - `pgx_pathway_context_panel.html/png` - explicit context for dynamics, kinetics, allergic-response watch-listing, underappreciated signaling, and kinetic pathways.
-- `pgx_time_to_event_panel.html/png` - prevention timing panel using local DTW timing artifacts when available, otherwise S3 DTW summaries for Falls/ED cohort-age panels, with documented fallback rows only as a last resort.
+- `pgx_time_to_event_panel.html/png` - combined prevention timing panel using local DTW timing artifacts when available, otherwise S3 DTW summaries for Falls/ED cohort-age panels, with documented fallback rows only as a last resort.
+- `pgx_time_to_event_falls_panel.html/png` and `pgx_time_to_event_ed_panel.html/png` - cohort-specific Falls and ED lead-time panels.
 - `pgx_intervention_priority_scores.csv`, `pgx_pathway_context_edges.csv`, and `pgx_time_to_event_windows.csv` - tabular data behind the derived figure panels.
 
 Notebook 4 (`4_results_review.ipynb`) can run this workflow through the Cohort
