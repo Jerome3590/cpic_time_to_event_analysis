@@ -175,6 +175,28 @@ python build_network_topology.py \
   --comprehend-summary-only
 ```
 
+### 3. Generate Publication Figure Pack
+
+**Script**: `generate_network_figure_pack.py`
+
+Reads the generated `network_nodes.csv` and `network_edges.csv` files across
+cohort/age-band outputs and creates the prevention-oriented figure set described
+in `10_analysis_results/network_analysis.md` and
+`10_analysis_results/README_pgx_network_visuals.md`.
+
+**Output**:
+- `pgx_global_intervention_network.html/png` - intervention-weighted global network.
+- `pgx_cohort_small_multiples.html/png` - Falls/ED cohort comparison panels.
+- `pgx_cluster_ego_networks.html/png` - therapeutic module ego networks.
+- `pgx_intervention_priority_heatmap.html/png` - priority score heatmap.
+- `pgx_time_to_event_panel.html/png` - medication lead-time panel.
+- `pgx_intervention_priority_scores.csv` and `pgx_time_to_event_windows.csv` - source tables for derived visuals.
+
+**Usage**:
+```bash
+python generate_network_figure_pack.py --project-root /path/to/repo
+```
+
 ## Installation
 
 ### Required Dependencies
