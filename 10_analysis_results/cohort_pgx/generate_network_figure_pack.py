@@ -13,6 +13,8 @@ and creates a figure pack with:
 - therapeutic cluster ego networks
 - time-to-event/prevention context
 - intervention-priority heatmap
+- pathway-context panel covering dynamics, kinetics, allergic response,
+  underappreciated signaling, and kinetic pathways
 """
 
 from __future__ import annotations
@@ -80,6 +82,51 @@ CLUSTER_RULES = {
         "genes": {"CYP2C19", "CES1", "PTGFR"},
     },
 }
+
+CONTEXT_DEFINITIONS = {
+    "dynamics": "Where the signal changes by outcome/age stratum and implies a prevention target.",
+    "kinetics": "ADME and transporter genes that alter exposure, clearance, or active metabolite burden.",
+    "allergic_response": "Immune/hypersensitivity context to monitor when HLA or allergy-linked PGx edges emerge.",
+    "underappreciated_signaling": "Peripheral or Undefined genes that make sparse modules clinically interpretable.",
+    "kinetic_pathways": "Drug -> kinetics gene -> exposure/timing pathway connected to lead-time before event.",
+}
+
+KINETICS_GENES = {
+    "ABCB1",
+    "CES1",
+    "CYP2C19",
+    "CYP2D6",
+    "CYP3A4",
+    "CYP3A5",
+    "SLCO1B1",
+}
+ALLERGIC_RESPONSE_GENES = {"HLA-A", "HLA-B", "HLA-C", "HLA-DQA1", "HLA-DQB1", "HLA-DRB1"}
+UNDERAPPRECIATED_SIGNALING_GENES = {
+    "ADD1",
+    "ADRA2C",
+    "CETP",
+    "GRK4",
+    "GRK5",
+    "HMGCR",
+    "LPA",
+    "NEDD4L",
+    "PRKCA",
+    "PTGFR",
+    "YEATS4",
+}
+DYNAMIC_ANCHOR_DRUGS = {
+    "CARVEDILOL",
+    "FUROSEMIDE",
+    "HYDROCHLOROTHIAZIDE",
+    "SIMVASTATIN",
+    "OMEPRAZOLE",
+}
+
+FIGURE_CONTEXT_NOTE = (
+    "<b>Context:</b> dynamics = cohort/age shifts; kinetics = ADME exposure and clearance; "
+    "allergic response = hypersensitivity watch-list; underappreciated signaling = Undefined/peripheral genes; "
+    "kinetic pathways = drug -> gene -> exposure/timing chain."
+)
 
 FALLBACK_TIME_WINDOWS = [
     {
@@ -249,6 +296,60 @@ def node_hover(row: pd.Series) -> str:
     return "<br>".join(bits)
 
 
+def context_tags_for_pair(gene: str, drug: str) -> list[str]:
+    """Return pathway-context tags for a model-seeded drug-gene pair."""
+    gene = str(gene).upper()
+    drug = str(drug).upper()
+    tags = []
+    if drug in DYNAMIC_ANCHOR_DRUGS:
+        tags.append("dynamics")
+    if gene in KINETICS_GENES:
+        tags.append("kinetics")
+    if gene in ALLERGIC_RESPONSE_GENES:
+        tags.append("allergic_response")
+    if gene in UNDERAPPRECIATED_SIGNALING_GENES:
+        tags.append("underappreciated_signaling")
+    if gene in KINETICS_GENES and drug in DYNAMIC_ANCHOR_DRUGS:
+        tags.append("kinetic_pathways")
+    return tags or ["context_review"]
+
+
+def primary_context_for_pair(gene: str, drug: str) -> str:
+    tags = context_tags_for_pair(gene, drug)
+    priority = [
+        "kinetic_pathways",
+        "kinetics",
+        "underappreciated_signaling",
+        "dynamics",
+        "allergic_response",
+        "context_review",
+    ]
+    for tag in priority:
+        if tag in tags:
+            return tag
+    return tags[0]
+
+
+def add_context_annotation(fig: go.Figure, y: float = -0.08) -> None:
+    """Add a compact context key below a Plotly figure."""
+    fig.add_annotation(
+        text=FIGURE_CONTEXT_NOTE,
+        x=0,
+        y=y,
+        xref="paper",
+        yref="paper",
+        xanchor="left",
+        yanchor="top",
+        align="left",
+        showarrow=False,
+        font=dict(size=11, color="#34495E"),
+        bgcolor="rgba(255,255,255,0.85)",
+        bordercolor="#D5D8DC",
+        borderwidth=1,
+        borderpad=6,
+    )
+
+
 def add_network_traces(
     fig: go.Figure,
     nodes: pd.DataFrame,
@@ -359,7 +460,7 @@ def make_global_network(nodes: pd.DataFrame, edges: pd.DataFrame, out_dir: Path)
     fig.update_layout(
         title=(
             "PGx Intervention-Weighted Global Network"
-            "<br><sup>Drug-gene seed edges use SHAP/FFA consensus importance; co-metabolizes edges show pathway bridges.</sup>"
+            "<br><sup>Drug-gene seed edges use SHAP/FFA consensus importance; co-metabolizes edges show pathway bridges across dynamics and kinetics.</sup>"
         ),
         width=1500,
         height=1000,
@@ -367,8 +468,9 @@ def make_global_network(nodes: pd.DataFrame, edges: pd.DataFrame, out_dir: Path)
         xaxis=dict(visible=False),
         yaxis=dict(visible=False),
         legend=dict(orientation="v", x=1.02, y=1),
-        margin=dict(l=20, r=260, t=90, b=20),
+        margin=dict(l=20, r=260, t=90, b=95),
     )
+    add_context_annotation(fig)
     write_figure(fig, FigurePaths(out_dir / "pgx_global_intervention_network.html", out_dir / "pgx_global_intervention_network.png"))
 
 
@@ -395,13 +497,14 @@ def make_cohort_small_multiples(nodes: pd.DataFrame, edges: pd.DataFrame, out_di
     fig.update_layout(
         title=(
             "Cohort-Specific PGx Network Small Multiples"
-            "<br><sup>Same visual grammar across panels; edge width follows top model-seeded drug importance.</sup>"
+            "<br><sup>Dynamics are shown as shifts in top drug-gene edges by outcome and age band; edge width follows model-seeded drug importance.</sup>"
         ),
         width=1600,
         height=1150,
         plot_bgcolor="white",
-        margin=dict(l=20, r=240, t=105, b=20),
+        margin=dict(l=20, r=240, t=105, b=95),
     )
+    add_context_annotation(fig)
     for axis in fig.layout:
         if str(axis).startswith("xaxis") or str(axis).startswith("yaxis"):
             fig.layout[axis].visible = False
@@ -435,13 +538,14 @@ def make_cluster_ego_networks(nodes: pd.DataFrame, edges: pd.DataFrame, out_dir:
     fig.update_layout(
         title=(
             "Therapeutic Cluster Ego Networks"
-            "<br><sup>Cluster panels highlight adrenergic, diuretic, lipid/statin, and related medication modules.</sup>"
+            "<br><sup>Clusters separate kinetic pathways from underappreciated adrenergic, diuretic, lipid/statin, and related signaling modules.</sup>"
         ),
         width=1600,
         height=1150,
         plot_bgcolor="white",
-        margin=dict(l=20, r=240, t=105, b=20),
+        margin=dict(l=20, r=240, t=105, b=95),
     )
+    add_context_annotation(fig)
     for axis in fig.layout:
         if str(axis).startswith("xaxis") or str(axis).startswith("yaxis"):
             fig.layout[axis].visible = False
@@ -463,6 +567,8 @@ def intervention_priority(edges: pd.DataFrame) -> pd.DataFrame:
     )
     tier_weight_genes = {"ADD1", "NEDD4L", "PRKCA", "YEATS4", "CETP", "LPA", "ADRA2C", "GRK4", "GRK5", "PTGFR", "CES1"}
     seed["tier_weight"] = seed["gene"].isin(tier_weight_genes).map({True: 1.2, False: 1.0})
+    seed["context_tags"] = seed.apply(lambda row: ";".join(context_tags_for_pair(row["gene"], row["drug"])), axis=1)
+    seed["primary_context"] = seed.apply(lambda row: primary_context_for_pair(row["gene"], row["drug"]), axis=1)
     seed["intervention_priority"] = (
         seed["importance_norm"].fillna(0) * 0.5
         + seed["inv_rank_norm"].fillna(0) * 0.3
@@ -482,8 +588,9 @@ def make_priority_heatmap(edges: pd.DataFrame, out_dir: Path) -> pd.DataFrame:
         .copy()
     )
     top["pair"] = top["gene"] + " -> " + top["drug"]
+    top["pair_context"] = top["pair"] + " [" + top["primary_context"] + "]"
     pivot = top.pivot_table(
-        index="pair",
+        index="pair_context",
         columns="panel",
         values="intervention_priority",
         aggfunc="max",
@@ -496,20 +603,141 @@ def make_priority_heatmap(edges: pd.DataFrame, out_dir: Path) -> pd.DataFrame:
             y=list(pivot.index),
             colorscale="Reds",
             colorbar=dict(title="Priority"),
-            hovertemplate="Pair=%{y}<br>Panel=%{x}<br>Priority=%{z:.3f}<extra></extra>",
+            hovertemplate="Pair/context=%{y}<br>Panel=%{x}<br>Priority=%{z:.3f}<extra></extra>",
         )
     )
     fig.update_layout(
         title=(
             "PGx Intervention Priority Heatmap"
-            "<br><sup>Score combines normalized importance, inverse rank, and Undefined-gene emphasis.</sup>"
+            "<br><sup>Score combines normalized importance, inverse rank, Undefined-gene emphasis, and pathway-context tags.</sup>"
         ),
         width=1200,
         height=max(650, 28 * len(pivot.index)),
-        margin=dict(l=260, r=40, t=100, b=80),
+        margin=dict(l=320, r=40, t=100, b=130),
     )
+    add_context_annotation(fig, y=-0.18)
     write_figure(fig, FigurePaths(out_dir / "pgx_intervention_priority_heatmap.html", out_dir / "pgx_intervention_priority_heatmap.png"), width=1300, height=max(800, 30 * len(pivot.index)))
     return priority
+
+
+def make_pathway_context_panel(priority: pd.DataFrame, out_dir: Path) -> pd.DataFrame:
+    if priority.empty:
+        return pd.DataFrame()
+    context_rows = []
+    for _, row in priority.iterrows():
+        for tag in str(row.get("context_tags", "context_review")).split(";"):
+            context_rows.append(
+                {
+                    "context": tag,
+                    "cohort": row.get("cohort"),
+                    "age_band": row.get("age_band"),
+                    "panel": row.get("panel"),
+                    "gene": row.get("gene"),
+                    "drug": row.get("drug"),
+                    "feature_importance": row.get("feature_importance"),
+                    "intervention_priority": row.get("intervention_priority"),
+                }
+            )
+    context_df = pd.DataFrame(context_rows)
+    counts = (
+        context_df.groupby(["context", "panel"], dropna=False)
+        .size()
+        .reset_index(name="edge_count")
+        .sort_values(["context", "panel"])
+    )
+    totals = (
+        context_df.groupby("context", dropna=False)
+        .agg(
+            edge_count=("drug", "size"),
+            max_priority=("intervention_priority", "max"),
+            top_pairs=("drug", lambda s: ", ".join(sorted(set(s.astype(str)))[:5])),
+        )
+        .reset_index()
+        .sort_values("edge_count", ascending=False)
+    )
+
+    fig = make_subplots(
+        rows=2,
+        cols=2,
+        specs=[[{"type": "bar"}, {"type": "heatmap"}], [{"type": "table", "colspan": 2}, None]],
+        subplot_titles=[
+            "Context frequency across model-seeded edges",
+            "Context by cohort/age panel",
+            "Interpretive context key",
+            "",
+        ],
+        vertical_spacing=0.16,
+        horizontal_spacing=0.12,
+    )
+    fig.add_trace(
+        go.Bar(
+            x=totals["context"],
+            y=totals["edge_count"],
+            marker_color="#5DADE2",
+            hovertemplate="Context=%{x}<br>Seed edges=%{y}<extra></extra>",
+            name="Context edge count",
+        ),
+        row=1,
+        col=1,
+    )
+    heat = counts.pivot_table(index="context", columns="panel", values="edge_count", fill_value=0)
+    fig.add_trace(
+        go.Heatmap(
+            z=heat.values,
+            x=list(heat.columns),
+            y=list(heat.index),
+            colorscale="Blues",
+            colorbar=dict(title="Edges"),
+            hovertemplate="Context=%{y}<br>Panel=%{x}<br>Edges=%{z}<extra></extra>",
+            name="Context by panel",
+        ),
+        row=1,
+        col=2,
+    )
+    ordered_contexts = list(CONTEXT_DEFINITIONS.keys()) + [
+        tag for tag in totals["context"].tolist() if tag not in CONTEXT_DEFINITIONS
+    ]
+    table_contexts = []
+    table_definitions = []
+    table_examples = []
+    for tag in ordered_contexts:
+        table_contexts.append(tag)
+        table_definitions.append(CONTEXT_DEFINITIONS.get(tag, "Review edge for pathway interpretation."))
+        examples = totals.loc[totals["context"].eq(tag), "top_pairs"]
+        table_examples.append(examples.iloc[0] if not examples.empty else "")
+    fig.add_trace(
+        go.Table(
+            header=dict(
+                values=["Context", "Meaning in visual", "Example drugs"],
+                fill_color="#D6EAF8",
+                align="left",
+            ),
+            cells=dict(
+                values=[table_contexts, table_definitions, table_examples],
+                align="left",
+                height=28,
+            ),
+        ),
+        row=2,
+        col=1,
+    )
+    fig.update_layout(
+        title=(
+            "PGx Pathway Context Panel"
+            "<br><sup>Adds interpretive framing for dynamics, kinetics, allergic response, underappreciated signaling, and kinetic pathways.</sup>"
+        ),
+        width=1500,
+        height=1000,
+        margin=dict(l=60, r=60, t=110, b=60),
+        showlegend=False,
+    )
+    write_figure(
+        fig,
+        FigurePaths(out_dir / "pgx_pathway_context_panel.html", out_dir / "pgx_pathway_context_panel.png"),
+        width=1600,
+        height=1100,
+    )
+    return context_df
 
 
 def load_time_windows(dtw_root: Path) -> pd.DataFrame:
@@ -575,20 +803,27 @@ def make_time_to_event_panel(dtw_root: Path, out_dir: Path) -> pd.DataFrame:
     fig.update_layout(
         title=(
             "Medication Lead-Time Before Event"
-            "<br><sup>Uses DTW timing artifacts when available; falls values fall back to documented 3-6 week prevention window.</sup>"
+            "<br><sup>Connects kinetics and kinetic pathways to dynamics: when a medication-review signal appears before ED/fall outcome.</sup>"
         ),
         width=1100,
         height=500,
         xaxis=dict(title="Days before event", autorange="reversed"),
         yaxis=dict(title=""),
         plot_bgcolor="white",
-        margin=dict(l=130, r=40, t=100, b=70),
+        margin=dict(l=130, r=40, t=100, b=120),
     )
+    add_context_annotation(fig, y=-0.25)
     write_figure(fig, FigurePaths(out_dir / "pgx_time_to_event_panel.html", out_dir / "pgx_time_to_event_panel.png"), width=1200, height=650)
     return time_df
 
 
-def write_manifest(out_dir: Path, generated: Iterable[Path], priority: pd.DataFrame, time_df: pd.DataFrame) -> None:
+def write_manifest(
+    out_dir: Path,
+    generated: Iterable[Path],
+    priority: pd.DataFrame,
+    time_df: pd.DataFrame,
+    context_df: pd.DataFrame,
+) -> None:
     manifest = {
         "description": "Publication-oriented PGx network figure pack.",
         "source_guidance": [
@@ -598,9 +833,12 @@ def write_manifest(out_dir: Path, generated: Iterable[Path], priority: pd.DataFr
         "figures": [str(path.name) for path in generated],
         "priority_rows": int(len(priority)),
         "time_window_rows": int(len(time_df)),
+        "pathway_context_rows": int(len(context_df)),
+        "pathway_context_definitions": CONTEXT_DEFINITIONS,
         "notes": [
             "PNG files are screenshots of the Plotly HTML figures for GitHub rendering.",
             "R tidygraph/ggraph implementation remains optional; this Python implementation uses the same visual grammar.",
+            "Pathway context tags annotate dynamics, kinetics, allergic-response watch-listing, underappreciated signaling, and kinetic pathways.",
         ],
     }
     with open(out_dir / "figure_pack_manifest.json", "w", encoding="utf-8") as handle:
@@ -617,11 +855,13 @@ def generate_figure_pack(project_root: Path) -> None:
     make_cohort_small_multiples(nodes, edges, out_dir)
     make_cluster_ego_networks(nodes, edges, out_dir)
     priority = make_priority_heatmap(edges, out_dir)
+    context_df = make_pathway_context_panel(priority, out_dir)
     time_df = make_time_to_event_panel(dtw_root, out_dir)
     priority.to_csv(out_dir / "pgx_intervention_priority_scores.csv", index=False)
+    context_df.to_csv(out_dir / "pgx_pathway_context_edges.csv", index=False)
     time_df.to_csv(out_dir / "pgx_time_to_event_windows.csv", index=False)
     generated = sorted(out_dir.glob("*.html")) + sorted(out_dir.glob("*.png"))
-    write_manifest(out_dir, generated, priority, time_df)
+    write_manifest(out_dir, generated, priority, time_df, context_df)
     print(f"Figure pack written to {out_dir}")
 
 

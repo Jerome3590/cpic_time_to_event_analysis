@@ -101,8 +101,9 @@ Generated outputs:
 - `pgx_cohort_small_multiples.html/png` - Falls/ED by age-band small multiples.
 - `pgx_cluster_ego_networks.html/png` - adrenergic, diuretic, lipid/statin, and related cluster panels.
 - `pgx_intervention_priority_heatmap.html/png` - score combining normalized importance, inverse rank, and Undefined-gene emphasis.
+- `pgx_pathway_context_panel.html/png` - explicit context for dynamics, kinetics, allergic-response watch-listing, underappreciated signaling, and kinetic pathways.
 - `pgx_time_to_event_panel.html/png` - prevention timing panel using DTW timing artifacts when available, otherwise the documented falls lead-time window.
-- `pgx_intervention_priority_scores.csv` and `pgx_time_to_event_windows.csv` - tabular data behind the derived figure panels.
+- `pgx_intervention_priority_scores.csv`, `pgx_pathway_context_edges.csv`, and `pgx_time_to_event_windows.csv` - tabular data behind the derived figure panels.
 
 Notebook 4 (`4_results_review.ipynb`) can run this workflow through the Cohort
 PGx NetworkX section. The static PNG outputs render in GitHub; the HTML outputs

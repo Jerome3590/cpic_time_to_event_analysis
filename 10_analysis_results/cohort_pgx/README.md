@@ -189,8 +189,9 @@ in `10_analysis_results/network_analysis.md` and
 - `pgx_cohort_small_multiples.html/png` - Falls/ED cohort comparison panels.
 - `pgx_cluster_ego_networks.html/png` - therapeutic module ego networks.
 - `pgx_intervention_priority_heatmap.html/png` - priority score heatmap.
+- `pgx_pathway_context_panel.html/png` - dynamics, kinetics, allergic-response, signaling, and kinetic-pathway context.
 - `pgx_time_to_event_panel.html/png` - medication lead-time panel.
-- `pgx_intervention_priority_scores.csv` and `pgx_time_to_event_windows.csv` - source tables for derived visuals.
+- `pgx_intervention_priority_scores.csv`, `pgx_pathway_context_edges.csv`, and `pgx_time_to_event_windows.csv` - source tables for derived visuals.
 
 **Usage**:
 ```bash
