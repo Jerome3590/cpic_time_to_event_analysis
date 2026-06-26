@@ -147,7 +147,30 @@ FALLBACK_TIME_WINDOWS = [
         "window_high": 42,
         "source": "network_analysis.md fallback",
     },
+    {
+        "cohort": "ed",
+        "age_band": "65-74",
+        "drug": "LEVOFLOXACIN",
+        "median_days_before_event": 21.0,
+        "window_low": 1,
+        "window_high": 21,
+        "source": "APCD drug-to-ED proximity fallback",
+    },
+    {
+        "cohort": "ed",
+        "age_band": "75-84",
+        "drug": "LEVOFLOXACIN",
+        "median_days_before_event": 21.0,
+        "window_low": 1,
+        "window_high": 21,
+        "source": "APCD drug-to-ED proximity fallback",
+    },
 ]
+
+S3_DTW_BUCKET = "pgxdatalake"
+S3_DTW_PREFIX = "gold/cpic_time_to_event/dtw_analysis"
+DTW_COHORTS = ("falls", "ed")
+DTW_AGE_BANDS = ("65-74", "75-84")
 
 
 @dataclass(frozen=True)
@@ -740,6 +763,64 @@ def make_pathway_context_panel(priority: pd.DataFrame, out_dir: Path) -> pd.Data
     return context_df
 
 
+def extract_consensus_time_window_rows(data: dict, cohort: str, age_band: str, source: str) -> list[dict]:
+    """Extract cohort-level DTW medication lead-time summaries from chart_data.json."""
+    summary = data.get("summary")
+    if not isinstance(summary, dict):
+        return []
+    timing = summary.get("consensus_drug_to_target_days")
+    if not isinstance(timing, dict):
+        return []
+    last_consensus = timing.get("last_consensus_drug")
+    if not isinstance(last_consensus, dict):
+        return []
+    median = last_consensus.get("median")
+    if median is None:
+        return []
+    window_low = last_consensus.get("min", median)
+    window_high = last_consensus.get("max", median)
+    return [
+        {
+            "cohort": cohort,
+            "age_band": age_band,
+            "drug": "Consensus PGx drug signal",
+            "median_days_before_event": median,
+            "window_low": window_low,
+            "window_high": window_high,
+            "source": source,
+        }
+    ]
+
+
+def load_s3_time_windows() -> list[dict]:
+    try:
+        import boto3
+    except ImportError:
+        return []
+
+    rows: list[dict] = []
+    s3 = boto3.client("s3")
+    for cohort in DTW_COHORTS:
+        for age_band in DTW_AGE_BANDS:
+            key = f"{S3_DTW_PREFIX}/{cohort}/{age_band}/chart_data.json"
+            try:
+                response = s3.get_object(Bucket=S3_DTW_BUCKET, Key=key)
+                data = json.loads(response["Body"].read())
+            except Exception:
+                continue
+            if data.get("empty"):
+                continue
+            rows.extend(
+                extract_consensus_time_window_rows(
+                    data=data,
+                    cohort=cohort,
+                    age_band=age_band,
+                    source=f"s3://{S3_DTW_BUCKET}/{key}",
+                )
+            )
+    return rows
+
+
 def load_time_windows(dtw_root: Path) -> pd.DataFrame:
     rows = []
     for chart_path in sorted(dtw_root.glob("*/*/chart_data.json")):
@@ -751,12 +832,14 @@ def load_time_windows(dtw_root: Path) -> pd.DataFrame:
             continue
         cohort = data.get("cohort") or chart_path.parent.parent.name
         age_band = data.get("age_band") or chart_path.parent.name.replace("_", "-")
+        rows.extend(extract_consensus_time_window_rows(data, cohort, age_band, str(chart_path)))
         for key in ("drug_timing", "timing", "trajectory_timing", "time_to_target"):
             values = data.get(key)
             if isinstance(values, list):
                 for item in values:
                     if isinstance(item, dict):
                         rows.append({"cohort": cohort, "age_band": age_band, **item, "source": str(chart_path)})
+    rows.extend(load_s3_time_windows())
     if rows:
         df = pd.DataFrame(rows)
         rename = {
@@ -768,8 +851,25 @@ def load_time_windows(dtw_root: Path) -> pd.DataFrame:
         if {"drug", "median_days_before_event"}.issubset(df.columns):
             df["window_low"] = df.get("window_low", 21)
             df["window_high"] = df.get("window_high", 42)
-            return df[["cohort", "age_band", "drug", "median_days_before_event", "window_low", "window_high", "source"]]
-    return pd.DataFrame(FALLBACK_TIME_WINDOWS)
+            df = df[["cohort", "age_band", "drug", "median_days_before_event", "window_low", "window_high", "source"]]
+        else:
+            df = pd.DataFrame()
+    else:
+        df = pd.DataFrame()
+
+    # DTW timing artifacts may be missing for one event family. Retain documented
+    # fallback rows for absent cohort/age panels so the publication panel covers
+    # both falls and ED event families.
+    fallback = pd.DataFrame(FALLBACK_TIME_WINDOWS)
+    if df.empty:
+        return fallback
+    observed = set(zip(df["cohort"].astype(str), df["age_band"].astype(str)))
+    missing_fallback = fallback[
+        ~fallback.apply(lambda row: (str(row["cohort"]), str(row["age_band"])) in observed, axis=1)
+    ]
+    if not missing_fallback.empty:
+        df = pd.concat([df, missing_fallback], ignore_index=True)
+    return df
 
 
 def make_time_to_event_panel(dtw_root: Path, out_dir: Path) -> pd.DataFrame:

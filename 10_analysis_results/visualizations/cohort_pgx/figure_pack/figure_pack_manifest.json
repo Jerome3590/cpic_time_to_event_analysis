@@ -19,7 +19,7 @@
     "pgx_time_to_event_panel.png"
   ],
   "priority_rows": 81,
-  "time_window_rows": 2,
+  "time_window_rows": 4,
   "pathway_context_rows": 158,
   "pathway_context_definitions": {
     "dynamics": "Where the signal changes by outcome/age stratum and implies a prevention target.",

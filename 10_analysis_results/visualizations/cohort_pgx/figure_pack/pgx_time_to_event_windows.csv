@@ -1,3 +1,5 @@
 cohort,age_band,drug,median_days_before_event,window_low,window_high,source,panel,label
-falls,65-74,FUROSEMIDE,25.5,21,42,network_analysis.md fallback,Falls 65-74,FUROSEMIDE (25.5 d)
-falls,75-84,FUROSEMIDE,37.0,21,42,network_analysis.md fallback,Falls 75-84,FUROSEMIDE (37.0 d)
+falls,65-74,Consensus PGx drug signal,25.5,1.0,255.0,s3://pgxdatalake/gold/cpic_time_to_event/dtw_analysis/falls/65-74/chart_data.json,Falls 65-74,Consensus PGx drug signal (25.5 d)
+falls,75-84,Consensus PGx drug signal,37.0,1.0,354.0,s3://pgxdatalake/gold/cpic_time_to_event/dtw_analysis/falls/75-84/chart_data.json,Falls 75-84,Consensus PGx drug signal (37.0 d)
+ed,65-74,Consensus PGx drug signal,16.0,1.0,365.0,s3://pgxdatalake/gold/cpic_time_to_event/dtw_analysis/ed/65-74/chart_data.json,ED 65-74,Consensus PGx drug signal (16.0 d)
+ed,75-84,Consensus PGx drug signal,15.5,1.0,343.0,s3://pgxdatalake/gold/cpic_time_to_event/dtw_analysis/ed/75-84/chart_data.json,ED 75-84,Consensus PGx drug signal (15.5 d)
