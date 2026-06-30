@@ -1,0 +1,3 @@
+[submodule "manuscript"]
+	path = manuscript
+	url = https://github.com/Jerome3590/cpic_time_to_event_analysis_manuscript.git
