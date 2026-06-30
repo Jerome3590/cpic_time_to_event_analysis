@@ -57,17 +57,16 @@ logs/
 *.log
 
 # ── Status artifacts ─────────────────────────────────────────────────────────
-status/*.png
-status/*.pdf
-status/*.csv
-status/*.json
+# Keep figures, tables, PDFs, and JSON summaries trackable when they are used as
+# QA or manuscript evidence. Ignore only the local upload tracker.
 status/s3_upload_tracker.json
 
 # ── Local cache/temporary ─────────────────────────────────────────────────────
 tmp/
 
-# ── Office / Excel ────────────────────────────────────────────────────────────
-*.xlsx
+# ── Evidence artifacts ────────────────────────────────────────────────────────
+# Do not globally ignore visual, tabular, or document evidence files such as
+# PNG/HTML figures, CSV/JSON tables, PDF/DOCX/XLSX documents, or markdown notes.
 
 # ── Node.js ───────────────────────────────────────────────────────────────────
 **/node_modules/
